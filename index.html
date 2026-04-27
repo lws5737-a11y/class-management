@@ -6,27 +6,6 @@
     <title>스마트 체육 수업 매니저 made by 우석쌤</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/index.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/default.css">
-    <script>
-        // 전역 상태 변수: 현재 카드를 드래그 중인지 여부를 추적
-        window.isDraggingCard = false;
-
-        document.addEventListener("DOMContentLoaded", function() {
-            MobileDragDrop.polyfill({
-                dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-                holdToDrag: 250 // ★ 0.25초로 단축하여 모바일에서 더 빠른 드래그 시작
-            });
-            
-            // ★ 스마트 스크롤 로직: 드래그 중일 때만 스크롤 방지, 평소엔 정상 스크롤
-            window.addEventListener('touchmove', function(e) {
-                if (window.isDraggingCard) {
-                    e.preventDefault(); // 드래그 중에는 화면이 위아래로 움직이지 않도록 막음
-                }
-            }, { passive: false });
-        });
-    </script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
         
@@ -60,8 +39,22 @@
             animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* ★ 모바일 드래그 시 텍스트 선택 방지 (안드로이드 꾹 누르기 버그 해결) */
-        .student-card {
+        /* ★ 학생 선택 애니메이션 (터치 & 스왑용) */
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .selected-card {
+            animation: pulse-ring 1.5s infinite;
+            border-color: #6366f1 !important;
+            background-color: #eef2ff !important;
+            transform: scale(1.02);
+            z-index: 20;
+        }
+
+        /* 모바일 선택 방지 */
+        .no-select {
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
@@ -374,6 +367,14 @@
                         </button>
                     </div>
                 </div>
+
+                <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start sm:items-center gap-2 print-hide">
+                    <span class="text-indigo-500 mt-0.5 sm:mt-0">💡</span>
+                    <p class="text-[11px] sm:text-sm text-indigo-800 font-medium leading-relaxed">
+                        <b>자리 이동 방법:</b> 학생을 <b>터치(선택)</b>한 후, 바꿀 학생을 터치하거나 빈 모둠의 '이동' 버튼을 누르세요.<br>
+                        <span class="text-slate-500 text-[10px] sm:text-xs">※ 체육 부장 지정은 학생 <b>이름</b>을 터치하세요.</span>
+                    </p>
+                </div>
                 
                 <div id="group-result" class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1">
                 </div>
@@ -536,7 +537,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 이모티콘 겹침 HTML 생성 도우미 함수 추가
         window.getAbilityHTML = function(type, val) {
             let emoji = '🏀';
             if (type === 'footSense') emoji = '⚽';
@@ -566,80 +566,63 @@
         let activeStudentTimers = {}; 
         let timerLoopStarted = false; 
 
-        // --- 모둠 드래그 앤 드롭을 위한 전역 변수 및 함수 ---
-        let draggedStudentNo = null;
+        // ★ 새로 도입된 터치 앤 무브 (Tap to Swap) 전역 변수
+        let selectedStudentNo = null;
 
-        window.handleDragStart = function(e, studentNo) {
-            window.isDraggingCard = true; // 터치 스크롤 방지 활성화
-            draggedStudentNo = studentNo;
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => {
-                e.target.style.opacity = '0.4';
-                e.target.style.transform = 'scale(0.95)';
-            }, 0);
+        window.selectStudentForMove = function(studentNo) {
+            if (selectedStudentNo === studentNo) {
+                // 같은 학생을 다시 터치하면 선택 해제
+                selectedStudentNo = null; 
+            } else if (selectedStudentNo !== null) {
+                // 다른 학생이 이미 선택되어 있다면 -> 자리 바꾸기(Swap)
+                swapStudents(selectedStudentNo, studentNo);
+                selectedStudentNo = null;
+            } else {
+                // 아무도 선택되지 않았다면 -> 선택
+                selectedStudentNo = studentNo; 
+            }
+            renderGroups();
         };
 
-        window.handleDragEnd = function(e) {
-            window.isDraggingCard = false; // 터치 스크롤 방지 해제
-            e.target.style.opacity = '1';
-            e.target.style.transform = 'scale(1)';
-            draggedStudentNo = null;
-        };
-
-        window.handleDragOver = function(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        };
-
-        window.handleDropOnStudent = function(e, targetStudentNo) {
-            e.preventDefault();
-            e.stopPropagation(); 
-            
-            if (!draggedStudentNo || draggedStudentNo === targetStudentNo) return;
-
-            const students = classData[currentClass];
-            const draggedIndex = students.findIndex(s => s.no === draggedStudentNo);
-            const targetIndex = students.findIndex(s => s.no === targetStudentNo);
-
-            if (draggedIndex > -1 && targetIndex > -1) {
-                const draggedStudent = students[draggedIndex];
-                const targetStudent = students[targetIndex];
-
-                const draggedGroup = draggedStudent[`group_${currentGroupMode}`];
-                const targetGroup = targetStudent[`group_${currentGroupMode}`];
-
-                if (draggedGroup !== targetGroup) {
-                    // 1. 다른 모둠인 경우: 서로의 모둠 소속을 맞교환
-                    draggedStudent[`group_${currentGroupMode}`] = targetGroup;
-                    targetStudent[`group_${currentGroupMode}`] = draggedGroup;
-                } else {
-                    // 2. 같은 모둠인 경우: 명단 배열 내에서 순서(위치) 밀어넣기
-                    students.splice(draggedIndex, 1); // 원래 자리에서 빼기
-                    
-                    // 하나가 빠졌으므로 타겟의 인덱스를 다시 계산 후 그 자리에 삽입
-                    const newTargetIndex = students.findIndex(s => s.no === targetStudentNo);
-                    students.splice(newTargetIndex, 0, draggedStudent);
+        window.moveToGroup = function(groupId) {
+            if (selectedStudentNo !== null) {
+                const students = classData[currentClass];
+                const student = students.find(s => s.no === selectedStudentNo);
+                if (student && student[`group_${currentGroupMode}`] !== groupId) {
+                    student[`group_${currentGroupMode}`] = groupId;
+                    saveData();
+                    selectedStudentNo = null;
+                    renderStudentList();
+                    renderGroups();
                 }
-
-                saveData();
-                renderStudentList();
-                renderGroups();
             }
         };
 
-        window.handleDropOnGroup = function(e, targetGroupId) {
-            e.preventDefault();
-            if (!draggedStudentNo) return;
+        function swapStudents(no1, no2) {
             const students = classData[currentClass];
-            const draggedStudent = students.find(s => s.no === draggedStudentNo);
+            const idx1 = students.findIndex(s => s.no === no1);
+            const idx2 = students.findIndex(s => s.no === no2);
 
-            if (draggedStudent && draggedStudent[`group_${currentGroupMode}`] !== targetGroupId) {
-                draggedStudent[`group_${currentGroupMode}`] = targetGroupId;
+            if (idx1 > -1 && idx2 > -1) {
+                const s1 = students[idx1];
+                const s2 = students[idx2];
+                const g1 = s1[`group_${currentGroupMode}`];
+                const g2 = s2[`group_${currentGroupMode}`];
+
+                if (g1 !== g2) {
+                    // 모둠이 다르면 모둠 번호만 교체
+                    s1[`group_${currentGroupMode}`] = g2;
+                    s2[`group_${currentGroupMode}`] = g1;
+                } else {
+                    // 같은 모둠이면 배열 내 순서 밀어넣기
+                    students.splice(idx1, 1);
+                    const newIdx2 = students.findIndex(s => s.no === no2);
+                    students.splice(newIdx2, 0, s1);
+                }
                 saveData();
                 renderStudentList();
-                renderGroups();
             }
-        };
+        }
 
         const TOTAL_STAMP_CELLS = 20;
         const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
@@ -1463,6 +1446,7 @@
             currentClass = className;
             activeTimers = {}; 
             activeStudentTimers = {};
+            selectedStudentNo = null; // 학급 변경 시 선택 초기화
             const selectEl = document.getElementById('class-select');
             if (selectEl && selectEl.value !== className) selectEl.value = className;
             document.getElementById('current-class-display').innerText = `${className} 관리 중`;
@@ -1473,6 +1457,7 @@
 
         window.showTab = function(tabName) {
             currentTab = tabName;
+            selectedStudentNo = null; // 탭 변경 시 선택 초기화
             ['student-management', 'group-section', 'draw-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
             
             ['draw', 'student', 'group', 'stamp'].forEach(t => {
@@ -1538,7 +1523,6 @@
             } else { window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 손센스 발센스 순발력 모둠] 순으로 띄어쓰기하여 입력해주세요."); }
         }
 
-        // --- 입력 버튼 능력치 변경 (이모티콘 적용) ---
         window.cycleInputAbility = function(type) {
             const hiddenInput = document.getElementById(`add-${type}`); 
             const btn = document.getElementById(`btn-add-${type}`);
@@ -1743,7 +1727,7 @@
                     else if (sGroup % 4 === 0) groupColorClass = 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm';
                 }
                 
-                const captainBadge = s.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded-full w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] inline-flex items-center justify-center font-black ml-1 shadow-sm leading-none pt-0.5">C</span>' : '';
+                const captainBadge = s.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5">C</span>' : '';
 
                 if (!activeStudentTimers[s.no]) {
                     activeStudentTimers[s.no] = { isRunning: false, elapsed: s.recordMs || 0, startTime: 0 };
@@ -1752,10 +1736,13 @@
                 let stPlayIcon = st.isRunning ? '⏸' : '▶';
                 let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
 
-                // ★ 모바일 화면 최적화: px-0.5 등 좌우 여백을 극단적으로 줄이고, 순서를 새롭게 배치
                 tr.innerHTML = `
                     <td class="px-0 py-1 sm:p-2 text-center font-mono font-bold text-[10px] sm:text-[13px] text-slate-500 w-4 sm:w-8">${s.no}</td>
-                    <td class="px-0.5 py-1 sm:p-2 font-black text-center ${s.attendance ? 'text-slate-800' : 'text-slate-400'} whitespace-normal break-words leading-tight text-[11px] sm:text-[14px] min-w-[36px]">${s.name}${captainBadge}</td>
+                    <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
+                        <button onclick="window.toggleCaptain(${s.no})" class="w-full h-full text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400'} px-1 py-0.5 rounded hover:bg-slate-200 transition" title="이름을 터치하면 체육부장(C) 토글">
+                            ${s.name}${captainBadge}
+                        </button>
+                    </td>
                     
                     <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
                         <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
@@ -1800,6 +1787,7 @@
         window.setGroupMode = function(mode) {
             currentGroupMode = mode;
             activeTimers = {}; 
+            selectedStudentNo = null; // 모드 변경 시 선택 해제
             ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
                 const btn = document.getElementById(`btn-mode-${m}`);
                 if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
@@ -1846,6 +1834,7 @@
                 }
                 
                 activeTimers = {};
+                selectedStudentNo = null;
                 saveData();
                 renderStudentList();
                 renderGroups();
@@ -1922,6 +1911,7 @@
             for(let i=1; i<=numGroups; i++) groupScores[currentClass][currentGroupMode][i] = 0;
             if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
             activeTimers = {};
+            selectedStudentNo = null;
 
             saveData(); renderStudentList(); renderGroups();
         }
@@ -1971,6 +1961,7 @@
             if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {1:0, 2:0, 3:0, 4:0};
             if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
             activeTimers = {};
+            selectedStudentNo = null;
 
             saveData(); renderStudentList(); renderGroups();
         }
@@ -1998,8 +1989,6 @@
 
                 const card = document.createElement('div');
                 card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]`;
-                card.setAttribute('ondragover', 'window.handleDragOver(event)');
-                card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
 
                 const presentMembers = members.filter(m => m.attendance);
                 const maleCount = presentMembers.filter(m => m.gender === '남').length; 
@@ -2012,9 +2001,16 @@
                    groupTotalAbility += (parseInt(m.handSense)||0) + (parseInt(m.footSense)||0) + (parseInt(m.agility)||0); 
                 });
 
+                // ★ 학생이 선택되어 있을 때 모둠으로 이동하는 버튼 생성
+                let moveHereBtnHTML = "";
+                if (selectedStudentNo !== null) {
+                    moveHereBtnHTML = `<button onclick="window.moveToGroup(${i})" class="animate-pulse bg-indigo-500 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded shadow-md hover:bg-indigo-600 transition flex items-center gap-1">⬇️ 이곳으로 이동</button>`;
+                }
+
                 const headerExtra = `
-                    <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full">
+                    <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full items-center">
                         <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-slate-500">종합 전력: ${groupTotalAbility}점</span>
+                        ${moveHereBtnHTML}
                     </div>
                 `;
 
@@ -2038,7 +2034,6 @@
                 if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) timeColorClass = 'text-red-400';
                 if(t.mode === 'timer' && t.elapsed === 0) timeColorClass = 'text-red-500';
 
-                // ★ oncontextmenu="return false;" 추가하여 모바일 우클릭(꾹누르기) 방해 차단
                 card.innerHTML = `
                     <div class="flex flex-col xl:flex-row justify-between mb-3 sm:mb-4 border-b ${theme.border} pb-3 gap-2 group-header">
                         <div class="flex flex-wrap items-center gap-2">
@@ -2074,30 +2069,34 @@
                     </div>
                     
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                        ${members.map(m => `
-                            <div draggable="true"
-                                 oncontextmenu="return false;"
-                                 ondragstart="window.handleDragStart(event, ${m.no})"
-                                 ondragend="window.handleDragEnd(event)"
-                                 ondragover="window.handleDragOver(event)"
-                                 ondrop="window.handleDropOnStudent(event, ${m.no})"
-                                 onclick="window.toggleCaptain(${m.no})" class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 active:bg-slate-200 transition-all select-none student-card overflow-hidden">
-                                
-                                ${m.isCaptain ? '<div class="absolute -top-1 -right-1 bg-yellow-400 text-white rounded-full w-[20px] h-[20px] flex items-center justify-center text-[10px] font-black shadow border border-white z-10 pointer-events-none">C</div>' : ''}
-                                
-                                <div class="flex items-center justify-center gap-1 w-full pointer-events-none">
-                                    <span class="text-[10px] sm:text-[11px] font-mono ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
-                                    <span class="text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight flex-1 px-0.5">${m.name}</span>
-                                    <span class="text-[9px] sm:text-[10px] ${m.gender === '남' ? 'text-blue-500' : 'text-pink-500'} font-bold shrink-0">${m.gender}</span>
+                        ${members.map(m => {
+                            // ★ 선택된 학생 카드 강조 CSS
+                            const isSelected = selectedStudentNo === m.no;
+                            const selectionClass = isSelected ? 'selected-card' : 'hover:shadow-md';
+                            const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
+                            
+                            return `
+                                <div onclick="window.selectStudentForMove(${m.no})" 
+                                     class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm active:scale-95 transition-all no-select student-card overflow-hidden ${selectionClass}">
+                                    
+                                    <div class="flex items-center justify-center gap-1 w-full mt-1">
+                                        <span class="text-[10px] sm:text-[11px] font-mono ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
+                                        
+                                        <button onclick="event.stopPropagation(); window.toggleCaptain(${m.no})" class="flex items-center justify-center text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight hover:bg-slate-200/50 px-1 py-0.5 rounded transition" title="이름 터치시 체육부장 토글">
+                                            ${m.name}${captainBadgeHTML}
+                                        </button>
+                                        
+                                        <span class="text-[9px] sm:text-[10px] ${m.gender === '남' ? 'text-blue-500' : 'text-pink-500'} font-bold shrink-0">${m.gender}</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
+                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('handSense', m.handSense)}</div>
+                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('footSense', m.footSense)}</div>
+                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
+                                    </div>
                                 </div>
-                                
-                                <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
-                                    <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('handSense', m.handSense)}</div>
-                                    <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('footSense', m.footSense)}</div>
-                                    <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
-                                </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 `;
                 container.appendChild(card);
@@ -2189,7 +2188,7 @@
 
                     card.innerHTML = `
                         <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
-                            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}번</span>
+                            <span class="text-[10px] sm:textxs font-mono font-bold text-purple-400 shrink-0">${s.no}번</span>
                             <div class="flex gap-1 items-center shrink-0">
                                 <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${rankBadgeClass}">${rankText}</span>
                                 <span class="score-display text-[10px] sm:text-xs font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm border border-blue-100">${s.score || 0}점</span>
