@@ -6,6 +6,23 @@
     <title>스마트 체육 수업 매니저 made by 우석쌤</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/index.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/default.css">
+    <script>
+        window.isDraggingCard = false;
+        document.addEventListener("DOMContentLoaded", function() {
+            MobileDragDrop.polyfill({
+                dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
+                holdToDrag: 250 // 모바일에서 0.25초 꾹 누르면 드래그 발동
+            });
+            window.addEventListener('touchmove', function(e) {
+                if (window.isDraggingCard) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        });
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
         
@@ -39,22 +56,8 @@
             animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* ★ 학생 선택 애니메이션 (터치 & 스왑용) */
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
-            70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-        }
-        .selected-card {
-            animation: pulse-ring 1.5s infinite;
-            border-color: #6366f1 !important;
-            background-color: #eef2ff !important;
-            transform: scale(1.02);
-            z-index: 20;
-        }
-
-        /* 모바일 선택 방지 */
-        .no-select {
+        /* 꾹 누르기 선택 방지 */
+        .student-card {
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
@@ -192,12 +195,15 @@
                             <input type="text" id="new-class-input" placeholder="새 학급명 입력" class="w-full sm:w-32 p-2 sm:p-2 border border-slate-200 rounded-lg text-sm focus:outline-blue-500 focus:ring-2 focus:ring-blue-200">
                             <button onclick="window.addNewClass()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap hover:bg-blue-700 transition">추가</button>
                         </div>
+                        
                         <div class="relative w-full sm:w-44">
-                            <select id="class-select" onchange="if(this.value) window.selectClass(this.value);" class="w-full p-2 sm:p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer text-sm">
-                                <option value="" disabled selected>학급 선택...</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                                <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            <button type="button" id="class-select-btn" onclick="window.toggleClassDropdown(event)" class="w-full p-2 sm:p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex justify-between items-center text-sm shadow-sm transition">
+                                <span id="class-select-btn-text">학급 선택...</span>
+                                <svg class="h-4 w-4 fill-current text-slate-500 transition-transform duration-200" id="class-select-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            </button>
+                            <div id="class-select-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto print-hide">
+                                <ul id="class-select-list" class="py-1 text-sm font-bold text-slate-700">
+                                    </ul>
                             </div>
                         </div>
                     </div>
@@ -371,8 +377,8 @@
                 <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start sm:items-center gap-2 print-hide">
                     <span class="text-indigo-500 mt-0.5 sm:mt-0">💡</span>
                     <p class="text-[11px] sm:text-sm text-indigo-800 font-medium leading-relaxed">
-                        <b>자리 이동 방법:</b> 학생을 <b>터치(선택)</b>한 후, 바꿀 학생을 터치하거나 빈 모둠의 '이동' 버튼을 누르세요.<br>
-                        <span class="text-slate-500 text-[10px] sm:text-xs">※ 체육 부장 지정은 학생 <b>이름</b>을 터치하세요.</span>
+                        <b>자리 이동:</b> 학생 카드를 끌어다 놓으세요(Drag & Drop). 스마트폰에서는 지원되지 않으며, 모바일 환경 자리 이동은 '출석부' 탭에서 가능합니다.<br>
+                        <span class="text-slate-500 text-[10px] sm:text-xs">※ 체육 부장 지정은 학생 <b>이름</b> 부분을 터치하세요.</span>
                     </p>
                 </div>
                 
@@ -566,63 +572,98 @@
         let activeStudentTimers = {}; 
         let timerLoopStarted = false; 
 
-        // ★ 새로 도입된 터치 앤 무브 (Tap to Swap) 전역 변수
-        let selectedStudentNo = null;
+        // --- 드래그 앤 드롭 함수 복구 ---
+        let draggedStudentNo = null;
 
-        window.selectStudentForMove = function(studentNo) {
-            if (selectedStudentNo === studentNo) {
-                // 같은 학생을 다시 터치하면 선택 해제
-                selectedStudentNo = null; 
-            } else if (selectedStudentNo !== null) {
-                // 다른 학생이 이미 선택되어 있다면 -> 자리 바꾸기(Swap)
-                swapStudents(selectedStudentNo, studentNo);
-                selectedStudentNo = null;
-            } else {
-                // 아무도 선택되지 않았다면 -> 선택
-                selectedStudentNo = studentNo; 
-            }
-            renderGroups();
+        window.handleDragStart = function(e, studentNo) {
+            window.isDraggingCard = true;
+            draggedStudentNo = studentNo;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => {
+                e.target.style.opacity = '0.4';
+                e.target.style.transform = 'scale(0.95)';
+            }, 0);
         };
 
-        window.moveToGroup = function(groupId) {
-            if (selectedStudentNo !== null) {
-                const students = classData[currentClass];
-                const student = students.find(s => s.no === selectedStudentNo);
-                if (student && student[`group_${currentGroupMode}`] !== groupId) {
-                    student[`group_${currentGroupMode}`] = groupId;
-                    saveData();
-                    selectedStudentNo = null;
-                    renderStudentList();
-                    renderGroups();
-                }
-            }
+        window.handleDragEnd = function(e) {
+            window.isDraggingCard = false;
+            e.target.style.opacity = '1';
+            e.target.style.transform = 'scale(1)';
+            draggedStudentNo = null;
         };
 
-        function swapStudents(no1, no2) {
+        window.handleDragOver = function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        };
+
+        window.handleDropOnStudent = function(e, targetStudentNo) {
+            e.preventDefault();
+            e.stopPropagation(); 
+            
+            if (!draggedStudentNo || draggedStudentNo === targetStudentNo) return;
+
             const students = classData[currentClass];
-            const idx1 = students.findIndex(s => s.no === no1);
-            const idx2 = students.findIndex(s => s.no === no2);
+            const draggedIndex = students.findIndex(s => s.no === draggedStudentNo);
+            const targetIndex = students.findIndex(s => s.no === targetStudentNo);
 
-            if (idx1 > -1 && idx2 > -1) {
-                const s1 = students[idx1];
-                const s2 = students[idx2];
-                const g1 = s1[`group_${currentGroupMode}`];
-                const g2 = s2[`group_${currentGroupMode}`];
+            if (draggedIndex > -1 && targetIndex > -1) {
+                const draggedStudent = students[draggedIndex];
+                const targetStudent = students[targetIndex];
 
-                if (g1 !== g2) {
-                    // 모둠이 다르면 모둠 번호만 교체
-                    s1[`group_${currentGroupMode}`] = g2;
-                    s2[`group_${currentGroupMode}`] = g1;
+                const draggedGroup = draggedStudent[`group_${currentGroupMode}`];
+                const targetGroup = targetStudent[`group_${currentGroupMode}`];
+
+                if (draggedGroup !== targetGroup) {
+                    draggedStudent[`group_${currentGroupMode}`] = targetGroup;
+                    targetStudent[`group_${currentGroupMode}`] = draggedGroup;
                 } else {
-                    // 같은 모둠이면 배열 내 순서 밀어넣기
-                    students.splice(idx1, 1);
-                    const newIdx2 = students.findIndex(s => s.no === no2);
-                    students.splice(newIdx2, 0, s1);
+                    students.splice(draggedIndex, 1); 
+                    const newTargetIndex = students.findIndex(s => s.no === targetStudentNo);
+                    students.splice(newTargetIndex, 0, draggedStudent);
                 }
+
                 saveData();
                 renderStudentList();
+                renderGroups();
+            }
+        };
+
+        window.handleDropOnGroup = function(e, targetGroupId) {
+            e.preventDefault();
+            if (!draggedStudentNo) return;
+            const students = classData[currentClass];
+            const draggedStudent = students.find(s => s.no === draggedStudentNo);
+
+            if (draggedStudent && draggedStudent[`group_${currentGroupMode}`] !== targetGroupId) {
+                draggedStudent[`group_${currentGroupMode}`] = targetGroupId;
+                saveData();
+                renderStudentList();
+                renderGroups();
+            }
+        };
+
+        // --- 커스텀 드롭다운 관련 스크립트 추가 ---
+        window.toggleClassDropdown = function(e) {
+            if(e) e.stopPropagation();
+            const dropdown = document.getElementById('class-select-dropdown');
+            const chevron = document.getElementById('class-select-chevron');
+            if (dropdown) {
+                dropdown.classList.toggle('hidden');
+                if(!dropdown.classList.contains('hidden')) chevron.style.transform = 'rotate(180deg)';
+                else chevron.style.transform = 'rotate(0deg)';
             }
         }
+
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('class-select-dropdown');
+            const btn = document.getElementById('class-select-btn');
+            if (dropdown && !dropdown.classList.contains('hidden') && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                document.getElementById('class-select-chevron').style.transform = 'rotate(0deg)';
+            }
+        });
+
 
         const TOTAL_STAMP_CELLS = 20;
         const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
@@ -786,7 +827,6 @@
             
             const now = audioCtx.currentTime;
             
-            // 슈우웅 (떨어지는 소리)
             const fallOsc = audioCtx.createOscillator();
             const fallGain = audioCtx.createGain();
             fallOsc.type = 'sine';
@@ -800,7 +840,6 @@
             fallOsc.connect(fallGain); fallGain.connect(audioCtx.destination);
             fallOsc.start(now); fallOsc.stop(now + 0.35);
 
-            // 쿵 (바닥에 닿는 타격음)
             const boomOsc = audioCtx.createOscillator();
             const boomGain = audioCtx.createGain();
             boomOsc.type = 'square';
@@ -1215,16 +1254,35 @@
         }
 
         window.renderClassSelect = function() {
-            const selectEl = document.getElementById('class-select');
-            selectEl.innerHTML = '<option value="" disabled selected>학급 선택...</option>';
+            const listEl = document.getElementById('class-select-list');
+            const btnText = document.getElementById('class-select-btn-text');
+            if(!listEl) return;
+            
+            listEl.innerHTML = '';
             const classes = Object.keys(classData).sort();
-            classes.forEach(cls => {
-                const opt = document.createElement('option');
-                opt.value = cls; opt.innerText = cls;
-                selectEl.appendChild(opt);
-            });
-            if (currentClass && classes.includes(currentClass)) selectEl.value = currentClass;
-            else selectEl.value = "";
+            
+            if(classes.length === 0) {
+                btnText.innerText = "학급 선택...";
+                listEl.innerHTML = '<li class="px-4 py-2 text-slate-400">등록된 학급 없음</li>';
+            } else {
+                classes.forEach(cls => {
+                    const li = document.createElement('li');
+                    li.className = "px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition border-b border-slate-50 last:border-0";
+                    if(currentClass === cls) li.classList.add('bg-blue-100', 'text-blue-700');
+                    li.innerText = cls;
+                    li.onclick = function() {
+                        window.selectClass(cls);
+                        window.toggleClassDropdown();
+                    };
+                    listEl.appendChild(li);
+                });
+                
+                if (currentClass && classes.includes(currentClass)) {
+                    btnText.innerText = currentClass;
+                } else {
+                    btnText.innerText = "학급 선택...";
+                }
+            }
         }
 
         window.addNewClass = function() {
@@ -1446,18 +1504,18 @@
             currentClass = className;
             activeTimers = {}; 
             activeStudentTimers = {};
-            selectedStudentNo = null; // 학급 변경 시 선택 초기화
-            const selectEl = document.getElementById('class-select');
-            if (selectEl && selectEl.value !== className) selectEl.value = className;
+            const btnText = document.getElementById('class-select-btn-text');
+            if (btnText) btnText.innerText = className;
+            
             document.getElementById('current-class-display').innerText = `${className} 관리 중`;
             document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
             window.showTab(currentTab);
+            window.renderClassSelect(); // 드롭다운 리스트의 하이라이트(파란 배경) 갱신
             renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard();
         }
 
         window.showTab = function(tabName) {
             currentTab = tabName;
-            selectedStudentNo = null; // 탭 변경 시 선택 초기화
             ['student-management', 'group-section', 'draw-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
             
             ['draw', 'student', 'group', 'stamp'].forEach(t => {
@@ -1787,7 +1845,6 @@
         window.setGroupMode = function(mode) {
             currentGroupMode = mode;
             activeTimers = {}; 
-            selectedStudentNo = null; // 모드 변경 시 선택 해제
             ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
                 const btn = document.getElementById(`btn-mode-${m}`);
                 if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
@@ -1834,7 +1891,6 @@
                 }
                 
                 activeTimers = {};
-                selectedStudentNo = null;
                 saveData();
                 renderStudentList();
                 renderGroups();
@@ -1911,7 +1967,6 @@
             for(let i=1; i<=numGroups; i++) groupScores[currentClass][currentGroupMode][i] = 0;
             if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
             activeTimers = {};
-            selectedStudentNo = null;
 
             saveData(); renderStudentList(); renderGroups();
         }
@@ -1961,7 +2016,6 @@
             if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {1:0, 2:0, 3:0, 4:0};
             if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
             activeTimers = {};
-            selectedStudentNo = null;
 
             saveData(); renderStudentList(); renderGroups();
         }
@@ -1989,6 +2043,8 @@
 
                 const card = document.createElement('div');
                 card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]`;
+                card.setAttribute('ondragover', 'window.handleDragOver(event)');
+                card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
 
                 const presentMembers = members.filter(m => m.attendance);
                 const maleCount = presentMembers.filter(m => m.gender === '남').length; 
@@ -2001,16 +2057,9 @@
                    groupTotalAbility += (parseInt(m.handSense)||0) + (parseInt(m.footSense)||0) + (parseInt(m.agility)||0); 
                 });
 
-                // ★ 학생이 선택되어 있을 때 모둠으로 이동하는 버튼 생성
-                let moveHereBtnHTML = "";
-                if (selectedStudentNo !== null) {
-                    moveHereBtnHTML = `<button onclick="window.moveToGroup(${i})" class="animate-pulse bg-indigo-500 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded shadow-md hover:bg-indigo-600 transition flex items-center gap-1">⬇️ 이곳으로 이동</button>`;
-                }
-
                 const headerExtra = `
                     <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full items-center">
                         <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-slate-500">종합 전력: ${groupTotalAbility}점</span>
-                        ${moveHereBtnHTML}
                     </div>
                 `;
 
@@ -2070,14 +2119,16 @@
                     
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
                         ${members.map(m => {
-                            // ★ 선택된 학생 카드 강조 CSS
-                            const isSelected = selectedStudentNo === m.no;
-                            const selectionClass = isSelected ? 'selected-card' : 'hover:shadow-md';
                             const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
                             
                             return `
-                                <div onclick="window.selectStudentForMove(${m.no})" 
-                                     class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm active:scale-95 transition-all no-select student-card overflow-hidden ${selectionClass}">
+                                <div draggable="true"
+                                     oncontextmenu="return false;"
+                                     ondragstart="window.handleDragStart(event, ${m.no})"
+                                     ondragend="window.handleDragEnd(event)"
+                                     ondragover="window.handleDragOver(event)"
+                                     ondrop="window.handleDropOnStudent(event, ${m.no})"
+                                     class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
                                     
                                     <div class="flex items-center justify-center gap-1 w-full mt-1">
                                         <span class="text-[10px] sm:text-[11px] font-mono ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
@@ -2188,7 +2239,7 @@
 
                     card.innerHTML = `
                         <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
-                            <span class="text-[10px] sm:textxs font-mono font-bold text-purple-400 shrink-0">${s.no}번</span>
+                            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
                             <div class="flex gap-1 items-center shrink-0">
                                 <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${rankBadgeClass}">${rankText}</span>
                                 <span class="score-display text-[10px] sm:text-xs font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm border border-blue-100">${s.score || 0}점</span>
