@@ -115,17 +115,21 @@
         #gagaball-section .gaga-danger { color: #e74c3c; }
         #gagaball-section .gaga-dark { color: #2c3e50; }
         
+        /* 카드 크기 대폭 확대 (minmax 260px) */
         #gagaball-section .scoreboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 25px; }
         #gagaball-section .score-item { background: #fff; border: 4px solid #3498db; padding: 25px; border-radius: 16px; text-align: center; position: relative; transition: 0.2s; box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
         #gagaball-section .score-item.drawn { border-color: #bdc3c7 !important; background-color: #dcdde1 !important; opacity: 0.75; }
         
+        /* 아바타 120px로 확대 */
         #gagaball-section .avatar-img { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 15px; display: block; background: #fdfdfd; object-fit: cover; border: 4px solid; }
         #gagaball-section .score-item.drawn .avatar-img { filter: grayscale(70%); opacity: 0.9; border-color: #bdc3c7 !important; }
+        /* 폰트 확대 */
         #gagaball-section .score-item .name { font-size: 2.2rem; margin-bottom: 5px; color: #2c3e50; }
         #gagaball-section .score-item .score-val { font-size: 5rem; color: #e74c3c; margin: 10px 0; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
         #gagaball-section .score-item.drawn .name { color: #555; }
         #gagaball-section .score-item.drawn .score-val { color: #8e44ad; }
         
+        /* 컨트롤 버튼 확대 */
         #gagaball-section .score-ctrl { display: flex; justify-content: center; gap: 8px; margin-top: 10px;}
         #gagaball-section .score-ctrl button { font-size: 2.5rem; width: 65px; height: 50px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.1s; display: flex; align-items: center; justify-content: center;}
         #gagaball-section .score-ctrl button:active { transform: scale(0.9); }
@@ -141,6 +145,7 @@
         #gagaball-section .rank-2 { background-color: #f5f5f5; font-weight: bold; font-size: 2rem;}
         #gagaball-section .rank-3 { background-color: #ffe0b2; font-weight: bold; font-size: 2rem;}
 
+        /* 팀전 화면 TV 최적화 */
         #gagaball-section .matchup-row { display: flex; gap: 15px; background: white; padding: 15px 20px; border-radius: 20px; border: 4px solid #ecf0f1; box-shadow: 0 6px 12px rgba(0,0,0,0.08); align-items: stretch; margin-bottom: 15px; }
         #gagaball-section .team-card { flex: 1; display: flex; padding: 12px; border-radius: 15px; }
         #gagaball-section .team-a { background: #ffe0b2; border-left: 12px solid #ff9800; }
@@ -163,6 +168,7 @@
         #gagaball-section .btn-team-add { background: #3498db; color: white; font-size: 1.3rem; padding: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); width: 100%; transition: 0.2s; font-weight: bold;}
         #gagaball-section .btn-team-add:hover { background: #2980b9; transform: translateY(-2px); }
 
+        /* 가가볼 룰렛 모달 */
         .gaga-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; font-family: 'Jua', sans-serif;}
         .gaga-modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 800px; width: 90%; position: relative; }
         
@@ -170,6 +176,7 @@
         #rouletteCanvas { border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; height: 100%; }
         .roulette-pointer { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); font-size: 5rem; text-shadow: 0 5px 10px rgba(0,0,0,0.4); z-index: 10; }
         
+        /* 흔들기 애니메이션 (두구두구) */
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -188,11 +195,13 @@
 </head>
 <body class="bg-gray-50 min-h-screen pb-28 sm:pb-32 text-slate-800 overflow-x-hidden w-full max-w-[100vw]">
 
+    <!-- 이벤트 로딩 오버레이 (두구두구) -->
     <div id="event-loading-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
         <div class="text-7xl sm:text-9xl animate-shake mb-8" style="filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));">🥁</div>
         <h2 id="event-loading-text" class="text-4xl sm:text-6xl font-black text-white font-jua tracking-widest text-shadow-lg animate-pulse">두구두구두구...</h2>
     </div>
     
+    <!-- 화려한 색종이 캔버스 -->
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[9999] hidden"></canvas>
 
     <div id="login-screen" class="fixed inset-0 bg-slate-900/80 z-[200] flex flex-col items-center justify-center p-4 backdrop-blur-sm">
@@ -366,6 +375,7 @@
 
             </section>
 
+            <!-- 기존 섹션들 (student-management, group-section, draw-section, stamp-section) ...이하 내용은 동일 유지... -->
             <section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-3">
                     <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
@@ -482,25 +492,7 @@
                         <button onclick="window.setGroupMode('mixed3')" id="btn-mode-mixed3" class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700">혼성 3팀</button>
                         <button onclick="window.setGroupMode('mixed4')" id="btn-mode-mixed4" class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm">혼성 4팀</button>
                         <button onclick="window.setGroupMode('gender')" id="btn-mode-gender" class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700">동성 4팀</button>
-                        <!-- 신규: 인원별 맞춤 편성 버튼 -->
-                        <button onclick="window.setGroupMode('custom')" id="btn-mode-custom" class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700">인원별 편성</button>
                     </div>
-                </div>
-
-                <!-- 신규: 커스텀 인원 설정 패널 -->
-                <div id="custom-group-ui" class="hidden flex flex-wrap gap-2 items-center bg-indigo-50 p-2 sm:p-3 rounded-xl border border-indigo-100 print-hide mb-3">
-                    <span class="text-xs sm:text-sm font-bold text-indigo-800 ml-1">⚙️ 인원별 맞춤 편성:</span>
-                    <select id="custom-group-size" class="p-1 sm:p-1.5 rounded-lg border border-indigo-200 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 bg-white" onchange="window.updateGroupModeDesc()">
-                        <option value="2">2인 1조</option>
-                        <option value="3">3인 1조</option>
-                        <option value="4" selected>4인 1조</option>
-                        <option value="5">5인 1조</option>
-                        <option value="6">6인 1조</option>
-                    </select>
-                    <select id="custom-group-type" class="p-1 sm:p-1.5 rounded-lg border border-indigo-200 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 bg-white" onchange="window.updateGroupModeDesc()">
-                        <option value="mixed">혼성 편성</option>
-                        <option value="gender">동성 편성</option>
-                    </select>
                 </div>
                 
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4 print-hide">
@@ -715,7 +707,7 @@
         </div>
     </div>
     
-    <!-- 가가볼 전용 추첨 결과 모달 -->
+    <!-- 가가볼 전용 추첨 결과 모달 (크기 확대) -->
     <div id="gagaDrawModal" class="gaga-modal-overlay" onclick="window.closeGagaDrawModal()">
         <div class="gaga-modal-content" style="max-width: 1200px;" onclick="event.stopPropagation()">
             <h1 class="text-5xl sm:text-6xl font-black text-red-500 mb-8">🎉 참가 선수 🎉</h1>
@@ -960,14 +952,7 @@
 
         const abilitiesCycle = ['-', '1', '2', '3']; 
         const getGroupsCycle = () => {
-            let max = 4;
-            if (currentGroupMode === 'mixed2') max = 2;
-            else if (currentGroupMode === 'mixed3') max = 3;
-            else if (currentGroupMode === 'custom') {
-                const students = classData[currentClass] || [];
-                max = students.reduce((acc, s) => Math.max(acc, s.group_custom || 0), 0);
-                if (max === 0) max = 1; 
-            }
+            let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
             const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
         };
 
@@ -1595,15 +1580,10 @@
             for (const className in classData) {
                 if (!groupScores[className] || groupScores[className][1] !== undefined) {
                     const oldScores = groupScores[className] || {1:0, 2:0, 3:0, 4:0};
-                    groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: oldScores, gender: {1:0, 2:0, 3:0, 4:0}, custom: {} };
+                    groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: oldScores, gender: {1:0, 2:0, 3:0, 4:0} };
                 }
-                if (!groupScores[className]['custom']) groupScores[className]['custom'] = {};
-                
-                if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {}, custom: {} };
-                if (!groupRecords[className]['custom']) groupRecords[className]['custom'] = {};
-                
+                if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
                 if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
-                
                 classData[className].forEach(s => {
                     if (s.handSense !== undefined || s.footSense !== undefined) {
                         let h = parseInt(s.handSense) || 0; let f = parseInt(s.footSense) || 0; let maxSense = Math.max(h, f);
@@ -1620,7 +1600,6 @@
                     if (s.group_mixed3 === undefined) s.group_mixed3 = null;
                     if (s.group_mixed4 === undefined) s.group_mixed4 = null;
                     if (s.group_gender === undefined) s.group_gender = null;
-                    if (s.group_custom === undefined) s.group_custom = null;
                     delete s.group_partner;
                 });
             }
@@ -1721,8 +1700,8 @@
             if (classData[newClassName]) { window.showModal("알림", "이미 존재하는 학급입니다."); return; }
             
             classData[newClassName] = [];
-            groupScores[newClassName] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0}, custom: {} };
-            groupRecords[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {}, custom: {} };
+            groupScores[newClassName] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+            groupRecords[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
             classStamps[newClassName] = Array(TOTAL_STAMP_CELLS).fill(false);
             saveData(); input.value = ""; window.renderClassSelect(); window.selectClass(newClassName);
             window.showModal("학급 추가 완료", `<b class="text-blue-600">${newClassName}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
@@ -1754,10 +1733,10 @@
 
         window.exportAllToExcel = function() {
             let csvContent = "\uFEFF"; 
-            csvContent += "학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,인원별모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
+            csvContent += "학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
 
             if (Object.keys(classData).length === 0) {
-                csvContent += "=\"6-1\",1,홍길동,남,-,-,참석,0,,,,,,{},{},N,0\n";
+                csvContent += "=\"6-1\",1,홍길동,남,-,-,참석,0,,,,,N,0\n";
             } else {
                 const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -1766,9 +1745,9 @@
                         if (a.no !== b.no) return a.no - b.no; return (a.name || "").localeCompare(b.name || "");
                     });
                     
-                    if (!groupScores[className]) groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0}, custom: {} };
-                    if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {}, custom: {} };
-                    if (groupScores[className][1] !== undefined) { groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: groupScores[className], gender: {1:0, 2:0, 3:0, 4:0}, custom: {} }; }
+                    if (!groupScores[className]) groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+                    if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+                    if (groupScores[className][1] !== undefined) { groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: groupScores[className], gender: {1:0, 2:0, 3:0, 4:0} }; }
 
                     const gScoresJSON = JSON.stringify(groupScores[className]).replace(/"/g, '""'); 
                     const gRecordsJSON = JSON.stringify(groupRecords[className]).replace(/"/g, '""'); 
@@ -1778,12 +1757,11 @@
                         const attendance = s.attendance ? '참석' : '불참';
                         const bs = s.ballSense || '-'; const ag = s.agility || '-'; const score = s.score || 0;
                         const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
-                        const gc = s.group_custom || '';
                         const isCapt = s.isCaptain ? 'Y' : 'N';
                         const recMs = s.recordMs || 0;
                         const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
                         const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${gc},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
+                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
                     });
                 }
             }
@@ -1820,7 +1798,6 @@
                 window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
                     const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
                     let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
-                    let idxGC = header.indexOf('인원별모둠');
                     let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); let idxPersonalRec = header.indexOf('개인기록');
                     let idxBall = header.indexOf('볼센스'); let idxAgil = header.indexOf('순발력');
 
@@ -1835,14 +1812,14 @@
                         
                         if (!newData[className]) {
                             newData[className] = [];
-                            newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0}, custom: {} };
-                            newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {}, custom: {} };
+                            newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+                            newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
                             if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
                         }
                         
                         const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
                         let bs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
-                        let g2 = null, g3 = null, g4 = null, gg = null, gc = null;
+                        let g2 = null, g3 = null, g4 = null, gg = null;
 
                         if (idxBall > -1) bs = parts[idxBall].trim() === '-' ? '-' : parts[idxBall].trim();
                         if (idxAgil > -1) ag = parts[idxAgil].trim() === '-' ? '-' : parts[idxAgil].trim();
@@ -1856,15 +1833,13 @@
                         if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
                         if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
                         if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
-                        if (idxGC > -1 && parts[idxGC]) gc = parseInt(parts[idxGC].trim()) || null;
-
                         if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
                         if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
                         
                         if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                         if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-                        newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg, group_custom: gc });
+                        newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
                     }
 
                     if (Object.keys(newData).length > 0) {
@@ -1906,21 +1881,7 @@
             window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
         }
 
-        window.updateGroupModeDesc = function() {
-            const descEl = document.getElementById('group-mode-desc');
-            const btnText = document.getElementById('generate-btn-text');
-            if (currentGroupMode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; }
-            else if (currentGroupMode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; }
-            else if (currentGroupMode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; }
-            else if (currentGroupMode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
-            else if (currentGroupMode === 'custom') {
-                const size = document.getElementById('custom-group-size').value;
-                const type = document.getElementById('custom-group-type').value === 'mixed' ? '혼성' : '동성';
-                descEl.innerHTML = `<b>${size}인 1조 (${type})</b> 편성 결과입니다.`;
-                btnText.innerText = `${size}인 1조 편성하기`;
-            }
-        }
-
+        // --- 스마트 TV를 위한 와이드 뷰 전환 추가 ---
         window.showTab = function(tabName) {
             currentTab = tabName;
             ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1930,6 +1891,7 @@
                 if(btn) btn.className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
             });
 
+            // 컨테이너 크기 조절 (가가볼은 TV 꽉 채우기)
             const mainContainer = document.getElementById('main-container');
             const headerContainer = document.getElementById('header-inner-container');
             const selectContainer = document.getElementById('class-select-inner-container');
@@ -1981,11 +1943,11 @@
                 if (parts.length >= 2) {
                     const no = parts[0]; const name = parts[1];
                     const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
+                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; // 볼센스
                     const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
                     let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
                     
-                    const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null, group_custom: null };
+                    const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
                     newStudent[`group_${currentGroupMode}`] = group;
                     classData[currentClass].push(newStudent); addedCount++;
                 }
@@ -2035,7 +1997,7 @@
             if (!currentClass) { window.showModal("알림", "먼저 학급을 선택해주세요."); return; }
             const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
             const genderInput = document.getElementById('add-gender'); 
-            const bsInput = document.getElementById('add-ballSense'); 
+            const bsInput = document.getElementById('add-ballSense'); // 볼센스
             const agInput = document.getElementById('add-agility'); 
             const groupInput = document.getElementById('add-group');
 
@@ -2045,7 +2007,7 @@
             if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
             if (!classData[currentClass]) classData[currentClass] = [];
             
-            const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null, group_custom: null };
+            const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
             newStudent[`group_${currentGroupMode}`] = groupVal;
             classData[currentClass].push(newStudent);
             
@@ -2136,24 +2098,13 @@
             const femaleCount = presentStudents.filter(s => s.gender === '여').length;
 
             let groupCounts = "";
-            if (currentGroupMode === 'custom') {
-                const maxGroup = allStudents.reduce((acc, s) => Math.max(acc, s.group_custom || 0), 0);
-                let parts = [];
-                for(let i=1; i<=maxGroup; i++){
-                    let c = presentStudents.filter(s => s.group_custom === i).length;
-                    if(c > 0) parts.push(`${i}조 ${c}`);
-                }
-                groupCounts = parts.join(' · ');
-                if (groupCounts === "") groupCounts = "편성 안됨";
-            } else {
-                const g1 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 1).length;
-                const g2 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 2).length;
-                const g3 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 3).length;
-                const g4 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 4).length;
-                if(currentGroupMode === 'mixed2') groupCounts = `1조 ${g1} · 2조 ${g2}`;
-                else if(currentGroupMode === 'mixed3') groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3}`;
-                else groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3} · 4조 ${g4}`;
-            }
+            const g1 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 1).length;
+            const g2 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 2).length;
+            const g3 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 3).length;
+            const g4 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 4).length;
+            if(currentGroupMode === 'mixed2') groupCounts = `1조 ${g1} · 2조 ${g2}`;
+            else if(currentGroupMode === 'mixed3') groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3}`;
+            else groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3} · 4조 ${g4}`;
             
             const unassigned = presentStudents.filter(s => !s[`group_${currentGroupMode}`]).length;
 
@@ -2281,30 +2232,25 @@
 
         window.setGroupMode = function(mode) {
             currentGroupMode = mode; activeTimers = {}; 
-            ['mixed2', 'mixed3', 'mixed4', 'gender', 'custom'].forEach(m => {
+            ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
                 const btn = document.getElementById(`btn-mode-${m}`);
                 if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
             });
 
-            const customUi = document.getElementById('custom-group-ui');
-            if (mode === 'custom') {
-                customUi.classList.remove('hidden');
-            } else {
-                customUi.classList.add('hidden');
-            }
+            const descEl = document.getElementById('group-mode-desc');
+            const btnText = document.getElementById('generate-btn-text');
 
-            window.updateGroupModeDesc();
+            if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
+            else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
+            else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
+            else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+            
             renderStudentList(); renderGroups();
         }
 
         window.resetCurrentGroup = function() {
             if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학급을 먼저 선택해주세요."); return; }
-            let modeName = "";
-            if (currentGroupMode === 'mixed2') modeName = '혼성 2팀';
-            else if (currentGroupMode === 'mixed3') modeName = '혼성 3팀';
-            else if (currentGroupMode === 'mixed4') modeName = '혼성 4팀';
-            else if (currentGroupMode === 'gender') modeName = '동성 4팀';
-            else if (currentGroupMode === 'custom') modeName = '인원별 맞춤 팀';
+            let modeName = currentGroupMode === 'mixed2' ? '혼성 2팀' : (currentGroupMode === 'mixed3' ? '혼성 3팀' : (currentGroupMode === 'mixed4' ? '혼성 4팀' : '동성 4팀'));
             
             window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 부여된 모둠 점수와 기록도 함께 지워집니다.</span>`, true, () => {
                 classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
@@ -2321,105 +2267,8 @@
             else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback = () => window.generateMixedGroups(3); }
             else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
             else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
-            else if (currentGroupMode === 'custom') {
-                const size = document.getElementById('custom-group-size').value;
-                const type = document.getElementById('custom-group-type').value === 'mixed' ? '혼성' : '동성';
-                title = `${size}인 1조 (${type}) 편성`;
-                callback = () => window.generateCustomGroups();
-            }
 
             window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
-        }
-
-        // --- 인원별 커스텀 편성 생성 로직 (볼센스/순발력 1순위, 무작위 2순위) ---
-        window.generateCustomGroups = function() {
-            const size = parseInt(document.getElementById('custom-group-size').value, 10);
-            const type = document.getElementById('custom-group-type').value;
-            const students = classData[currentClass];
-            const presentStudents = students.filter(s => s.attendance);
-
-            if (presentStudents.length === 0) {
-                window.showModal("인원 부족", "참석한 학생이 없습니다."); return;
-            }
-
-            // 2순위: 무작위 배정을 위한 초기 셔플
-            const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
-            shuffle(presentStudents);
-            students.forEach(s => s.group_custom = null);
-
-            let numGroups = Math.ceil(presentStudents.length / size);
-            let groups = [];
-
-            // 1순위: 능력치 내림차순 정렬 (볼센스+순발력 합산)
-            const sortByAbilityDesc = (a, b) => {
-                let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
-                let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
-                return scoreB - scoreA;
-            };
-
-            const assignStudent = (student, allowedGroups) => {
-                let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
-                const isMale = student.gender === '남';
-
-                // 정원 초과 방지 필터
-                let available = allowedGroups.filter(g => g.count < size);
-                if (available.length === 0) available = allowedGroups;
-
-                // 1. 가장 인원이 적은 모둠 우선
-                let minCount = Math.min(...available.map(g => g.count));
-                available = available.filter(g => g.count === minCount);
-
-                // 2. 혼성의 경우 특정 성별이 너무 몰리지 않게 조율
-                if (type === 'mixed') {
-                    let minGender = Math.min(...available.map(g => isMale ? g.male : g.female));
-                    let genderCands = available.filter(g => (isMale ? g.male : g.female) === minGender);
-                    if (genderCands.length > 0) available = genderCands;
-                }
-
-                // 3. 현재까지 할당된 능력치 총합이 가장 낮은 모둠에 우선 배정 (밸런스)
-                let minScore = Math.min(...available.map(g => g.totalScore));
-                available = available.filter(g => g.totalScore === minScore);
-
-                // 4. 남은 후보 중 랜덤 배정
-                const target = available[Math.floor(Math.random() * available.length)];
-                student.group_custom = target.id;
-                target.count++;
-                target.totalScore += stScore;
-                if (isMale) target.male++; else target.female++;
-            };
-
-            if (type === 'mixed') {
-                groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, count: 0, male: 0, female: 0, totalScore: 0 }));
-                let boys = presentStudents.filter(s => s.gender === '남').sort(sortByAbilityDesc);
-                let girls = presentStudents.filter(s => s.gender === '여').sort(sortByAbilityDesc);
-
-                boys.forEach(s => assignStudent(s, groups));
-                girls.forEach(s => assignStudent(s, groups));
-            } else {
-                let boys = presentStudents.filter(s => s.gender === '남').sort(sortByAbilityDesc);
-                let girls = presentStudents.filter(s => s.gender === '여').sort(sortByAbilityDesc);
-
-                let numMaleGroups = Math.ceil(boys.length / size);
-                let numFemaleGroups = Math.ceil(girls.length / size);
-
-                let maleGroups = Array.from({ length: numMaleGroups }, (_, i) => ({ id: i + 1, count: 0, male: 0, female: 0, totalScore: 0 }));
-                let femaleGroups = Array.from({ length: numFemaleGroups }, (_, i) => ({ id: numMaleGroups + i + 1, count: 0, male: 0, female: 0, totalScore: 0 }));
-
-                boys.forEach(s => assignStudent(s, maleGroups));
-                girls.forEach(s => assignStudent(s, femaleGroups));
-
-                numGroups = numMaleGroups + numFemaleGroups;
-            }
-
-            if (!groupScores[currentClass]) groupScores[currentClass] = {};
-            groupScores[currentClass]['custom'] = {};
-            for(let i=1; i<=numGroups; i++) groupScores[currentClass]['custom'][i] = 0;
-
-            if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
-            groupRecords[currentClass]['custom'] = {};
-
-            activeTimers = {};
-            saveData(); renderStudentList(); renderGroups();
         }
 
         window.updateGroupScore = function(groupId, change) {
@@ -2531,13 +2380,7 @@
             const container = document.getElementById('group-result'); if (container) container.innerHTML = "";
             const students = classData[currentClass] || [];
             
-            let maxGroup = 0;
-            if (currentGroupMode === 'custom') {
-                maxGroup = students.reduce((acc, s) => Math.max(acc, s.group_custom || 0), 0);
-            } else {
-                maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
-            }
-            
+            let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
             container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1';
 
             let hasAnyGroup = false;
@@ -2658,4 +2501,214 @@
 
         function getStudentRanks() {
             if (!classData[currentClass]) return {};
-            const studentsForRank = [...classData[currentClass저는 언어 모델일 뿐이라서 그것을 도와드릴 수가 없습니다.
+            const studentsForRank = [...classData[currentClass]].sort((a, b) => (b.score || 0) - (a.score || 0));
+            const ranks = {}; let rank = 1;
+            for (let i = 0; i < studentsForRank.length; i++) {
+                if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1;
+                ranks[studentsForRank[i].no] = rank;
+            }
+            return ranks;
+        }
+
+        window.toggleDrawSort = function() { drawSortByScore = !drawSortByScore; renderDrawSection(); }
+
+        window.updateDrawStatus = function() {
+            if (!currentClass) return;
+            const students = classData[currentClass] || []; const targetDropdown = document.getElementById('draw-target'); const target = targetDropdown ? targetDropdown.value : 'all';
+            let activeStudents = students.filter(s => s.attendance);
+            if (target !== 'all') activeStudents = activeStudents.filter(s => s.gender === target);
+            const availableStudents = activeStudents.filter(s => !s.drawn);
+            const statusText = document.getElementById('draw-status-text');
+            if (statusText) {
+                const targetStr = target === 'all' ? '전체' : (target === '남' ? '남학생' : '여학생');
+                if (activeStudents.length === 0) statusText.innerHTML = `[${targetStr}] 남은 인원: 0명 / 참석 0명`;
+                else statusText.innerHTML = `[${targetStr}] 남은 인원: <span class="text-purple-600 font-black text-base sm:text-xl">${availableStudents.length}</span>명 / 참석 ${activeStudents.length}명`;
+            }
+        }
+
+        window.drawStudents = function() {
+            const students = classData[currentClass]; if (!students) return;
+            const targetDropdown = document.getElementById('draw-target'); const target = targetDropdown ? targetDropdown.value : 'all';
+            let targetStudents = students.filter(s => s.attendance);
+            if (target !== 'all') targetStudents = targetStudents.filter(s => s.gender === target);
+
+            if (targetStudents.length === 0) {
+                const targetName = target === 'all' ? '참석한 학생이' : (target === '남' ? '참석한 남학생이' : '참석한 여학생이');
+                window.showModal("인원 부족", `${targetName} 없어 뽑기를 진행할 수 없습니다.`); return;
+            }
+
+            let availableStudents = targetStudents.filter(s => !s.drawn);
+            if (availableStudents.length === 0) {
+                targetStudents.forEach(s => s.drawn = false); availableStudents = targetStudents;
+                const targetName = target === 'all' ? '모든 학생이' : (target === '남' ? '모든 남학생이' : '모든 여학생이');
+                window.showModal("알림", `${targetName} 뽑혀 기록이 초기화되었습니다. 이어서 다시 뽑기를 진행합니다.`);
+            }
+
+            const countSelect = document.getElementById('draw-count'); let drawCount = parseInt(countSelect.value, 10);
+            if (drawCount > availableStudents.length) drawCount = availableStudents.length;
+
+            const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
+            shuffle(availableStudents); const anchorStudent = availableStudents[0];
+
+            const getDistance = (s1, s2) => {
+                const bs1 = parseInt(s1.ballSense)||0, bs2 = parseInt(s2.ballSense)||0;
+                const ag1 = parseInt(s1.agility)||0, ag2 = parseInt(s2.agility)||0;
+                let distBs = (bs1 === 0 || bs2 === 0) ? 3 : Math.abs(bs1 - bs2);
+                let distAg = (ag1 === 0 || ag2 === 0) ? 3 : Math.abs(ag1 - ag2);
+                return distBs + distAg;
+            };
+
+            const studentsWithDistance = availableStudents.map(s => ({ student: s, distance: getDistance(anchorStudent, s), rand: Math.random() }));
+            studentsWithDistance.sort((a, b) => { if (a.distance !== b.distance) return a.distance - b.distance; return a.rand - b.rand; });
+
+            const selectedStudents = studentsWithDistance.slice(0, drawCount).map(item => item.student);
+            selectedStudents.forEach(s => s.drawn = true); saveData(); renderDrawSection();
+            
+            const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
+            const ranks = getStudentRanks();
+            
+            selectedStudents.forEach((s, index) => {
+                const sRank = ranks[s.no]; const isZero = (s.score || 0) === 0; const rankText = isZero ? '-' : `${sRank}위`;
+                setTimeout(() => {
+                    const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center animate-pop-in cursor-pointer hover:border-purple-400 transition";
+                    card.dataset.studentNo = s.no; card.onclick = () => window.openScoreModal(s.no);
+                    
+                    let rankBadgeClass = 'text-purple-600 bg-purple-100 border-purple-200';
+                    if (isZero) rankBadgeClass = 'text-slate-400 bg-slate-50 border-slate-200';
+                    else if (sRank === 1) rankBadgeClass = 'text-amber-600 bg-amber-50 border-amber-200';
+                    else if (sRank === 2) rankBadgeClass = 'text-slate-600 bg-slate-50 border-slate-300';
+                    else if (sRank === 3) rankBadgeClass = 'text-orange-700 bg-orange-50 border-orange-200';
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
+                            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
+                            <div class="flex gap-1 items-center shrink-0">
+                                <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${rankBadgeClass}">${rankText}</span>
+                                <span class="score-display text-[10px] sm:text-xs font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm border border-blue-100">${s.score || 0}점</span>
+                            </div>
+                        </div>
+                        <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
+                    `;
+                    container.appendChild(card);
+                }, index * 100); 
+            });
+        }
+
+        window.resetDrawPool = function() {
+            if (!classData[currentClass]) return;
+            window.showModal("뽑기 초기화", "뽑기 기록을 초기화하시겠습니까?<br>모든 학생이 다시 뽑힐 수 있는 상태로 되돌아갑니다.", true, () => {
+                classData[currentClass].forEach(s => s.drawn = false); saveData(); renderDrawSection(); window.renderGagaball();
+                const container = document.getElementById('draw-result'); if (container) { container.innerHTML = ""; container.classList.add('hidden'); }
+                window.showModal("초기화 완료", "모든 뽑기 기록이 초기화되었습니다.");
+            });
+        }
+
+        window.resetAllScoresDB = function() {
+            if (!classData[currentClass]) return;
+            window.showModal("점수 초기화", "전체 학생의 <b>개인 점수</b>를 모두 0점으로 초기화하시겠습니까?", true, () => {
+                classData[currentClass].forEach(s => s.score = 0); 
+                saveData(); 
+                renderStudentList(); renderDrawSection(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
+                window.showModal("초기화 완료", "모든 학생의 점수가 0점으로 초기화되었습니다.");
+            });
+        }
+
+        function renderDrawSection() {
+            const section = document.getElementById('draw-section'); if (!currentClass) return;
+            window.updateDrawStatus();
+            const listContainer = document.getElementById('draw-student-list');
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                const students = classData[currentClass] || []; const ranks = getStudentRanks(); const allStudents = [...students];
+
+                if (drawSortByScore) {
+                    allStudents.sort((a, b) => { if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); return a.no - b.no; });
+                    const btn = document.getElementById('btn-draw-sort'); if(btn) btn.innerHTML = '<span>🏆 순위순</span> <span class="text-[10px] font-normal text-slate-400 hidden sm:inline">(클릭시 번호순)</span>';
+                } else {
+                    allStudents.sort((a, b) => a.no - b.no);
+                    const btn = document.getElementById('btn-draw-sort'); if(btn) btn.innerHTML = '<span>🔢 번호순</span> <span class="text-[10px] font-normal text-slate-400 hidden sm:inline">(클릭시 순위순)</span>';
+                }
+
+                allStudents.forEach(s => {
+                    const score = s.score || 0; const isDrawn = s.drawn; const isAbsent = !s.attendance;
+                    const sRank = ranks[s.no]; const isZero = score === 0; const rankText = isZero ? '-' : `${sRank}위`;
+
+                    const card = document.createElement('div');
+                    card.className = `flex justify-between items-center p-2 sm:p-3 rounded-xl border cursor-pointer transition shadow-sm ${isAbsent ? 'bg-slate-50 border-slate-200 opacity-60' : (isDrawn ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md')}`;
+                    card.onclick = () => window.openScoreModal(s.no);
+
+                    let rankBadgeClass = 'text-slate-500 bg-slate-100 border-slate-200';
+                    if (isZero) rankBadgeClass = 'text-slate-400 bg-slate-50 border-slate-100';
+                    else if (sRank === 1) rankBadgeClass = 'text-amber-600 bg-amber-50 border-amber-200 shadow-sm';
+                    else if (sRank === 2) rankBadgeClass = 'text-slate-600 bg-slate-50 border-slate-300 shadow-sm';
+                    else if (sRank === 3) rankBadgeClass = 'text-orange-700 bg-orange-50 border-orange-200 shadow-sm';
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
+                            <span class="text-[10px] sm:text-xs font-mono font-bold shrink-0 ${isAbsent ? 'text-slate-400' : 'text-slate-500'}">${s.no}</span>
+                            <span class="text-[11px] sm:text-[13px] font-bold ${isAbsent ? 'text-slate-400 line-through' : 'text-slate-700'} break-words whitespace-normal leading-tight">${s.name}</span>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded border ${rankBadgeClass}">${rankText}</span>
+                            <span class="text-xs sm:text-sm font-black ${isAbsent ? 'text-slate-400 bg-slate-200' : 'text-blue-600 bg-blue-50'} px-2 py-0.5 rounded-md min-w-[32px] sm:min-w-[40px] text-center border ${isAbsent ? 'border-transparent' : 'border-blue-100'}">${score}</span>
+                        </div>
+                    `;
+                    listContainer.appendChild(card);
+                });
+            }
+        }
+
+        let currentEditingStudentNo = null;
+        window.openScoreModal = function(studentNo) {
+            const student = classData[currentClass].find(s => s.no === studentNo); if(!student) return;
+            currentEditingStudentNo = studentNo;
+            document.getElementById('score-modal-name').innerText = `${student.no}번 ${student.name}`;
+            document.getElementById('score-modal-input').value = student.score || 0;
+            const modal = document.getElementById('score-modal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        window.closeScoreModal = function() {
+            const modal = document.getElementById('score-modal'); modal.classList.add('hidden'); modal.classList.remove('flex');
+            currentEditingStudentNo = null;
+        }
+
+        window.adjustScore = function(delta) {
+            const input = document.getElementById('score-modal-input');
+            let currentVal = parseInt(input.value) || 0; input.value = Math.max(0, currentVal + delta);
+        }
+
+        window.saveScore = function() {
+            if(currentEditingStudentNo === null) return;
+            const student = classData[currentClass].find(s => s.no === currentEditingStudentNo);
+            if(student) {
+                const input = document.getElementById('score-modal-input');
+                student.score = parseInt(input.value) || 0; 
+                saveData(); renderDrawSection(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
+                
+                const newRanks = getStudentRanks();
+                const allDrawnCards = document.querySelectorAll('#draw-result div[data-student-no]');
+                allDrawnCards.forEach(card => {
+                    const sno = parseInt(card.dataset.studentNo);
+                    const rankDisplay = card.querySelector('.rank-display'); const scoreDisplay = card.querySelector('.score-display');
+                    
+                    if (sno === student.no && scoreDisplay) scoreDisplay.innerText = `${student.score}점`;
+                    if (rankDisplay && sno) {
+                        const sRank = newRanks[sno]; const sData = classData[currentClass].find(st => st.no === sno);
+                        const isZero = (sData && sData.score !== undefined) ? sData.score === 0 : true;
+                        rankDisplay.innerText = isZero ? '-' : `${sRank}위`;
+                        
+                        let rankBadgeClass = 'rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ';
+                        if (isZero) rankBadgeClass += 'text-slate-400 bg-slate-50 border-slate-200';
+                        else if (sRank === 1) rankBadgeClass += 'text-amber-600 bg-amber-50 border-amber-200';
+                        else if (sRank === 2) rankBadgeClass += 'text-slate-600 bg-slate-50 border-slate-300';
+                        else if (sRank === 3) rankBadgeClass += 'text-orange-700 bg-orange-50 border-orange-200';
+                        else rankBadgeClass += 'text-purple-600 bg-purple-100 border-purple-200';
+                        rankDisplay.className = rankBadgeClass;
+                    }
+                });
+            }
+            window.closeScoreModal();
+        }
+    </script>
+</body>
+</html>
