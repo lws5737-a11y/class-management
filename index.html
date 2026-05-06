@@ -540,9 +540,6 @@
                             <button onclick="window.resetDrawPool()" class="flex-1 sm:flex-none text-xs sm:text-sm font-bold bg-white border border-purple-200 text-purple-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-100 transition whitespace-nowrap shadow-sm">
                                 🔄 뽑기 초기화
                             </button>
-                            <button onclick="window.resetAllScoresDB()" class="flex-1 sm:flex-none text-xs sm:text-sm font-bold bg-white border border-blue-200 text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-100 transition whitespace-nowrap shadow-sm">
-                                🔄 점수 초기화
-                            </button>
                         </div>
                     </div>
                     
@@ -583,11 +580,8 @@
                 <div class="mt-8 border-t border-slate-200 pt-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
-                            <span class="mr-2 text-blue-500">🏆</span> 학급 명단 및 개인 점수
+                            <span class="mr-2 text-blue-500">🏆</span> 학급 명단
                         </h3>
-                        <button onclick="window.toggleDrawSort()" id="btn-draw-sort" class="text-xs font-bold bg-white text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition shadow-sm flex items-center gap-1">
-                            <span>🔢 번호순</span> <span class="text-[10px] font-normal text-slate-400 hidden sm:inline">(클릭하여 변경)</span>
-                        </button>
                     </div>
                     <div id="draw-student-list" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
                     </div>
@@ -871,7 +865,6 @@
         let groupRecords = {}; 
         let classStamps = {}; 
         let sortState = { field: 'no', direction: 'asc' };
-        let drawSortByScore = false; 
         let currentGroupMode = 'mixed4'; 
         let currentTab = 'student'; 
         
@@ -2499,19 +2492,6 @@
             if (!hasAnyGroup) container.innerHTML = `<div class="col-span-1 lg:col-span-2 xl:col-span-4 text-center text-slate-400 py-10 font-bold bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 w-full">아직 편성된 모둠이 없습니다.<br>상단의 [새로 편성하기]를 클릭해주세요.</div>`;
         }
 
-        function getStudentRanks() {
-            if (!classData[currentClass]) return {};
-            const studentsForRank = [...classData[currentClass]].sort((a, b) => (b.score || 0) - (a.score || 0));
-            const ranks = {}; let rank = 1;
-            for (let i = 0; i < studentsForRank.length; i++) {
-                if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1;
-                ranks[studentsForRank[i].no] = rank;
-            }
-            return ranks;
-        }
-
-        window.toggleDrawSort = function() { drawSortByScore = !drawSortByScore; renderDrawSection(); }
-
         window.updateDrawStatus = function() {
             if (!currentClass) return;
             const students = classData[currentClass] || []; const targetDropdown = document.getElementById('draw-target'); const target = targetDropdown ? targetDropdown.value : 'all';
@@ -2565,27 +2545,15 @@
             selectedStudents.forEach(s => s.drawn = true); saveData(); renderDrawSection();
             
             const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
-            const ranks = getStudentRanks();
             
             selectedStudents.forEach((s, index) => {
-                const sRank = ranks[s.no]; const isZero = (s.score || 0) === 0; const rankText = isZero ? '-' : `${sRank}위`;
                 setTimeout(() => {
                     const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center animate-pop-in cursor-pointer hover:border-purple-400 transition";
-                    card.dataset.studentNo = s.no; card.onclick = () => window.openScoreModal(s.no);
+                    card.dataset.studentNo = s.no;
                     
-                    let rankBadgeClass = 'text-purple-600 bg-purple-100 border-purple-200';
-                    if (isZero) rankBadgeClass = 'text-slate-400 bg-slate-50 border-slate-200';
-                    else if (sRank === 1) rankBadgeClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                    else if (sRank === 2) rankBadgeClass = 'text-slate-600 bg-slate-50 border-slate-300';
-                    else if (sRank === 3) rankBadgeClass = 'text-orange-700 bg-orange-50 border-orange-200';
-
                     card.innerHTML = `
                         <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
                             <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
-                            <div class="flex gap-1 items-center shrink-0">
-                                <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${rankBadgeClass}">${rankText}</span>
-                                <span class="score-display text-[10px] sm:text-xs font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm border border-blue-100">${s.score || 0}점</span>
-                            </div>
                         </div>
                         <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
                     `;
@@ -2619,38 +2587,20 @@
             const listContainer = document.getElementById('draw-student-list');
             if (listContainer) {
                 listContainer.innerHTML = '';
-                const students = classData[currentClass] || []; const ranks = getStudentRanks(); const allStudents = [...students];
+                const students = classData[currentClass] || []; const allStudents = [...students];
 
-                if (drawSortByScore) {
-                    allStudents.sort((a, b) => { if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); return a.no - b.no; });
-                    const btn = document.getElementById('btn-draw-sort'); if(btn) btn.innerHTML = '<span>🏆 순위순</span> <span class="text-[10px] font-normal text-slate-400 hidden sm:inline">(클릭시 번호순)</span>';
-                } else {
-                    allStudents.sort((a, b) => a.no - b.no);
-                    const btn = document.getElementById('btn-draw-sort'); if(btn) btn.innerHTML = '<span>🔢 번호순</span> <span class="text-[10px] font-normal text-slate-400 hidden sm:inline">(클릭시 순위순)</span>';
-                }
+                allStudents.sort((a, b) => a.no - b.no);
 
                 allStudents.forEach(s => {
-                    const score = s.score || 0; const isDrawn = s.drawn; const isAbsent = !s.attendance;
-                    const sRank = ranks[s.no]; const isZero = score === 0; const rankText = isZero ? '-' : `${sRank}위`;
+                    const isDrawn = s.drawn; const isAbsent = !s.attendance;
 
                     const card = document.createElement('div');
-                    card.className = `flex justify-between items-center p-2 sm:p-3 rounded-xl border cursor-pointer transition shadow-sm ${isAbsent ? 'bg-slate-50 border-slate-200 opacity-60' : (isDrawn ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md')}`;
-                    card.onclick = () => window.openScoreModal(s.no);
-
-                    let rankBadgeClass = 'text-slate-500 bg-slate-100 border-slate-200';
-                    if (isZero) rankBadgeClass = 'text-slate-400 bg-slate-50 border-slate-100';
-                    else if (sRank === 1) rankBadgeClass = 'text-amber-600 bg-amber-50 border-amber-200 shadow-sm';
-                    else if (sRank === 2) rankBadgeClass = 'text-slate-600 bg-slate-50 border-slate-300 shadow-sm';
-                    else if (sRank === 3) rankBadgeClass = 'text-orange-700 bg-orange-50 border-orange-200 shadow-sm';
+                    card.className = `flex justify-between items-center p-2 sm:p-3 rounded-xl border transition shadow-sm ${isAbsent ? 'bg-slate-50 border-slate-200 opacity-60' : (isDrawn ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md')}`;
 
                     card.innerHTML = `
                         <div class="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
                             <span class="text-[10px] sm:text-xs font-mono font-bold shrink-0 ${isAbsent ? 'text-slate-400' : 'text-slate-500'}">${s.no}</span>
                             <span class="text-[11px] sm:text-[13px] font-bold ${isAbsent ? 'text-slate-400 line-through' : 'text-slate-700'} break-words whitespace-normal leading-tight">${s.name}</span>
-                        </div>
-                        <div class="flex items-center gap-1 shrink-0">
-                            <span class="rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded border ${rankBadgeClass}">${rankText}</span>
-                            <span class="text-xs sm:text-sm font-black ${isAbsent ? 'text-slate-400 bg-slate-200' : 'text-blue-600 bg-blue-50'} px-2 py-0.5 rounded-md min-w-[32px] sm:min-w-[40px] text-center border ${isAbsent ? 'border-transparent' : 'border-blue-100'}">${score}</span>
                         </div>
                     `;
                     listContainer.appendChild(card);
@@ -2684,28 +2634,6 @@
                 const input = document.getElementById('score-modal-input');
                 student.score = parseInt(input.value) || 0; 
                 saveData(); renderDrawSection(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
-                
-                const newRanks = getStudentRanks();
-                const allDrawnCards = document.querySelectorAll('#draw-result div[data-student-no]');
-                allDrawnCards.forEach(card => {
-                    const sno = parseInt(card.dataset.studentNo);
-                    const rankDisplay = card.querySelector('.rank-display'); const scoreDisplay = card.querySelector('.score-display');
-                    
-                    if (sno === student.no && scoreDisplay) scoreDisplay.innerText = `${student.score}점`;
-                    if (rankDisplay && sno) {
-                        const sRank = newRanks[sno]; const sData = classData[currentClass].find(st => st.no === sno);
-                        const isZero = (sData && sData.score !== undefined) ? sData.score === 0 : true;
-                        rankDisplay.innerText = isZero ? '-' : `${sRank}위`;
-                        
-                        let rankBadgeClass = 'rank-display text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md border ';
-                        if (isZero) rankBadgeClass += 'text-slate-400 bg-slate-50 border-slate-200';
-                        else if (sRank === 1) rankBadgeClass += 'text-amber-600 bg-amber-50 border-amber-200';
-                        else if (sRank === 2) rankBadgeClass += 'text-slate-600 bg-slate-50 border-slate-300';
-                        else if (sRank === 3) rankBadgeClass += 'text-orange-700 bg-orange-50 border-orange-200';
-                        else rankBadgeClass += 'text-purple-600 bg-purple-100 border-purple-200';
-                        rankDisplay.className = rankBadgeClass;
-                    }
-                });
             }
             window.closeScoreModal();
         }
