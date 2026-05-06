@@ -13,7 +13,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             MobileDragDrop.polyfill({
                 dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-                holdToDrag: 250 // 모바일에서 0.25초 꾹 누르면 드래그 발동
+                holdToDrag: 250
             });
             window.addEventListener('touchmove', function(e) {
                 if (window.isDraggingCard) {
@@ -56,14 +56,12 @@
             animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* 꾹 누르기 선택 방지 */
         .student-card {
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
         }
 
-        /* 능력치 이모티콘 겹침 레이아웃 (모바일에 맞춰 약간 축소) */
         .emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
         
         .emoji-lvl-2 { position: relative; width: 18px; height: 14px; margin: 0 auto; }
@@ -77,18 +75,6 @@
         .emoji-lvl-3 span:nth-child(2) { left: -1px; top: 7px; z-index: 1; }
         .emoji-lvl-3 span:nth-child(3) { right: -1px; top: 7px; z-index: 2; }
 
-        @media (min-width: 640px) {
-            .emoji-lvl-1 { font-size: 15px; }
-            .emoji-lvl-2 { width: 22px; height: 16px; }
-            .emoji-lvl-2 span { font-size: 13px; }
-            .emoji-lvl-3 { width: 22px; height: 20px; }
-            .emoji-lvl-3 span { font-size: 11px; }
-            .emoji-lvl-3 span:nth-child(1) { left: 5.5px; top: -1px; }
-            .emoji-lvl-3 span:nth-child(2) { left: -1px; top: 8px; }
-            .emoji-lvl-3 span:nth-child(3) { right: -1px; top: 8px; }
-        }
-
-        /* 프린트 인쇄용 CSS 설정 */
         @media print {
             .sticky.top-0, #tab-navigation { display: none !important; }
             #student-management, #draw-section, #stamp-section, #gagaball-section { display: none !important; }
@@ -100,30 +86,20 @@
             @page { margin: 10mm; }
         }
 
-        /* 도장판 전용 CSS */
-        .stamp-cell {
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.1s ease-in-out, background-color 0.2s;
-        }
+        /* 도장판 CSS */
+        .stamp-cell { position: relative; cursor: pointer; transition: transform 0.1s ease-in-out, background-color 0.2s; }
         .stamp-cell:active { transform: scale(0.95); }
-        
         @keyframes stampSlam {
             0% { transform: translate(-50%, -200%) scale(5); opacity: 0; }
             60% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
             80% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
-        
         .stamp-img {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%) scale(3);
-            width: 85%; height: 85%; object-fit: contain;
-            opacity: 0; pointer-events: none;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(3);
+            width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
         }
-        .stamp-cell.stamped .stamp-img {
-            animation: stampSlam 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
+        .stamp-cell.stamped .stamp-img { animation: stampSlam 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
         .cell-number { color: #d1d5db; font-size: 1.5rem; z-index: 0; }
         .badge-animate { animation: popInAndShine 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes popInAndShine {
@@ -132,6 +108,68 @@
             80% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
+
+        /* 🏟️ 가가볼 V44 스코어보드 전용 CSS (Tailwind와 충돌 방지용 스코핑) */
+        #gagaball-section { font-family: 'Jua', sans-serif; letter-spacing: 0.5px; }
+        #gagaball-section .gaga-primary { color: #3498db; }
+        #gagaball-section .gaga-danger { color: #e74c3c; }
+        #gagaball-section .gaga-dark { color: #2c3e50; }
+        
+        #gagaball-section .scoreboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        #gagaball-section .score-item { background: #fff; border: 3px solid #3498db; padding: 15px; border-radius: 12px; text-align: center; position: relative; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        #gagaball-section .score-item.drawn { border-color: #bdc3c7 !important; background-color: #dcdde1 !important; opacity: 0.75; }
+        
+        #gagaball-section .avatar-img { width: 75px; height: 75px; border-radius: 50%; margin: 0 auto 10px; display: block; background: #fdfdfd; object-fit: cover; }
+        #gagaball-section .score-item.drawn .avatar-img { filter: grayscale(70%); opacity: 0.9; border-color: #bdc3c7 !important; }
+        #gagaball-section .score-item .name { font-size: 1.6rem; margin-bottom: 5px; color: #2c3e50; }
+        #gagaball-section .score-item .score-val { font-size: 3rem; color: #e74c3c; margin: 5px 0; line-height: 1; }
+        #gagaball-section .score-item.drawn .name { color: #555; }
+        #gagaball-section .score-item.drawn .score-val { color: #8e44ad; }
+        
+        #gagaball-section .score-ctrl { display: flex; justify-content: center; gap: 5px; }
+        #gagaball-section .score-ctrl button { font-size: 1.5rem; width: 45px; height: 35px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; transition: 0.1s; display: flex; align-items: center; justify-content: center;}
+        #gagaball-section .score-ctrl button:active { transform: scale(0.9); }
+        #gagaball-section .score-ctrl button.minus { background: #e74c3c; }
+        #gagaball-section .score-item.drawn .score-ctrl button { background: #95a5a6; }
+
+        #gagaball-section .inactive-grid .score-item { border-color: #ddd; background: #fdfdfd; opacity: 0.6; }
+        
+        #gagaball-section .ranking-table { width: 100%; font-size: 1.3rem; margin-top: 20px; border-collapse: collapse; }
+        #gagaball-section .ranking-table th { background: #2c3e50; color: white; padding: 12px; font-weight: normal; }
+        #gagaball-section .ranking-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; color: #2c3e50; }
+        #gagaball-section .rank-1 { background-color: #fff9c4; font-weight: bold; }
+        #gagaball-section .rank-2 { background-color: #f5f5f5; font-weight: bold; }
+        #gagaball-section .rank-3 { background-color: #ffe0b2; font-weight: bold; }
+
+        #gagaball-section .matchup-row { display: flex; gap: 12px; background: white; padding: 10px 15px; border-radius: 15px; border: 3px solid #ecf0f1; box-shadow: 0 4px 8px rgba(0,0,0,0.05); align-items: stretch; margin-bottom: 10px; }
+        #gagaball-section .team-card { flex: 1; display: flex; padding: 8px; border-radius: 10px; }
+        #gagaball-section .team-a { background: #ffe0b2; border-left: 8px solid #ff9800; }
+        #gagaball-section .team-b { background: #f4ff81; border-right: 8px solid #76ff03; }
+        #gagaball-section .vs-badge { font-size: 2.5rem; display: flex; align-items: center; color: #2c3e50; text-shadow: 2px 2px 0px #bdc3c7; font-weight: 900;}
+        
+        #gagaball-section .team-card-left { width: 110px; border-right: 2px dashed rgba(0,0,0,0.2); padding-right: 10px; margin-right: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+        #gagaball-section .team-title { font-size: 2rem; margin-bottom: 5px; color: #2c3e50; text-align: center;}
+        #gagaball-section .team-card-right { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-content: center; justify-content: flex-start;}
+        
+        #gagaball-section .team-member-badge { display: flex; align-items: center; padding: 4px 8px; border-radius: 10px; border: 3px solid; background: white; width: 150px; flex: 0 0 auto; box-shadow: 0 3px 5px rgba(0,0,0,0.05); box-sizing: border-box; }
+        #gagaball-section .team-member-badge img { width: 35px; height: 35px; border-radius: 50%; margin-right: 8px; background: #fdfdfd;}
+        #gagaball-section .member-info { display: flex; flex-direction: column; text-align: left; line-height: 1.2;}
+        #gagaball-section .member-info b { font-size: 1.3rem; color: #2c3e50; }
+        #gagaball-section .member-info span { font-size: 1.1rem; color: #e74c3c; }
+
+        #gagaball-section .stepper-ctrl { display: flex; align-items: stretch; justify-content: space-between; background: white; border: 2px solid #bdc3c7; border-radius: 8px; margin-bottom: 5px; width: 100%; box-sizing: border-box; overflow: hidden; }
+        #gagaball-section .stepper-btn { background: #ecf0f1; border: none; flex: 1; padding: 2px 0; font-size: 1.5rem; cursor: pointer; color: #2c3e50; transition: 0.1s; }
+        #gagaball-section .team-score-input { width: 35px; flex: 0 0 35px; border: none; text-align: center; font-size: 1.5rem; color: #e74c3c; outline: none; background: transparent; padding: 0; margin: 0; }
+        #gagaball-section .btn-team-add { background: #3498db; color: white; font-size: 1.1rem; padding: 6px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.1); width: 100%; transition: 0.2s; }
+        #gagaball-section .btn-team-add:hover { background: #2980b9; transform: translateY(-2px); }
+
+        /* 가가볼 룰렛 모달 */
+        .gaga-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; font-family: 'Jua', sans-serif;}
+        .gaga-modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 800px; width: 90%; position: relative; }
+        
+        .roulette-container { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1 / 1; margin: 0 auto; display: flex; justify-content: center; align-items: center; }
+        #rouletteCanvas { border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; height: 100%; }
+        .roulette-pointer { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); font-size: 5rem; text-shadow: 0 5px 10px rgba(0,0,0,0.4); z-index: 10; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen pb-28 sm:pb-32 text-slate-800 overflow-x-hidden w-full max-w-[100vw]">
@@ -203,7 +241,7 @@
                             </button>
                             <div id="class-select-dropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto print-hide">
                                 <ul id="class-select-list" class="py-1 text-sm font-bold text-slate-700">
-                                    </ul>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -231,7 +269,6 @@
                         <span class="text-base sm:text-lg leading-none mb-0.5 sm:mb-0">🏆</span>
                         <span>도장판</span>
                     </button>
-                    <!-- 가가볼 탭 추가 -->
                     <button onclick="window.showTab('gagaball')" id="tab-gagaball" class="flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">
                         <span class="text-base sm:text-lg leading-none mb-0.5 sm:mb-0">🏟️</span>
                         <span>가가볼</span>
@@ -239,32 +276,73 @@
                 </div>
             </div>
 
-            <!-- 가가볼 스코어보드 섹션 추가 -->
+            <!-- 🏟️ 가가볼 V44 스코어보드 섹션 -->
             <section id="gagaball-section" class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
-                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-3">
-                    <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
-                        <span class="mr-2 text-red-500">🏟️</span> 가가볼 스코어보드
-                    </h2>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="window.rewardGagaball()" class="text-xs sm:text-sm font-bold bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-100 transition shadow-sm whitespace-nowrap">🏆 생존자 +1점</button>
-                        <button onclick="window.resetGagaball()" class="text-xs sm:text-sm font-bold bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 transition shadow-sm whitespace-nowrap">🔄 경기 리셋</button>
-                    </div>
+                
+                <div class="flex justify-center gap-2 mb-6 border-b-2 border-slate-800 pb-4">
+                    <button onclick="window.switchGagaTab('score')" id="gaga-btn-score" class="px-4 py-2 font-black text-lg sm:text-xl rounded-xl bg-slate-800 text-white shadow-md transition">🏆 스코어보드</button>
+                    <button onclick="window.switchGagaTab('rank')" id="gaga-btn-rank" class="px-4 py-2 font-black text-lg sm:text-xl rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">🥇 순위표</button>
+                    <button onclick="window.switchGagaTab('team')" id="gaga-btn-team" class="px-4 py-2 font-black text-lg sm:text-xl rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">⚔️ 대진표</button>
                 </div>
 
-                <div class="bg-red-50 p-4 rounded-xl border border-red-100 mb-6 text-center shadow-inner">
-                    <h3 class="font-black text-red-600 text-lg sm:text-xl mb-1">🔥 가가볼 경기장 (생존자: <span id="gaga-alive-count" class="text-red-700 text-2xl">0</span>명)</h3>
-                    <p class="text-[11px] sm:text-sm text-red-500 mb-4 font-bold">학생 카드를 터치하면 아웃(Out) 처리됩니다.</p>
-                    <div id="gaga-alive-grid" class="flex flex-wrap justify-center gap-2 sm:gap-3 min-h-[120px]">
-                        <!-- 생존자 명단 렌더링 영역 -->
+                <!-- 1) 스코어보드 화면 -->
+                <div id="gaga-view-score">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3 bg-amber-50 p-4 rounded-xl border border-amber-200">
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <span class="font-black text-amber-800 text-lg">🎯 가가볼 뽑기:</span>
+                            <input type="number" id="gaga-draw-count" min="1" max="30" value="8" class="w-16 p-2 rounded-lg border border-amber-300 font-bold text-center">
+                            <span class="font-bold text-amber-800">명</span>
+                            <button onclick="window.executeGagaDraw('all')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm hover:bg-slate-700">전체</button>
+                            <button onclick="window.executeGagaDraw('남')" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm hover:bg-blue-600">남학생</button>
+                            <button onclick="window.executeGagaDraw('여')" class="bg-pink-500 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm hover:bg-pink-600">여학생</button>
+                            <button onclick="window.resetGagaDraw()" class="bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm hover:bg-red-600">🔄 초기화</button>
+                        </div>
+                        <div id="gaga-draw-stats" class="font-bold text-amber-700 text-sm sm:text-base">대기: 0명</div>
                     </div>
+
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-black text-blue-600">🏃 생존 / 참가 학생</h3>
+                        <div class="flex gap-2">
+                            <button onclick="window.openTimerSelectModal()" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-orange-600">⏱️ 타이머</button>
+                            <button onclick="window.openRouletteModal('individual')" class="bg-purple-500 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-purple-600">🎡 미션 룰렛</button>
+                            <button onclick="window.resetAllScoresDB()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-slate-300">점수 초기화</button>
+                        </div>
+                    </div>
+                    <div id="gaga-active-grid" class="scoreboard-grid"></div>
+
+                    <h3 class="text-xl font-black text-slate-500 mt-8 mb-4">🛑 탈락 / 불참 학생</h3>
+                    <div id="gaga-inactive-grid" class="scoreboard-grid inactive-grid"></div>
                 </div>
 
-                <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 text-center shadow-inner">
-                    <h3 class="font-black text-slate-600 text-base sm:text-lg mb-4">👻 아웃 (탈락자: <span id="gaga-out-count" class="text-slate-800">0</span>명)</h3>
-                    <div id="gaga-out-grid" class="flex flex-wrap justify-center gap-2 sm:gap-3 min-h-[80px]">
-                        <!-- 탈락자 명단 렌더링 영역 -->
-                    </div>
+                <!-- 2) 순위표 화면 -->
+                <div id="gaga-view-rank" class="hidden">
+                    <h2 class="text-2xl font-black text-slate-800 mb-4 text-center">🥇 개인별 점수 랭킹</h2>
+                    <table class="ranking-table">
+                        <thead><tr><th>순위</th><th>이름</th><th>점수</th></tr></thead>
+                        <tbody id="gaga-ranking-body"></tbody>
+                    </table>
                 </div>
+
+                <!-- 3) 대진표 화면 -->
+                <div id="gaga-view-team" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
+                        <div class="flex items-center gap-2">
+                            <select id="gaga-team-count" class="p-2 rounded-lg border border-slate-300 font-bold text-lg">
+                                <option value="2">2팀</option>
+                                <option value="4" selected>4팀</option>
+                                <option value="6">6팀</option>
+                                <option value="8">8팀</option>
+                            </select>
+                            <button onclick="window.generateGagaTeams()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-purple-700 text-lg">👥 밸런스 편성</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.openTimerSelectModal()" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-orange-600 text-lg">⏱️ 타이머</button>
+                            <button onclick="window.openRouletteModal('team')" class="bg-pink-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-pink-700 text-lg">🎡 팀 미션 룰렛</button>
+                        </div>
+                    </div>
+                    <div id="gaga-team-matchups" class="flex flex-col gap-3"></div>
+                </div>
+
             </section>
 
             <section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
@@ -285,11 +363,12 @@
                 <div id="excel-import-section" class="mb-8 p-3 sm:p-5 bg-blue-50 rounded-xl border border-blue-100 transition-all">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                         <label class="text-sm font-bold text-blue-800">Excel 데이터 붙여넣기</label>
-                        <span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 손센스 발센스 순발력 모둠</span>
+                        <!-- 수정: 볼센스, 순발력으로 안내 -->
+                        <span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 볼센스 순발력 모둠</span>
                     </div>
                     <textarea id="excel-input" rows="3" 
                         class="w-full p-3 sm:p-4 border-2 border-dashed border-blue-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 focus:outline-none text-sm transition placeholder:text-slate-400" 
-                        placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. (예: 1 홍길동 남 3 2 1 1)"></textarea>
+                        placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. (예: 1 홍길동 남 3 2 1)"></textarea>
                     <button onclick="window.importFromExcel()" class="mt-3 w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-xl hover:bg-blue-700 font-bold shadow-md shadow-blue-100 transition text-sm sm:text-base">
                         일괄 등록하기
                     </button>
@@ -303,18 +382,14 @@
                         <option value="여">여</option>
                     </select>
                     
-                    <input type="hidden" id="add-handSense" value="-">
-                    <button type="button" id="btn-add-handSense" onclick="window.cycleInputAbility('handSense')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500">
-                        <span class="text-slate-400 text-xs">🏀(-)</span>
-                    </button>
-
-                    <input type="hidden" id="add-footSense" value="-">
-                    <button type="button" id="btn-add-footSense" onclick="window.cycleInputAbility('footSense')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500">
+                    <!-- 수정: 볼센스로 통합 -->
+                    <input type="hidden" id="add-ballSense" value="-">
+                    <button type="button" id="btn-add-ballSense" onclick="window.cycleInputAbility('ballSense')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500" title="공을 다루는 능력 (볼센스)">
                         <span class="text-slate-400 text-xs">⚽(-)</span>
                     </button>
                     
                     <input type="hidden" id="add-agility" value="-">
-                    <button type="button" id="btn-add-agility" onclick="window.cycleInputAbility('agility')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500">
+                    <button type="button" id="btn-add-agility" onclick="window.cycleInputAbility('agility')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500" title="순발력">
                         <span class="text-slate-400 text-xs">⚡(-)</span>
                     </button>
 
@@ -353,13 +428,12 @@
                                     모둠<span id="sort-group-icon" class="sort-icon">↕</span>
                                 </th>
                                 <th class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] px-0 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[8px] sm:text-xs">참석</th>
-                                <th onclick="window.toggleSort('handSense')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs">
-                                    🏀<span id="sort-handSense-icon" class="sort-icon">↕</span>
+                                
+                                <!-- 수정: 볼센스 하나로 병합 -->
+                                <th onclick="window.toggleSort('ballSense')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
+                                    ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
                                 </th>
-                                <th onclick="window.toggleSort('footSense')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs">
-                                    ⚽<span id="sort-footSense-icon" class="sort-icon">↕</span>
-                                </th>
-                                <th onclick="window.toggleSort('agility')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs">
+                                <th onclick="window.toggleSort('agility')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="순발력">
                                     ⚡<span id="sort-agility-icon" class="sort-icon">↕</span>
                                 </th>
                                 <th class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
@@ -438,7 +512,7 @@
                             <button onclick="window.resetDrawPool()" class="flex-1 sm:flex-none text-xs sm:text-sm font-bold bg-white border border-purple-200 text-purple-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-100 transition whitespace-nowrap shadow-sm">
                                 🔄 뽑기 초기화
                             </button>
-                            <button onclick="window.resetAllScores()" class="flex-1 sm:flex-none text-xs sm:text-sm font-bold bg-white border border-blue-200 text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-100 transition whitespace-nowrap shadow-sm">
+                            <button onclick="window.resetAllScoresDB()" class="flex-1 sm:flex-none text-xs sm:text-sm font-bold bg-white border border-blue-200 text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-100 transition whitespace-nowrap shadow-sm">
                                 🔄 점수 초기화
                             </button>
                         </div>
@@ -571,15 +645,90 @@
         </div>
     </div>
 
+    <!-- 타이머 모달 -->
+    <div id="timerSelectModal" class="gaga-modal-overlay" onclick="window.closeTimerSelectModal()">
+        <div class="gaga-modal-content" style="max-width: 400px; padding:30px;" onclick="event.stopPropagation()">
+            <h2 class="text-3xl font-black text-orange-500 mb-6">⏱️ 가가볼 타이머</h2>
+            <div class="flex flex-col gap-4">
+                <button class="bg-orange-500 text-white py-4 rounded-xl font-bold text-2xl shadow-md hover:bg-orange-600 transition" onclick="window.open('https://youtu.be/Nn9Exxw5Gg4', '_blank'); window.closeTimerSelectModal();">99초 타이머</button>
+                <button class="bg-orange-700 text-white py-4 rounded-xl font-bold text-2xl shadow-md hover:bg-orange-800 transition" onclick="window.open('https://youtu.be/eVGSsArJF6k', '_blank'); window.closeTimerSelectModal();">60초 타이머</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 룰렛 모달 -->
+    <div id="rouletteModal" class="gaga-modal-overlay" style="z-index: 1002;" onclick="window.closeRouletteModal()">
+        <div class="gaga-modal-content" style="max-width: 950px; padding: 50px;" onclick="event.stopPropagation()">
+            <h2 id="rouletteModalTitle" class="text-4xl sm:text-5xl font-black text-slate-800 mb-8">🎡 오늘의 미션 룰렛</h2>
+            
+            <div class="roulette-container">
+                <div class="roulette-pointer">🔽</div>
+                <canvas id="rouletteCanvas" width="800" height="800"></canvas>
+            </div>
+            
+            <button class="w-full mt-10 py-6 text-4xl font-black bg-pink-500 text-white rounded-3xl shadow-xl hover:bg-pink-600 transition transform hover:scale-105" onclick="window.spinRoulette()">🎯 룰렛 돌리기!</button>
+        </div>
+    </div>
+
+    <!-- 미션 설명 모달 -->
+    <div id="missionDescModal" class="gaga-modal-overlay" style="z-index: 1003;" onclick="window.closeMissionDescModal()">
+        <div class="gaga-modal-content" style="max-width: 550px; padding: 40px;" onclick="event.stopPropagation()">
+            <h2 id="missionDescTitle" class="text-3xl sm:text-4xl font-black text-blue-500 mb-4"></h2>
+            <p id="missionDescText" class="text-xl sm:text-2xl leading-relaxed text-slate-700 bg-slate-50 p-6 rounded-2xl mb-8 border border-slate-200"></p>
+            <button class="w-full py-4 text-2xl font-black bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 transition" onclick="window.closeMissionDescModal()">미션 확인!</button>
+        </div>
+    </div>
+    
+    <!-- 가가볼 전용 추첨 결과 모달 -->
+    <div id="gagaDrawModal" class="gaga-modal-overlay" onclick="window.closeGagaDrawModal()">
+        <div class="gaga-modal-content" style="max-width: 900px;" onclick="event.stopPropagation()">
+            <h1 class="text-4xl sm:text-5xl font-black text-red-500 mb-6">🎉 참가 선수 🎉</h1>
+            <div id="gagaDrawResultGrid" class="flex flex-wrap justify-center gap-4 mb-8"></div>
+            
+            <div class="flex justify-center gap-4 mb-8">
+                <button class="bg-orange-500 text-white px-6 py-3 rounded-xl font-bold text-2xl shadow-md" onclick="window.openTimerSelectModal()">⏱️ 타이머</button>
+                <button class="bg-purple-500 text-white px-6 py-3 rounded-xl font-bold text-2xl shadow-md" onclick="window.openRouletteModal('individual')">🎡 개인전 룰렛</button>
+            </div>
+
+            <button class="bg-slate-800 text-white w-full py-4 rounded-xl font-black text-2xl shadow-md" onclick="window.closeGagaDrawModal()">확인 및 닫기</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- 오디오 Context ---
+        let audioCtx;
+        window.playCoinSound = function() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.frequency.setValueAtTime(987.77, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
+            } catch(e) {}
+        }
+        window.playBumpSound = function() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        // --- 볼센스로 통합된 UI 함수 ---
         window.getAbilityHTML = function(type, val) {
-            let emoji = '🏀';
-            if (type === 'footSense') emoji = '⚽';
-            else if (type === 'agility') emoji = '⚡';
+            let emoji = type === 'ballSense' ? '⚽' : '⚡'; // 볼센스 통합
 
             if (val === '1' || val === '하') {
                 return `<div class="emoji-lvl-1"><span>${emoji}</span></div>`;
@@ -604,11 +753,7 @@
         let activeTimers = {}; 
         let activeStudentTimers = {}; 
         let timerLoopStarted = false; 
-        
-        // --- 가가볼 전용 변수 추가 ---
-        let gagaballOuts = new Set(); 
 
-        // --- 드래그 앤 드롭 함수 복구 ---
         let draggedStudentNo = null;
 
         window.handleDragStart = function(e, studentNo) {
@@ -699,11 +844,9 @@
             }
         });
 
-
         const TOTAL_STAMP_CELLS = 20;
         const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
         let globalStampImage = localStorage.getItem('customStamp') || defaultStampImg;
-        let audioCtx;
 
         const abilitiesCycle = ['-', '1', '2', '3']; 
         const getGroupsCycle = () => {
@@ -776,13 +919,7 @@
                     document.getElementById('login-screen').classList.remove('hidden');
                     document.getElementById('app-container').classList.add('hidden');
                     
-                    classData = {};
-                    groupScores = {};
-                    groupRecords = {};
-                    classStamps = {};
-                    activeTimers = {};
-                    activeStudentTimers = {};
-                    gagaballOuts.clear();
+                    classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {};
                     currentClass = "";
                     window.renderClassSelect();
                 }
@@ -792,77 +929,438 @@
             console.error("클라우드 서버 연결 오류:", e);
         }
 
-        // --- 가가볼 함수 추가 ---
-        window.resetGagaball = function() {
-            if(confirm("경기를 리셋하시겠습니까? (모두 생존 상태로 변경)")) {
-                gagaballOuts.clear();
-                if(typeof window.renderGagaball === 'function') window.renderGagaball();
-            }
-        };
-
-        window.toggleGagaOut = function(no) {
-            if(gagaballOuts.has(no)) gagaballOuts.delete(no);
-            else gagaballOuts.add(no);
-            if(typeof window.renderGagaball === 'function') window.renderGagaball();
-        };
-
-        window.rewardGagaball = function() {
-            if(!currentClass || !classData[currentClass]) return;
-            const students = classData[currentClass].filter(s => s.attendance);
-            let alive = students.filter(s => !gagaballOuts.has(s.no));
-            
-            if(alive.length === 0) {
-                window.showModal("알림", "현재 생존자가 없습니다.");
-                return;
-            }
-            
-            window.showModal("생존자 점수 부여", `현재 생존한 <b>${alive.length}명</b>의 학생에게 개인 점수(+1점)를 부여하시겠습니까?`, true, () => {
-                alive.forEach(s => {
-                    s.score = (s.score || 0) + 1;
-                });
-                saveData();
-                if(typeof window.renderGagaball === 'function') window.renderGagaball();
-                if(typeof window.renderDrawSection === 'function') window.renderDrawSection();
-                if(typeof window.renderStudentList === 'function') window.renderStudentList();
-                window.showModal("완료", "점수가 성공적으로 부여되었습니다.");
+        // ==========================================
+        // 🏟️ V44 가가볼 전용 로직 (볼센스 적용됨)
+        // ==========================================
+        window.switchGagaTab = function(tab) {
+            ['score', 'rank', 'team'].forEach(t => {
+                document.getElementById(`gaga-view-${t}`).classList.add('hidden');
+                document.getElementById(`gaga-btn-${t}`).classList.remove('bg-slate-800', 'text-white', 'shadow-md');
+                document.getElementById(`gaga-btn-${t}`).classList.add('bg-slate-100', 'text-slate-600');
             });
-        };
+            document.getElementById(`gaga-view-${tab}`).classList.remove('hidden');
+            document.getElementById(`gaga-btn-${tab}`).classList.add('bg-slate-800', 'text-white', 'shadow-md');
+            document.getElementById(`gaga-btn-${tab}`).classList.remove('bg-slate-100', 'text-slate-600');
+            
+            if(tab === 'score') renderGagaball();
+            if(tab === 'rank') renderGagaRanking();
+            if(tab === 'team') renderGagaTeamView();
+        }
+
+        function generateCuteAvatar(name) {
+            const seed = encodeURIComponent(name);
+            return `https://robohash.org/${seed}?set=set4&size=150x150`;
+        }
+        const fallbackSVG = `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23f1f2f6%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2268%22%20font-size%3D%2245%22%20text-anchor%3D%22middle%22%3E%F0%9F%91%A4%3C%2Ftext%3E%3C%2Fsvg%3E`;
 
         window.renderGagaball = function() {
-            const aliveGrid = document.getElementById('gaga-alive-grid');
-            const outGrid = document.getElementById('gaga-out-grid');
-            if(!aliveGrid || !outGrid || !currentClass) return;
+            const activeGrid = document.getElementById('gaga-active-grid');
+            const inactiveGrid = document.getElementById('gaga-inactive-grid');
+            if(!activeGrid || !currentClass) return;
             
-            const students = classData[currentClass].filter(s => s.attendance);
-            
-            let aliveHTML = ''; 
-            let outHTML = '';
-            let aliveCount = 0; 
-            let outCount = 0;
-            
-            students.sort((a,b) => a.no - b.no).forEach(s => {
-                const isOut = gagaballOuts.has(s.no);
-                const cardColor = isOut 
-                    ? 'bg-slate-300 text-slate-500 border-slate-400' 
-                    : 'bg-white text-slate-800 border-red-300 shadow-md hover:bg-red-50 hover:border-red-400 transform hover:scale-105 transition';
+            activeGrid.innerHTML = ''; inactiveGrid.innerHTML = '';
+            let availableTotal = 0, availableBoys = 0, availableGirls = 0;
+
+            const students = [...(classData[currentClass] || [])].sort((a,b) => a.no - b.no);
+
+            students.forEach((s) => {
+                const isDrawn = s.drawn;
+                const drawnClass = isDrawn ? 'drawn' : '';
+                const btnText = s.attendance ? '참석' : '불참';
+                const btnClass = s.attendance ? 'bg-green-500 text-white' : 'bg-slate-400 text-white opacity-80';
                 
-                const html = `
-                    <div onclick="window.toggleGagaOut(${s.no})" class="cursor-pointer flex items-center justify-center border-2 rounded-xl px-2 py-2 w-[72px] sm:w-[90px] h-[64px] sm:h-[72px] flex-col gap-1 select-none ${cardColor}">
-                        <span class="text-[10px] sm:text-[11px] font-mono font-bold opacity-70">${s.no}</span>
-                        <span class="text-[12px] sm:text-sm font-black leading-none break-words text-center whitespace-normal">${s.name}</span>
+                let borderStyle = s.gender === '남' ? '#3498db' : (s.gender === '여' ? '#e74c3c' : '#2ecc71');
+                if(!s.attendance || isDrawn) borderStyle = '#95a5a6';
+
+                if(s.attendance && !isDrawn) {
+                    availableTotal++;
+                    if(s.gender === '남') availableBoys++;
+                    if(s.gender === '여') availableGirls++;
+                }
+                let bgColor = s.attendance && !isDrawn ? (s.gender === '남' ? '#e3f2fd' : '#ffebee') : '#fff';
+                const cuteAvatar = generateCuteAvatar(s.name); 
+
+                const cardHTML = `
+                    <div class="score-item ${drawnClass}" style="border-color: ${borderStyle}; background-color: ${bgColor};">
+                        ${isDrawn ? '<div class="absolute -top-3 -right-3 bg-slate-800 text-white px-3 py-1 rounded-full text-xs font-bold shadow">완료</div>' : ''}
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono font-bold text-slate-500 text-sm">${s.no}번</span>
+                            <button class="${btnClass} px-2 py-0.5 rounded text-xs font-bold transition hover:opacity-80" onclick="window.toggleAttendance(${s.no})">${btnText}</button>
+                        </div>
+                        <img src="${cuteAvatar}" alt="avatar" class="avatar-img" onerror="this.onerror=null; this.src='${fallbackSVG}';" style="border-color: ${borderStyle};">
+                        <div class="name">${s.name} <span class="text-xs">(${s.gender})</span></div>
+                        <div class="score-val">${s.score || 0}</div>
+                        <div class="score-ctrl mt-2">
+                            <button class="minus hover:bg-red-600" onclick="window.changeGagaScore(${s.no}, -1)">-</button>
+                            <button class="hover:bg-blue-600" onclick="window.changeGagaScore(${s.no}, 1)">+</button>
+                        </div>
                     </div>
                 `;
-                if(isOut) { outHTML += html; outCount++; }
-                else { aliveHTML += html; aliveCount++; }
+                if(s.attendance) activeGrid.innerHTML += cardHTML;
+                else inactiveGrid.innerHTML += cardHTML;
             });
-            
-            aliveGrid.innerHTML = aliveHTML; 
-            outGrid.innerHTML = outHTML;
-            document.getElementById('gaga-alive-count').innerText = aliveCount;
-            document.getElementById('gaga-out-count').innerText = outCount;
+            document.getElementById('gaga-draw-stats').innerText = `대기: 총 ${availableTotal}명 (남 ${availableBoys} / 여 ${availableGirls})`;
         };
 
+        window.changeGagaScore = function(no, val) {
+            const student = classData[currentClass].find(s => s.no == no);
+            if(!student) return;
+            if (val > 0) window.playCoinSound(); else window.playBumpSound();
+            student.score = Math.max(0, (student.score || 0) + val);
+            saveData(); renderGagaball(); renderGagaRanking(); renderDrawSection(); renderStudentList();
+            
+            // 모달 안의 점수도 즉시 반영
+            const modalSpan = document.getElementById(`modal-score-${no}`);
+            if(modalSpan) modalSpan.innerText = student.score;
+        }
 
+        window.renderGagaRanking = function() {
+            const tbody = document.getElementById('gaga-ranking-body');
+            if(!tbody || !currentClass) return;
+            tbody.innerHTML = '';
+            const studentsForRank = [...(classData[currentClass] || [])].filter(s => s.attendance).sort((a, b) => (b.score || 0) - (a.score || 0));
+            
+            let rank = 1;
+            studentsForRank.forEach((s, i) => {
+                if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1;
+                let rClass = rank === 1 ? 'rank-1' : (rank === 2 ? 'rank-2' : (rank === 3 ? 'rank-3' : ''));
+                tbody.innerHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`;
+            });
+        }
+
+        window.executeGagaDraw = function(targetGender) {
+            if(!currentClass) return;
+            const drawCount = parseInt(document.getElementById('gaga-draw-count').value, 10);
+            let available = classData[currentClass].filter(s => s.attendance && !s.drawn && (targetGender === 'all' || s.gender === targetGender));
+            
+            if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
+            
+            const actualDrawCount = Math.min(drawCount, available.length);
+            
+            // Fisher-Yates shuffle
+            for (let i = available.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [available[i], available[j]] = [available[j], available[i]];
+            }
+
+            const picked = available.slice(0, actualDrawCount);
+            const pickedHTML = [];
+
+            picked.forEach(s => {
+                s.drawn = true;
+                let borderColor = s.gender === '남' ? '#3498db' : '#e74c3c';
+                const cuteAvatar = generateCuteAvatar(s.name);
+                
+                pickedHTML.push(`
+                    <div class="border-[5px] p-4 rounded-2xl text-center shadow-lg bg-white" style="border-color: ${borderColor};">
+                        <img src="${cuteAvatar}" class="w-20 h-20 rounded-full mx-auto mb-2 bg-slate-50" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+                        <div class="text-2xl font-black text-slate-800 mb-2">${s.name}</div>
+                        <div class="text-xl font-bold text-red-500 flex items-center justify-center gap-3">
+                            <button class="bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-600 transition" onclick="window.changeGagaScore(${s.no}, -1)">-</button>
+                            <span id="modal-score-${s.no}">${s.score || 0}</span>
+                            <button class="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-600 transition" onclick="window.changeGagaScore(${s.no}, 1)">+</button>
+                        </div>
+                    </div>
+                `);
+            });
+
+            saveData(); renderGagaball(); renderDrawSection();
+            
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const playTone = (f, t, d) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.type = 'square'; osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.frequency.setValueAtTime(f, audioCtx.currentTime + t);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + d);
+                    osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                };
+                playTone(392.00, 0.0, 0.15); playTone(392.00, 0.15, 0.15);
+                playTone(392.00, 0.3, 0.15); playTone(523.25, 0.45, 0.8);
+            } catch(e) {}
+            
+            document.getElementById('gagaDrawResultGrid').innerHTML = pickedHTML.join('');
+            document.getElementById('gagaDrawModal').style.display = 'flex';
+        }
+
+        window.resetGagaDraw = function() {
+            if(!currentClass) return;
+            window.showModal("추첨 초기화", "추첨 기록을 초기화하시겠습니까?", true, () => {
+                classData[currentClass].forEach(s => s.drawn = false);
+                saveData(); renderGagaball(); renderDrawSection();
+            });
+        }
+        
+        window.closeGagaDrawModal = function() { document.getElementById('gagaDrawModal').style.display = 'none'; }
+
+        // --- 가가볼 팀 편성 (볼센스 적용) ---
+        let currentGagaTeams = [];
+        window.generateGagaTeams = function() {
+            if(!currentClass) return;
+            const numTeams = parseInt(document.getElementById('gaga-team-count').value, 10);
+            let available = classData[currentClass].filter(s => s.attendance);
+
+            if(available.length < numTeams) return window.showModal("인원 부족", `참가 학생이 너무 적습니다.`);
+
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const playTone = (f, t, d) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.type = 'square'; osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.frequency.setValueAtTime(f, audioCtx.currentTime + t);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime + t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + d);
+                    osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                };
+                playTone(392.00, 0.0, 0.15); playTone(392.00, 0.15, 0.15);
+                playTone(392.00, 0.3, 0.15); playTone(523.25, 0.45, 0.8);
+            } catch(e) {}
+
+            const totalParticipants = available.length;
+            const baseSize = Math.floor(totalParticipants / numTeams);
+            const remainder = totalParticipants % numTeams;
+            
+            let targetSizes = new Array(numTeams).fill(baseSize);
+            for(let i = 0; i < remainder; i++) targetSizes[i]++;
+
+            const teams = Array.from({length: numTeams}, (_, i) => ({ id: i + 1, members: [], score: 0, targetSize: targetSizes[i] }));
+
+            // 볼센스와 점수를 기준으로 정렬
+            const sortByPower = (a, b) => {
+                let powerA = (a.score || 0) * 10 + (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+                let powerB = (b.score || 0) * 10 + (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
+                return powerB - powerA;
+            };
+
+            let boys = available.filter(s => s.gender === '남').sort(sortByPower);
+            let girls = available.filter(s => s.gender === '여').sort(sortByPower);
+
+            function distribute(group) {
+                group.forEach(student => {
+                    let eligibleTeams = teams.filter(t => t.members.length < t.targetSize);
+                    let minMembers = Math.min(...eligibleTeams.map(t => t.members.length));
+                    eligibleTeams = eligibleTeams.filter(t => t.members.length === minMembers);
+                    
+                    eligibleTeams.sort(() => Math.random() - 0.5); 
+                    eligibleTeams.sort((a, b) => a.score - b.score); 
+                    
+                    eligibleTeams[0].members.push(student);
+                    eligibleTeams[0].score += (student.score || 0);
+                });
+            }
+            
+            distribute(boys); distribute(girls);
+            currentGagaTeams = teams;
+            renderGagaTeamView();
+        }
+
+        window.renderGagaTeamView = function() {
+            const container = document.getElementById('gaga-team-matchups');
+            container.innerHTML = '';
+            
+            for(let i = 0; i < currentGagaTeams.length; i += 2) {
+                const teamA = currentGagaTeams[i]; const teamB = currentGagaTeams[i+1];
+                
+                const createBadges = (members) => members.map(m => `
+                    <div class="team-member-badge" style="border-color:${m.gender==='남'?'#3498db':'#e74c3c'};">
+                        <img src="${generateCuteAvatar(m.name)}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+                        <div class="member-info">
+                            <b>${m.name}</b>
+                            <span>${m.score || 0}점</span>
+                        </div>
+                    </div>`).join('');
+
+                const createPanel = (team) => `
+                    <div class="team-card-left">
+                        <div class="team-title">${team.id}팀</div>
+                        <div class="mt-auto">
+                            <div class="stepper-ctrl">
+                                <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepDown()">-</button>
+                                <input type="number" id="ts-${team.id}" class="team-score-input" value="1" min="1">
+                                <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepUp()">+</button>
+                            </div>
+                            <button class="btn-team-add" onclick="window.addGagaTeamScore(${team.id})">포인트 획득</button>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML += `
+                    <div class="matchup-row">
+                        <div class="team-card team-a">${createPanel(teamA)} <div class="team-card-right">${createBadges(teamA.members)}</div></div>
+                        ${teamB ? `<div class="vs-badge">VS</div><div class="team-card team-b">${createPanel(teamB)} <div class="team-card-right">${createBadges(teamB.members)}</div></div>` : ''}
+                    </div>`;
+            }
+        }
+
+        window.addGagaTeamScore = function(teamId) {
+            const val = parseInt(document.getElementById(`ts-${teamId}`).value, 10);
+            if(isNaN(val) || val === 0) return;
+            
+            if (val > 0) window.playCoinSound(); else window.playBumpSound();
+
+            const team = currentGagaTeams.find(t => t.id === teamId);
+            team.members.forEach(m => {
+                const student = classData[currentClass].find(s => s.no === m.no);
+                if(student) {
+                    student.score = Math.max(0, (student.score || 0) + val);
+                    m.score = student.score;
+                }
+            });
+            saveData(); renderGagaTeamView(); renderGagaball(); renderGagaRanking(); renderDrawSection(); renderStudentList();
+        }
+
+        // --- 모달 헬퍼 ---
+        window.openTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'flex'; }
+        window.closeTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'none'; }
+
+        // --- 룰렛 모달 ---
+        const individualMissions = [
+            { text: "그냥 가가볼", weight: 70, color: "#81ecec", desc: "평소처럼 가가볼을 즐기세요." },
+            { text: "체육쌤 레이드", weight: 10, color: "#ff7675", desc: "체육쌤이 경기장에 등장했습니다! 체육쌤을 아웃시키면 추가 점수가 주어집니다!" },
+            { text: "포인트 X2", weight: 20, color: "#ffeaa7", desc: "최종 승자에게는 평소보다 2배의 포인트가 주어집니다." }
+        ];
+        const teamMissions = [
+            { text: "그냥 가가볼", weight: 70, color: "#81ecec", desc: "평소처럼 가가볼을 즐기세요." },
+            { text: "왕을 잡아라!", weight: 15, color: "#a29bfe", desc: "양팀은 우리팀 왕을 한명 정해주세요. 상대팀 왕을 먼저 아웃시키는 팀이 승리합니다." },
+            { text: "포인트 X2", weight: 15, color: "#ffeaa7", desc: "최종 승리팀 전원에게 평소보다 2배의 포인트가 주어집니다." }
+        ];
+
+        let currentMissions = individualMissions;
+        let currentRouletteRotation = 0;
+        let isSpinning = false;
+
+        window.openRouletteModal = function(type) {
+            if(type === 'team') {
+                currentMissions = teamMissions;
+                document.getElementById('rouletteModalTitle').innerText = "🎡 팀전 미션 룰렛";
+            } else {
+                currentMissions = individualMissions;
+                document.getElementById('rouletteModalTitle').innerText = "🎡 개인전 미션 룰렛";
+            }
+            document.getElementById('rouletteModal').style.display = 'flex';
+            setTimeout(window.drawRoulette, 50); 
+        }
+
+        window.closeRouletteModal = function() {
+            if(isSpinning) return; 
+            document.getElementById('rouletteModal').style.display = 'none';
+        }
+
+        window.drawRoulette = function() {
+            const canvas = document.getElementById("rouletteCanvas");
+            if (!canvas.getContext) return;
+            const ctx = canvas.getContext("2d");
+            const cw = canvas.width;  
+            const ch = canvas.height; 
+            ctx.clearRect(0, 0, cw, ch);
+            
+            let startAngle = -0.5 * Math.PI; 
+            
+            for(let i=0; i<currentMissions.length; i++) {
+                let sliceAngle = (currentMissions[i].weight / 100) * 2 * Math.PI;
+                
+                ctx.beginPath();
+                ctx.moveTo(cw/2, ch/2);
+                ctx.arc(cw/2, ch/2, cw/2, startAngle, startAngle + sliceAngle);
+                ctx.fillStyle = currentMissions[i].color;
+                ctx.fill();
+                
+                ctx.lineWidth = 8; 
+                ctx.strokeStyle = "#ffffff";
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(cw/2, ch/2);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#2d3436";
+                
+                ctx.font = "bold 42px Jua"; 
+                ctx.fillText(currentMissions[i].text, cw/2 - 45, 15);
+                ctx.restore();
+                
+                startAngle += sliceAngle;
+            }
+
+            ctx.beginPath();
+            ctx.arc(cw/2, ch/2, 80, 0, 2 * Math.PI); 
+            ctx.fillStyle = "#2d3436";
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = "#ffffff";
+            ctx.stroke();
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 40px Jua";
+            ctx.fillText("미션", cw/2, ch/2);
+        }
+
+        window.spinRoulette = function() {
+            if(isSpinning) return;
+            isSpinning = true;
+
+            const canvas = document.getElementById("rouletteCanvas");
+            const spinAngle = Math.floor(Math.random() * 360) + (360 * 5); 
+            currentRouletteRotation += spinAngle;
+            
+            canvas.style.transition = "transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)"; 
+            canvas.style.transform = `rotate(${currentRouletteRotation}deg)`;
+
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                let startTime = audioCtx.currentTime;
+                for(let i=0; i<45; i++) {
+                    let t = i / 45; 
+                    let tickTime = startTime + 4.0 * (1 - Math.pow(1 - t, 3.5)); 
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(600 - (i*5), tickTime); 
+                    gain.gain.setValueAtTime(0, tickTime); gain.gain.linearRampToValueAtTime(0.3, tickTime + 0.01); gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.05);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(tickTime); osc.stop(tickTime + 0.05);
+                }
+            } catch(e) {}
+
+            setTimeout(() => {
+                isSpinning = false;
+                const normalizedRotation = currentRouletteRotation % 360;
+                let pointerAngle = (360 - normalizedRotation) % 360;
+                
+                let currentPos = 0; let winner = null;
+                for(let i=0; i<currentMissions.length; i++) {
+                    let sliceSize = (currentMissions[i].weight / 100) * 360;
+                    if(pointerAngle >= currentPos && pointerAngle < currentPos + sliceSize) { winner = currentMissions[i]; break; }
+                    currentPos += sliceSize;
+                }
+
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const playTone = (f, t, d) => {
+                        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                        osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
+                        osc.frequency.setValueAtTime(f, audioCtx.currentTime + t); gain.gain.setValueAtTime(0.3, audioCtx.currentTime + t); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + d);
+                        osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                    };
+                    playTone(523.25, 0.0, 0.2); playTone(523.25, 0.2, 0.2); playTone(523.25, 0.4, 0.2); playTone(659.25, 0.6, 0.2); playTone(783.99, 0.8, 0.6); 
+                } catch(e) {}
+                
+                window.showMissionDescModal(winner.text, winner.desc);
+            }, 4000);
+        }
+
+        window.showMissionDescModal = function(title, text) {
+            document.getElementById("missionDescTitle").innerText = "🎯 " + title;
+            document.getElementById("missionDescText").innerText = text;
+            document.getElementById("missionDescModal").style.display = "flex";
+        }
+        window.closeMissionDescModal = function() { document.getElementById("missionDescModal").style.display = "none"; }
+
+
+        // ==========================================
+        // 스마트 앱 기존 로직들 (볼센스 통합 적용)
+        // ==========================================
         window.renderStampBoard = () => {
             const board = document.getElementById('stampBoard');
             if (!board) return;
@@ -927,47 +1425,28 @@
             }
         };
 
-        // --- 슈우웅~ 쿵! 도장 사운드 적용 ---
         window.playStampSound = () => {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             const now = audioCtx.currentTime;
-            
-            const fallOsc = audioCtx.createOscillator();
-            const fallGain = audioCtx.createGain();
-            fallOsc.type = 'sine';
-            fallOsc.frequency.setValueAtTime(900, now);
-            fallOsc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
-            
-            fallGain.gain.setValueAtTime(0, now);
-            fallGain.gain.linearRampToValueAtTime(0.4, now + 0.15);
-            fallGain.gain.linearRampToValueAtTime(0, now + 0.35);
-            
+            const fallOsc = audioCtx.createOscillator(); const fallGain = audioCtx.createGain();
+            fallOsc.type = 'sine'; fallOsc.frequency.setValueAtTime(900, now); fallOsc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
+            fallGain.gain.setValueAtTime(0, now); fallGain.gain.linearRampToValueAtTime(0.4, now + 0.15); fallGain.gain.linearRampToValueAtTime(0, now + 0.35);
             fallOsc.connect(fallGain); fallGain.connect(audioCtx.destination);
             fallOsc.start(now); fallOsc.stop(now + 0.35);
 
-            const boomOsc = audioCtx.createOscillator();
-            const boomGain = audioCtx.createGain();
-            boomOsc.type = 'square';
-            boomOsc.frequency.setValueAtTime(150, now + 0.35);
-            boomOsc.frequency.exponentialRampToValueAtTime(20, now + 0.7);
-            
-            boomGain.gain.setValueAtTime(0, now + 0.34);
-            boomGain.gain.setValueAtTime(1.5, now + 0.35);
-            boomGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
-            
+            const boomOsc = audioCtx.createOscillator(); const boomGain = audioCtx.createGain();
+            boomOsc.type = 'square'; boomOsc.frequency.setValueAtTime(150, now + 0.35); boomOsc.frequency.exponentialRampToValueAtTime(20, now + 0.7);
+            boomGain.gain.setValueAtTime(0, now + 0.34); boomGain.gain.setValueAtTime(1.5, now + 0.35); boomGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
             boomOsc.connect(boomGain); boomGain.connect(audioCtx.destination);
             boomOsc.start(now + 0.35); boomOsc.stop(now + 0.7);
         };
         
         const playTone = (freq, type, duration, gainVal) => {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + duration);
         };
@@ -994,25 +1473,16 @@
             let totalSec = Math.floor(totalDeci / 100);
             let sec = totalSec % 60;
             let min = Math.floor(totalSec / 60);
-            
             let minStr = min > 0 ? String(min).padStart(2, '0') + ':' : '';
-            let secStr = String(sec).padStart(2, '0');
-            let centiStr = String(centi).padStart(2, '0');
-            
-            return `${minStr}${secStr}.${centiStr}`;
+            return `${minStr}${String(sec).padStart(2, '0')}.${String(centi).padStart(2, '0')}`;
         }
 
         window.parseTime = function(str) {
             if (!str) return 0;
             str = String(str).trim();
-            if (!str.includes(':')) {
-                let val = parseFloat(str);
-                return isNaN(val) ? 0 : Math.floor(val * 1000);
-            }
+            if (!str.includes(':')) return isNaN(parseFloat(str)) ? 0 : Math.floor(parseFloat(str) * 1000);
             let parts = str.split(':');
-            let min = parseInt(parts[0]) || 0;
-            let secCenti = parseFloat(parts[1]) || 0;
-            return (min * 60 * 1000) + Math.floor(secCenti * 1000);
+            return ((parseInt(parts[0]) || 0) * 60 * 1000) + Math.floor((parseFloat(parts[1]) || 0) * 1000);
         }
 
         function updateTimersLoop() {
@@ -1020,98 +1490,66 @@
             for (let i in activeTimers) {
                 let t = activeTimers[i];
                 if (t.isRunning) {
-                    if (t.mode === 'stopwatch') {
-                        t.elapsed = now - t.startTime;
-                    } else if (t.mode === 'timer') {
+                    if (t.mode === 'stopwatch') t.elapsed = now - t.startTime;
+                    else if (t.mode === 'timer') {
                         t.elapsed = t.target - (now - t.startTime);
                         if (t.elapsed <= 0) {
-                            t.elapsed = 0;
-                            t.isRunning = false;
+                            t.elapsed = 0; t.isRunning = false;
                             window.updateGroupRecord(i, window.formatTime(t.elapsed));
-                            
                             const btn = document.getElementById(`btn-play-${i}`);
-                            if(btn) {
-                                btn.innerText = '▶';
-                                btn.classList.remove('text-amber-400');
-                                btn.classList.add('text-slate-300');
-                            }
+                            if(btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
                         }
                     }
-                    
                     const display = document.getElementById(`time-display-${i}`);
                     if (display) {
                         display.innerText = window.formatTime(t.elapsed);
-                        if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) {
-                            display.classList.add('text-red-400');
-                        } else if (t.mode === 'timer' && t.elapsed === 0) {
-                            display.classList.add('text-red-500');
-                        } else {
-                            display.classList.remove('text-red-400', 'text-red-500');
-                        }
+                        if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) display.classList.add('text-red-400');
+                        else if (t.mode === 'timer' && t.elapsed === 0) display.classList.add('text-red-500');
+                        else display.classList.remove('text-red-400', 'text-red-500');
                     }
                 }
             }
-
             for (let i in activeStudentTimers) {
                 let t = activeStudentTimers[i];
                 if (t.isRunning) {
                     t.elapsed = now - t.startTime;
                     const display = document.getElementById(`st-time-display-${i}`);
-                    if (display) {
-                        display.innerText = window.formatTime(t.elapsed);
-                    }
+                    if (display) display.innerText = window.formatTime(t.elapsed);
                 }
             }
             requestAnimationFrame(updateTimersLoop);
         }
 
-        if(!timerLoopStarted) {
-            timerLoopStarted = true;
-            requestAnimationFrame(updateTimersLoop);
-        }
+        if(!timerLoopStarted) { timerLoopStarted = true; requestAnimationFrame(updateTimersLoop); }
 
         window.toggleStudentTimerPlay = function(studentNo) {
-            let t = activeStudentTimers[studentNo];
-            if (!t) return;
+            let t = activeStudentTimers[studentNo]; if (!t) return;
             let now = Date.now();
-            
             if (t.isRunning) {
-                t.isRunning = false;
-                window.updateStudentRecord(studentNo, t.elapsed);
+                t.isRunning = false; window.updateStudentRecord(studentNo, t.elapsed);
                 const btn = document.getElementById(`btn-st-play-${studentNo}`);
                 if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-500'); btn.classList.add('text-slate-400'); }
             } else {
-                t.isRunning = true;
-                t.startTime = now - t.elapsed;
+                t.isRunning = true; t.startTime = now - t.elapsed;
                 const btn = document.getElementById(`btn-st-play-${studentNo}`);
                 if (btn) { btn.innerText = '⏸'; btn.classList.remove('text-slate-400'); btn.classList.add('text-amber-500'); }
             }
         }
 
         window.resetStudentTimer = function(studentNo) {
-            let t = activeStudentTimers[studentNo];
-            if (!t) return;
-            t.isRunning = false;
-            t.elapsed = 0;
-            
-            const display = document.getElementById(`st-time-display-${studentNo}`);
-            if (display) { display.innerText = window.formatTime(t.elapsed); }
-            const btn = document.getElementById(`btn-st-play-${studentNo}`);
-            if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-500'); btn.classList.add('text-slate-400'); }
-            
+            let t = activeStudentTimers[studentNo]; if (!t) return;
+            t.isRunning = false; t.elapsed = 0;
+            const display = document.getElementById(`st-time-display-${studentNo}`); if (display) display.innerText = window.formatTime(t.elapsed);
+            const btn = document.getElementById(`btn-st-play-${studentNo}`); if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-500'); btn.classList.add('text-slate-400'); }
             window.updateStudentRecord(studentNo, t.elapsed);
         }
 
         window.manualStudentTimeEdit = function(studentNo) {
-            let t = activeStudentTimers[studentNo];
-            if (!t || t.isRunning) return;
-            
+            let t = activeStudentTimers[studentNo]; if (!t || t.isRunning) return;
             let input = prompt("개인 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.", window.formatTime(t.elapsed));
             if (input !== null && input.trim() !== '') {
-                let ms = window.parseTime(input);
-                t.elapsed = ms;
-                const display = document.getElementById(`st-time-display-${studentNo}`);
-                if (display) { display.innerText = window.formatTime(t.elapsed); }
+                t.elapsed = window.parseTime(input);
+                const display = document.getElementById(`st-time-display-${studentNo}`); if (display) display.innerText = window.formatTime(t.elapsed);
                 window.updateStudentRecord(studentNo, t.elapsed);
             }
         }
@@ -1119,102 +1557,59 @@
         window.updateStudentRecord = function(studentNo, elapsedMs) {
             if (!currentClass || !classData[currentClass]) return;
             const student = classData[currentClass].find(s => s.no == studentNo);
-            if (student) {
-                student.recordMs = elapsedMs;
-                saveData();
-            }
+            if (student) { student.recordMs = elapsedMs; saveData(); }
         }
 
         window.toggleTimerPlay = function(groupId) {
-            let t = activeTimers[groupId];
-            if (!t) return;
+            let t = activeTimers[groupId]; if (!t) return;
             let now = Date.now();
-            
             if (t.isRunning) {
-                t.isRunning = false;
-                window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
+                t.isRunning = false; window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
                 const btn = document.getElementById(`btn-play-${groupId}`);
                 if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
             } else {
                 t.isRunning = true;
-                if (t.mode === 'stopwatch') {
-                    t.startTime = now - t.elapsed;
-                } else {
-                    if (t.elapsed <= 0) t.elapsed = t.target;
-                    t.startTime = now - (t.target - t.elapsed);
-                }
+                if (t.mode === 'stopwatch') t.startTime = now - t.elapsed;
+                else { if (t.elapsed <= 0) t.elapsed = t.target; t.startTime = now - (t.target - t.elapsed); }
                 const btn = document.getElementById(`btn-play-${groupId}`);
                 if (btn) { btn.innerText = '⏸'; btn.classList.remove('text-slate-300'); btn.classList.add('text-amber-400'); }
             }
         }
 
         window.resetTimer = function(groupId) {
-            let t = activeTimers[groupId];
-            if (!t) return;
-            t.isRunning = false;
-            t.elapsed = (t.mode === 'timer') ? t.target : 0;
-            
+            let t = activeTimers[groupId]; if (!t) return;
+            t.isRunning = false; t.elapsed = (t.mode === 'timer') ? t.target : 0;
             const display = document.getElementById(`time-display-${groupId}`);
-            if (display) {
-                display.innerText = window.formatTime(t.elapsed);
-                display.classList.remove('text-red-500', 'text-red-400');
-            }
-            const btn = document.getElementById(`btn-play-${groupId}`);
-            if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
+            if (display) { display.innerText = window.formatTime(t.elapsed); display.classList.remove('text-red-500', 'text-red-400'); }
+            const btn = document.getElementById(`btn-play-${groupId}`); if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
             window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
         }
 
         window.toggleTimerMode = function(groupId) {
-            let t = activeTimers[groupId];
-            if (!t) return;
+            let t = activeTimers[groupId]; if (!t) return;
             t.isRunning = false;
-            
-            if (t.mode === 'stopwatch') {
-                t.mode = 'timer';
-                t.elapsed = t.target;
-            } else {
-                t.mode = 'stopwatch';
-                t.elapsed = 0;
-            }
-            
-            const icon = document.getElementById(`mode-icon-${groupId}`);
-            if (icon) icon.innerText = t.mode === 'stopwatch' ? '⏱️' : '⏳';
-            
+            if (t.mode === 'stopwatch') { t.mode = 'timer'; t.elapsed = t.target; } 
+            else { t.mode = 'stopwatch'; t.elapsed = 0; }
+            const icon = document.getElementById(`mode-icon-${groupId}`); if (icon) icon.innerText = t.mode === 'stopwatch' ? '⏱️' : '⏳';
             const display = document.getElementById(`time-display-${groupId}`);
-            if (display) {
-                display.innerText = window.formatTime(t.elapsed);
-                display.classList.remove('text-red-500', 'text-red-400');
-            }
-            const btn = document.getElementById(`btn-play-${groupId}`);
-            if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
+            if (display) { display.innerText = window.formatTime(t.elapsed); display.classList.remove('text-red-500', 'text-red-400'); }
+            const btn = document.getElementById(`btn-play-${groupId}`); if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-400'); btn.classList.add('text-slate-300'); }
             window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
         }
         
         window.manualTimeEdit = function(groupId) {
-            let t = activeTimers[groupId];
-            if (!t || t.isRunning) return;
-            
-            let promptMsg = t.mode === 'timer' ? "타이머 시간을 초 단위 또는 분:초(예: 60 또는 1:30)로 입력하세요." : "스톱워치 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.";
+            let t = activeTimers[groupId]; if (!t || t.isRunning) return;
+            let promptMsg = t.mode === 'timer' ? "타이머 시간을 초 단위 또는 분:초로 입력하세요." : "스톱워치 기록을 초 단위 또는 분:초로 입력하세요.";
             let defaultVal = t.mode === 'timer' ? "60" : window.formatTime(t.elapsed);
             let input = prompt(promptMsg, defaultVal);
-            
             if (input !== null && input.trim() !== '') {
                 let ms = window.parseTime(input);
-                if (t.mode === 'timer') {
-                    t.target = ms;
-                    t.elapsed = ms;
-                } else {
-                    t.elapsed = ms;
-                }
+                if (t.mode === 'timer') { t.target = ms; t.elapsed = ms; } else t.elapsed = ms;
                 const display = document.getElementById(`time-display-${groupId}`);
-                if (display) {
-                    display.innerText = window.formatTime(t.elapsed);
-                    display.classList.remove('text-red-500', 'text-red-400');
-                }
+                if (display) { display.innerText = window.formatTime(t.elapsed); display.classList.remove('text-red-500', 'text-red-400'); }
                 window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
             }
         }
-
 
         function migrateData() {
             for (const className in classData) {
@@ -1226,25 +1621,21 @@
                 if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
 
                 classData[className].forEach(s => {
-                    if (s.ballSense !== undefined && s.handSense === undefined) {
-                        let num = '-';
-                        if (s.ballSense === '상' || s.ballSense === '3') num = '3';
-                        else if (s.ballSense === '중' || s.ballSense === '2') num = '2';
-                        else if (s.ballSense === '하' || s.ballSense === '1') num = '1';
-                        s.handSense = num;
-                        s.footSense = num;
-                        delete s.ballSense;
+                    // 볼센스(ballSense)로 데이터 통합
+                    if (s.handSense !== undefined || s.footSense !== undefined) {
+                        let h = parseInt(s.handSense) || 0;
+                        let f = parseInt(s.footSense) || 0;
+                        let maxSense = Math.max(h, f);
+                        s.ballSense = maxSense > 0 ? String(maxSense) : '-';
+                        delete s.handSense;
+                        delete s.footSense;
                     }
                     if (s.agility !== undefined) {
                         let num = s.agility;
-                        if (s.agility === '상') num = '3';
-                        else if (s.agility === '중') num = '2';
-                        else if (s.agility === '하') num = '1';
+                        if (s.agility === '상') num = '3'; else if (s.agility === '중') num = '2'; else if (s.agility === '하') num = '1';
                         s.agility = num;
                     }
-
-                    if (!s.handSense) s.handSense = '-';
-                    if (!s.footSense) s.footSense = '-';
+                    if (!s.ballSense) s.ballSense = '-';
                     if (!s.agility) s.agility = '-';
                     
                     if (s.isCaptain === undefined) s.isCaptain = false;
@@ -1299,8 +1690,7 @@
                     const display = document.getElementById('current-class-display');
                     if (display) display.innerText = "학급을 선택해주세요";
                     ['tab-navigation', 'student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.classList.add('hidden');
+                        const el = document.getElementById(id); if (el) el.classList.add('hidden');
                     });
                 }
             }, (error) => {
@@ -1378,18 +1768,11 @@
                     li.className = "px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition border-b border-slate-50 last:border-0";
                     if(currentClass === cls) li.classList.add('bg-blue-100', 'text-blue-700');
                     li.innerText = cls;
-                    li.onclick = function() {
-                        window.selectClass(cls);
-                        window.toggleClassDropdown();
-                    };
+                    li.onclick = function() { window.selectClass(cls); window.toggleClassDropdown(); };
                     listEl.appendChild(li);
                 });
-                
-                if (currentClass && classes.includes(currentClass)) {
-                    btnText.innerText = currentClass;
-                } else {
-                    btnText.innerText = "학급 선택...";
-                }
+                if (currentClass && classes.includes(currentClass)) btnText.innerText = currentClass;
+                else btnText.innerText = "학급 선택...";
             }
         }
 
@@ -1415,7 +1798,7 @@
             if (!currentClass) return;
             window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
                 delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass];
-                saveData(); currentClass = ""; activeTimers = {}; activeStudentTimers = {}; gagaballOuts.clear();
+                saveData(); currentClass = ""; activeTimers = {}; activeStudentTimers = {};
                 document.getElementById('current-class-display').innerText = "학급을 선택해주세요";
                 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
                 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1425,7 +1808,7 @@
 
         window.deleteAllClasses = function() {
             window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
-                classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; gagaballOuts.clear(); saveData(); currentClass = "";
+                classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; saveData(); currentClass = "";
                 document.getElementById('current-class-display').innerText = "학급을 선택해주세요";
                 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
                 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1437,11 +1820,10 @@
 
         window.exportAllToExcel = function() {
             let csvContent = "\uFEFF"; 
-            csvContent += "학급,번호,이름,성별,손센스,발센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
+            csvContent += "학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
 
             if (Object.keys(classData).length === 0) {
-                csvContent += "=\"6-1\",1,홍길동,남,-,-,-,참석,0,,,,,,N,0\n";
-                csvContent += "=\"6-1\",2,김유관,여,-,-,-,참석,0,,,,,,N,0\n";
+                csvContent += "=\"6-1\",1,홍길동,남,-,-,참석,0,,,,,N,0\n";
             } else {
                 const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -1462,14 +1844,14 @@
                     
                     students.forEach((s, idx) => {
                         const attendance = s.attendance ? '참석' : '불참';
-                        const hs = s.handSense || '-'; const fs = s.footSense || '-'; const ag = s.agility || '-'; const score = s.score || 0;
+                        const bs = s.ballSense || '-'; const ag = s.agility || '-'; const score = s.score || 0;
                         const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
                         const isCapt = s.isCaptain ? 'Y' : 'N';
                         const recMs = s.recordMs || 0;
                         const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
                         const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
 
-                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${hs},${fs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
+                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
                     });
                 }
             }
@@ -1509,16 +1891,9 @@
 
                 window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
                     const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
-                    let idxG2 = header.indexOf('혼성2모둠');
-                    let idxG3 = header.indexOf('혼성3모둠');
-                    let idxG4 = header.indexOf('혼성4모둠');
-                    let idxGG = header.indexOf('동성모둠');
-                    let idxScores = header.indexOf('그룹점수JSON');
-                    let idxRecords = header.indexOf('그룹기록JSON');
-                    let idxCaptain = header.indexOf('체육부장');
-                    let idxPersonalRec = header.indexOf('개인기록');
-                    let idxHand = header.indexOf('손센스');
-                    let idxFoot = header.indexOf('발센스');
+                    let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
+                    let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); let idxPersonalRec = header.indexOf('개인기록');
+                    let idxBall = header.indexOf('볼센스'); let idxAgil = header.indexOf('순발력');
 
                     for (let i = 1; i < lines.length; i++) {
                         const parts = parseCSVLine(lines[i]);
@@ -1527,7 +1902,6 @@
                         let className = parts[0].trim();
                         if (className.startsWith('="') && className.endsWith('"')) className = className.slice(2, -1);
                         else if (className.startsWith('=')) className = className.substring(1);
-                        
                         className = normalizeClassName(className);
                         if (!className) continue; 
                         
@@ -1539,50 +1913,37 @@
                         }
                         
                         const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
-                        let hs = '-', fs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
+                        let bs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
                         let g2 = null, g3 = null, g4 = null, gg = null;
 
-                        if (header.includes('순발력')) {
-                            if(idxHand > -1 && idxFoot > -1) {
-                                hs = parts[idxHand].trim() === '-' ? '-' : parts[idxHand].trim();
-                                fs = parts[idxFoot].trim() === '-' ? '-' : parts[idxFoot].trim();
-                                ag = parts[6].trim() === '-' ? '-' : parts[6].trim();
-                                attendance = (parts[7].trim() === '출석' || parts[7].trim() === '참석');
-                                score = parts.length >= 9 && parts[8] ? parseInt(parts[8].trim()) : 0;
-                            } else {
-                                hs = parts[4].trim() === '-' ? '-' : parts[4].trim();
-                                fs = hs;
-                                ag = parts[5].trim() === '-' ? '-' : parts[5].trim();
-                                attendance = (parts[6].trim() === '출석' || parts[6].trim() === '참석');
-                                score = parts.length >= 8 && parts[7] ? parseInt(parts[7].trim()) : 0;
-                            }
-                            
-                            if (idxG2 > -1 && parts[idxG2]) g2 = parseInt(parts[idxG2].trim()) || null;
-                            if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
-                            if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
-                            if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
-                            if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
-                            if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
-                            
-                            if (idxScores > -1 && parts[idxScores]) {
-                                try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){}
-                            }
-                            if (idxRecords > -1 && parts[idxRecords]) {
-                                try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){}
-                            }
-                        } else {
-                            hs = parts[4].trim(); fs = parts[4].trim(); ag = parts[4].trim();
-                            attendance = (parts[5].trim() === '출석' || parts[5].trim() === '참석');
-                            score = parts.length >= 7 && parts[6] ? parseInt(parts[6].trim()) : 0;
-                            g4 = parts.length >= 6 && parts[5].includes('모둠') ? parseInt(parts[5]) : null;
+                        if (idxBall > -1) bs = parts[idxBall].trim() === '-' ? '-' : parts[idxBall].trim();
+                        if (idxAgil > -1) ag = parts[idxAgil].trim() === '-' ? '-' : parts[idxAgil].trim();
+                        
+                        let attIdx = header.indexOf('참석상태');
+                        if(attIdx > -1) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
+                        let scoreIdx = header.indexOf('개인점수');
+                        if(scoreIdx > -1) score = parseInt(parts[scoreIdx].trim()) || 0;
+
+                        if (idxG2 > -1 && parts[idxG2]) g2 = parseInt(parts[idxG2].trim()) || null;
+                        if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
+                        if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
+                        if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
+                        if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
+                        if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
+                        
+                        if (idxScores > -1 && parts[idxScores]) {
+                            try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){}
+                        }
+                        if (idxRecords > -1 && parts[idxRecords]) {
+                            try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){}
                         }
 
-                        newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, handSense: hs, footSense: fs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+                        newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
                     }
 
                     if (Object.keys(newData).length > 0) {
                         classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
-                        activeTimers = {}; activeStudentTimers = {}; gagaballOuts.clear();
+                        activeTimers = {}; activeStudentTimers = {};
                         window.renderClassSelect();
                         if (currentClass && !classData[currentClass]) {
                             currentClass = ""; document.getElementById('current-class-display').innerText = "학급을 선택해주세요";
@@ -1599,7 +1960,7 @@
                             finally { isDebouncing = false; }
                         }
 
-                        if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); if(typeof window.renderGagaball === 'function') window.renderGagaball(); }
+                        if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); window.renderGagaball(); }
                         window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
                     } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
                     document.getElementById('csv-all-file-input').value = ''; 
@@ -1610,9 +1971,7 @@
 
         window.selectClass = function(className) {
             currentClass = className;
-            activeTimers = {}; 
-            activeStudentTimers = {};
-            gagaballOuts.clear(); // 학급을 바꾸면 가가볼 상태도 초기화
+            activeTimers = {}; activeStudentTimers = {};
             
             const btnText = document.getElementById('class-select-btn-text');
             if (btnText) btnText.innerText = className;
@@ -1622,7 +1981,7 @@
             window.showTab(currentTab);
             window.renderClassSelect(); 
             renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard();
-            if(typeof window.renderGagaball === 'function') window.renderGagaball();
+            window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
         }
 
         window.showTab = function(tabName) {
@@ -1650,8 +2009,8 @@
                 renderStampBoard();
             } else if (tabName === 'gagaball') {
                 document.getElementById('gagaball-section').classList.remove('hidden');
-                document.getElementById('tab-gagaball').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-red-600 shadow-md border border-red-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
-                if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                document.getElementById('tab-gagaball').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-slate-800 shadow-md border border-slate-800 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+                window.switchGagaTab('score'); // 가가볼 들어갈때 기본으로 스코어보드 띄우기
             }
         }
 
@@ -1668,12 +2027,11 @@
                 if (parts.length >= 2) {
                     const no = parts[0]; const name = parts[1];
                     const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-                    const hs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-';
-                    const fs = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
-                    const ag = (parts[5] && ['1', '2', '3'].includes(parts[5])) ? parts[5] : '-';
-                    let group = null; if (parts[6]) { const g = parseInt(parts[6]); if (!isNaN(g) && g >= 1) group = g; }
+                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; // 볼센스
+                    const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
+                    let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
                     
-                    const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, handSense: hs, footSense: fs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+                    const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
                     newStudent[`group_${currentGroupMode}`] = group;
                     classData[currentClass].push(newStudent); addedCount++;
                 }
@@ -1681,7 +2039,7 @@
 
             if(addedCount > 0) {
                 document.getElementById('excel-input').value = ""; 
-                renderStudentList(); renderDrawSection(); if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                renderStudentList(); renderDrawSection(); window.renderGagaball();
                 
                 if (userId && db) {
                     isDebouncing = true;
@@ -1693,7 +2051,7 @@
                 }
 
                 window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
-            } else { window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 손센스 발센스 순발력 모둠] 순으로 띄어쓰기하여 입력해주세요."); }
+            } else { window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 띄어쓰기하여 입력해주세요."); }
         }
 
         window.cycleInputAbility = function(type) {
@@ -1704,7 +2062,7 @@
             const nextVal = abilitiesCycle[nextIdx];
             hiddenInput.value = nextVal;
             
-            let emoji = type === 'handSense' ? '🏀' : (type === 'footSense' ? '⚽' : '⚡');
+            let emoji = type === 'ballSense' ? '⚽' : '⚡';
             
             if (nextVal === '-') {
                 btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`;
@@ -1723,8 +2081,7 @@
             if (!currentClass) { window.showModal("알림", "먼저 학급을 선택해주세요."); return; }
             const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
             const genderInput = document.getElementById('add-gender'); 
-            const hsInput = document.getElementById('add-handSense');
-            const fsInput = document.getElementById('add-footSense');
+            const bsInput = document.getElementById('add-ballSense'); // 볼센스
             const agInput = document.getElementById('add-agility'); 
             const groupInput = document.getElementById('add-group');
 
@@ -1734,19 +2091,19 @@
             if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
             if (!classData[currentClass]) classData[currentClass] = [];
             
-            const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, handSense: hsInput.value, footSense: fsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+            const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
             newStudent[`group_${currentGroupMode}`] = groupVal;
             classData[currentClass].push(newStudent);
             
             noInput.value = ""; nameInput.value = ""; groupInput.value = "";
-            ['handSense', 'footSense', 'agility'].forEach(type => {
+            ['ballSense', 'agility'].forEach(type => {
                 document.getElementById(`add-${type}`).value = "-";
                 const btn = document.getElementById(`btn-add-${type}`);
-                let emoji = type === 'handSense' ? '🏀' : (type === 'footSense' ? '⚽' : '⚡');
+                let emoji = type === 'ballSense' ? '⚽' : '⚡';
                 btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`;
                 btn.className = "w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500";
             });
-            saveData(); renderStudentList(); renderDrawSection(); if(typeof window.renderGagaball === 'function') window.renderGagaball();
+            saveData(); renderStudentList(); renderDrawSection(); window.renderGagaball();
         }
 
         window.deleteStudent = function(studentNo) {
@@ -1756,8 +2113,7 @@
                 const idx = classData[currentClass].findIndex(s => s.no == studentNo);
                 if (idx > -1) { 
                     classData[currentClass].splice(idx, 1); 
-                    gagaballOuts.delete(studentNo);
-                    saveData(); renderStudentList(); renderDrawSection(); if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                    saveData(); renderStudentList(); renderDrawSection(); window.renderGagaball(); window.renderGagaTeamView();
                 }
             }, "삭제");
         }
@@ -1766,8 +2122,7 @@
             const student = classData[currentClass].find(s => s.no == studentNo);
             if (student) { 
                 student.attendance = !student.attendance; 
-                saveData(); renderStudentList(); renderGroups(); renderDrawSection(); 
-                if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                saveData(); renderStudentList(); renderGroups(); renderDrawSection(); window.renderGagaball();
             }
         }
         
@@ -1803,7 +2158,7 @@
         }
 
         function updateSortIcons() {
-            ['no', 'name', 'recordMs', 'gender', 'handSense', 'footSense', 'agility', 'group'].forEach(f => {
+            ['no', 'name', 'recordMs', 'gender', 'ballSense', 'agility', 'group'].forEach(f => {
                 const icon = document.getElementById(`sort-${f}-icon`);
                 if (icon) {
                     if (sortState.field === f) { icon.innerText = sortState.direction === 'asc' ? '▲' : '▼'; icon.classList.add('text-blue-500'); } 
@@ -1872,7 +2227,7 @@
 
                 if (s.attendance) {
                     if (sortState.field === 'gender') rowBgClass = s.gender === '남' ? 'bg-blue-50/60 hover:bg-blue-100/60' : 'bg-pink-50/60 hover:bg-pink-100/60';
-                    else if (sortState.field === 'handSense' || sortState.field === 'footSense' || sortState.field === 'agility') {
+                    else if (sortState.field === 'ballSense' || sortState.field === 'agility') {
                         const val = s[sortState.field];
                         if (val === '3') rowBgClass = 'bg-orange-50/60 hover:bg-orange-100/60';
                         else if (val === '2') rowBgClass = 'bg-emerald-50/60 hover:bg-emerald-100/60';
@@ -1895,8 +2250,7 @@
                     return 'bg-white hover:bg-slate-100 border border-slate-200 shadow-sm';
                 };
 
-                const hsColor = getAbilityColorClass(s.handSense);
-                const fsColor = getAbilityColorClass(s.footSense);
+                const bsColor = getAbilityColorClass(s.ballSense);
                 const agColor = getAbilityColorClass(s.agility);
 
                 let groupColorClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200';
@@ -1944,13 +2298,8 @@
                     <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.toggleAttendance(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 rounded sm:rounded-lg text-[9px] sm:text-[12px] font-black transition ${s.attendance ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-red-50 text-red-400 hover:bg-red-100'}">${s.attendance ? 'O' : 'X'}</button></td>
                     
                     <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
-                        <button onclick="window.cycleStudentAbility(${s.no}, 'handSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${hsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
-                            ${window.getAbilityHTML('handSense', s.handSense)}
-                        </button>
-                    </td>
-                    <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
-                        <button onclick="window.cycleStudentAbility(${s.no}, 'footSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${fsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
-                            ${window.getAbilityHTML('footSense', s.footSense)}
+                        <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
+                            ${window.getAbilityHTML('ballSense', s.ballSense)}
                         </button>
                     </td>
                     <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
@@ -1976,47 +2325,23 @@
             const descEl = document.getElementById('group-mode-desc');
             const btnText = document.getElementById('generate-btn-text');
 
-            if (mode === 'mixed2') {
-                descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다.";
-                btnText.innerText = "혼성 2팀 편성하기";
-            } else if (mode === 'mixed3') {
-                descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다.";
-                btnText.innerText = "혼성 3팀 편성하기";
-            } else if (mode === 'mixed4') {
-                descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다.";
-                btnText.innerText = "혼성 4팀 편성하기";
-            } else if (mode === 'gender') {
-                descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다.";
-                btnText.innerText = "동성 4팀 편성하기";
-            }
+            if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
+            else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
+            else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
+            else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+            
             renderStudentList(); renderGroups();
         }
 
         window.resetCurrentGroup = function() {
-            if (!currentClass || !classData[currentClass]) {
-                window.showModal("알림", "학급을 먼저 선택해주세요.");
-                return;
-            }
-            
+            if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학급을 먼저 선택해주세요."); return; }
             let modeName = currentGroupMode === 'mixed2' ? '혼성 2팀' : (currentGroupMode === 'mixed3' ? '혼성 3팀' : (currentGroupMode === 'mixed4' ? '혼성 4팀' : '동성 4팀'));
             
             window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 부여된 모둠 점수와 기록도 함께 지워집니다.</span>`, true, () => {
-                classData[currentClass].forEach(student => {
-                    student[`group_${currentGroupMode}`] = null;
-                    student.isCaptain = false;
-                });
-                
-                if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) {
-                    groupScores[currentClass][currentGroupMode] = {};
-                }
-                if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) {
-                    groupRecords[currentClass][currentGroupMode] = {};
-                }
-                
-                activeTimers = {};
-                saveData();
-                renderStudentList();
-                renderGroups();
+                classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
+                if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
+                if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
+                activeTimers = {}; saveData(); renderStudentList(); renderGroups();
                 window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
             });
         }
@@ -2045,6 +2370,7 @@
             saveData();
         }
 
+        // --- 모둠 편성 시에도 볼센스 하나만 사용하도록 수정 ---
         window.generateMixedGroups = function(numGroups) {
             const students = classData[currentClass];
             if (!students || students.length < numGroups) { window.showModal("인원 부족", `학생 정보가 부족합니다. 최소 ${numGroups}명 이상 등록되어야 합니다.`); return; }
@@ -2053,12 +2379,10 @@
             const presentStudents = students.filter(s => s.attendance); shuffle(presentStudents);
             students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
-            const groups = Array.from({ length: numGroups }, (_, i) => ({ 
-                id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 
-            }));
+            const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
 
             const assignToOptimalGroup = (student) => {
-                let stScore = (parseInt(student.handSense)||0) + (parseInt(student.footSense)||0) + (parseInt(student.agility)||0);
+                let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
                 const isMale = student.gender === '남';
 
                 let minTotalScore = Math.min(...groups.map(g => g.totalScore));
@@ -2074,14 +2398,13 @@
                 const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 student[`group_${currentGroupMode}`] = targetGroup.id;
                 
-                targetGroup.totalScore += stScore;
-                targetGroup.total++;
+                targetGroup.totalScore += stScore; targetGroup.total++;
                 if (isMale) targetGroup.male++; else targetGroup.female++;
             };
 
             presentStudents.sort((a, b) => {
-                let scoreA = (parseInt(a.handSense)||0) + (parseInt(a.footSense)||0) + (parseInt(a.agility)||0);
-                let scoreB = (parseInt(b.handSense)||0) + (parseInt(b.footSense)||0) + (parseInt(b.agility)||0);
+                let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+                let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
                 return scoreB - scoreA;
             });
             presentStudents.forEach(s => assignToOptimalGroup(s));
@@ -2103,28 +2426,24 @@
 
             const distribute = (targetStudents, groupIds) => {
                 shuffle(targetStudents);
-                
                 targetStudents.sort((a, b) => {
-                    let scoreA = (parseInt(a.handSense)||0) + (parseInt(a.footSense)||0) + (parseInt(a.agility)||0);
-                    let scoreB = (parseInt(b.handSense)||0) + (parseInt(b.footSense)||0) + (parseInt(b.agility)||0);
+                    let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+                    let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
                     return scoreB - scoreA;
                 });
 
                 const groups = groupIds.map(id => ({ id: id, total: 0, totalScore: 0 }));
                 
                 const assignToOptimalGroup = (student) => {
-                    let stScore = (parseInt(student.handSense)||0) + (parseInt(student.footSense)||0) + (parseInt(student.agility)||0);
-                    
+                    let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
                     let minTotalScore = Math.min(...groups.map(g => g.totalScore));
                     let candidates = groups.filter(g => g.totalScore === minTotalScore);
-
                     let minTotal = Math.min(...candidates.map(g => g.total));
                     candidates = candidates.filter(g => g.total === minTotal);
 
                     const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     student[`group_${currentGroupMode}`] = targetGroup.id;
-                    targetGroup.totalScore += stScore;
-                    targetGroup.total++;
+                    targetGroup.totalScore += stScore; targetGroup.total++;
                 };
                 
                 targetStudents.forEach(s => assignToOptimalGroup(s));
@@ -2176,9 +2495,7 @@
                 let score = 0; if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) score = groupScores[currentClass][currentGroupMode][i] || 0;
 
                 let groupTotalAbility = 0;
-                presentMembers.forEach(m => {
-                   groupTotalAbility += (parseInt(m.handSense)||0) + (parseInt(m.footSense)||0) + (parseInt(m.agility)||0); 
-                });
+                presentMembers.forEach(m => { groupTotalAbility += (parseInt(m.ballSense)||0) + (parseInt(m.agility)||0); });
 
                 const headerExtra = `
                     <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full items-center">
@@ -2188,20 +2505,13 @@
 
                 if (!activeTimers[i]) {
                     let savedVal = '';
-                    if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) {
-                        savedVal = groupRecords[currentClass][currentGroupMode][i];
-                    }
-                    let savedMs = 0;
-                    if (savedVal !== undefined && savedVal !== null && savedVal !== '') {
-                        savedMs = window.parseTime(savedVal);
-                    }
+                    if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) savedVal = groupRecords[currentClass][currentGroupMode][i];
+                    let savedMs = 0; if (savedVal !== undefined && savedVal !== null && savedVal !== '') savedMs = window.parseTime(savedVal);
                     activeTimers[i] = { mode: 'stopwatch', isRunning: false, elapsed: savedMs, target: 60000, startTime: 0 };
                 }
                 let t = activeTimers[i];
-                let playIcon = t.isRunning ? '⏸' : '▶';
-                let playColor = t.isRunning ? 'text-amber-400' : 'text-slate-300';
+                let playIcon = t.isRunning ? '⏸' : '▶'; let playColor = t.isRunning ? 'text-amber-400' : 'text-slate-300';
                 let modeIcon = t.mode === 'stopwatch' ? '⏱️' : '⏳';
-                
                 let timeColorClass = 'text-white';
                 if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) timeColorClass = 'text-red-400';
                 if(t.mode === 'timer' && t.elapsed === 0) timeColorClass = 'text-red-500';
@@ -2255,17 +2565,14 @@
                                     
                                     <div class="flex items-center justify-center gap-1 w-full mt-1">
                                         <span class="text-[10px] sm:text-[11px] font-mono ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
-                                        
                                         <button onclick="event.stopPropagation(); window.toggleCaptain(${m.no})" class="flex items-center justify-center text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight hover:bg-slate-200/50 px-1 py-0.5 rounded transition" title="이름 터치시 체육부장 토글">
                                             ${m.name}${captainBadgeHTML}
                                         </button>
-                                        
                                         <span class="text-[9px] sm:text-[10px] ${m.gender === '남' ? 'text-blue-500' : 'text-pink-500'} font-bold shrink-0">${m.gender}</span>
                                     </div>
                                     
                                     <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
-                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('handSense', m.handSense)}</div>
-                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('footSense', m.footSense)}</div>
+                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
                                         <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
                                     </div>
                                 </div>
@@ -2330,13 +2637,11 @@
             shuffle(availableStudents); const anchorStudent = availableStudents[0];
 
             const getDistance = (s1, s2) => {
-                const hs1 = parseInt(s1.handSense)||0, hs2 = parseInt(s2.handSense)||0;
-                const fs1 = parseInt(s1.footSense)||0, fs2 = parseInt(s2.footSense)||0;
+                const bs1 = parseInt(s1.ballSense)||0, bs2 = parseInt(s2.ballSense)||0;
                 const ag1 = parseInt(s1.agility)||0, ag2 = parseInt(s2.agility)||0;
-                let distHs = (hs1 === 0 || hs2 === 0) ? 3 : Math.abs(hs1 - hs2);
-                let distFs = (fs1 === 0 || fs2 === 0) ? 3 : Math.abs(fs1 - fs2);
+                let distBs = (bs1 === 0 || bs2 === 0) ? 3 : Math.abs(bs1 - bs2);
                 let distAg = (ag1 === 0 || ag2 === 0) ? 3 : Math.abs(ag1 - ag2);
-                return distHs + distFs + distAg;
+                return distBs + distAg;
             };
 
             const studentsWithDistance = availableStudents.map(s => ({ student: s, distance: getDistance(anchorStudent, s), rand: Math.random() }));
@@ -2378,20 +2683,18 @@
         window.resetDrawPool = function() {
             if (!classData[currentClass]) return;
             window.showModal("뽑기 초기화", "뽑기 기록을 초기화하시겠습니까?<br>모든 학생이 다시 뽑힐 수 있는 상태로 되돌아갑니다.", true, () => {
-                classData[currentClass].forEach(s => s.drawn = false); saveData(); renderDrawSection();
+                classData[currentClass].forEach(s => s.drawn = false); saveData(); renderDrawSection(); window.renderGagaball();
                 const container = document.getElementById('draw-result'); if (container) { container.innerHTML = ""; container.classList.add('hidden'); }
                 window.showModal("초기화 완료", "모든 뽑기 기록이 초기화되었습니다.");
             });
         }
 
-        window.resetAllScores = function() {
+        window.resetAllScoresDB = function() {
             if (!classData[currentClass]) return;
             window.showModal("점수 초기화", "전체 학생의 <b>개인 점수</b>를 모두 0점으로 초기화하시겠습니까?", true, () => {
                 classData[currentClass].forEach(s => s.score = 0); 
                 saveData(); 
-                renderStudentList();
-                renderDrawSection();
-                if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                renderStudentList(); renderDrawSection(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
                 window.showModal("초기화 완료", "모든 학생의 점수가 0점으로 초기화되었습니다.");
             });
         }
@@ -2457,7 +2760,7 @@
 
         window.adjustScore = function(delta) {
             const input = document.getElementById('score-modal-input');
-            let currentVal = parseInt(input.value) || 0; input.value = currentVal + delta;
+            let currentVal = parseInt(input.value) || 0; input.value = Math.max(0, currentVal + delta);
         }
 
         window.saveScore = function() {
@@ -2465,7 +2768,8 @@
             const student = classData[currentClass].find(s => s.no === currentEditingStudentNo);
             if(student) {
                 const input = document.getElementById('score-modal-input');
-                student.score = parseInt(input.value) || 0; saveData(); renderDrawSection(); 
+                student.score = parseInt(input.value) || 0; 
+                saveData(); renderDrawSection(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
                 
                 const newRanks = getStudentRanks();
                 const allDrawnCards = document.querySelectorAll('#draw-result div[data-student-no]');
