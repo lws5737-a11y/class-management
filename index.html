@@ -301,7 +301,6 @@
 
             <!-- 🏟️ 가가볼 섹션 -->
             <section id="gagaball-section" class="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
-                
                 <div class="flex justify-center gap-3 mb-8 border-b-4 border-slate-800 pb-5">
                     <button onclick="window.switchGagaTab('score')" id="gaga-btn-score" class="px-6 py-3 font-black text-xl sm:text-3xl rounded-xl bg-slate-800 text-white shadow-md transition transform hover:scale-105">🏆 스코어보드</button>
                     <button onclick="window.switchGagaTab('rank')" id="gaga-btn-rank" class="px-6 py-3 font-black text-xl sm:text-3xl rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition transform hover:scale-105">🥇 순위표</button>
@@ -365,7 +364,6 @@
                     </div>
                     <div id="gaga-team-matchups" class="flex flex-col gap-4"></div>
                 </div>
-
             </section>
 
             <!-- 학생 명단 관리 섹션 -->
@@ -466,56 +464,70 @@
                 </div>
             </section>
 
-            <!-- 🎲 업그레이드된 모둠 섹션 -->
+            <!-- 🎲 모둠 섹션 -->
             <section id="group-section" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
-                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
-                    <div class="flex items-center gap-2 sm:gap-3">
-                        <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
-                            <span class="mr-2 text-indigo-500">🎲</span> 모둠 편성
-                        </h2>
-                        <div class="flex items-center gap-1.5 print-hide ml-1 sm:ml-2">
-                            <button onclick="window.print()" class="flex items-center gap-1.5 text-[11px] sm:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-2 sm:px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                <span class="hidden sm:inline">프린트</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex gap-2 w-full sm:w-auto print-hide">
-                        <select id="group-type-select" onchange="window.updateGroupSettings()" class="bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm focus:outline-indigo-500 shadow-sm flex-1 sm:flex-none">
-                            <option value="mixed">혼성</option>
-                            <option value="gender">동성</option>
-                        </select>
-                        <select id="group-size-select" onchange="window.updateGroupSettings()" class="bg-slate-50 border border-slate-200 text-slate-700 px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm focus:outline-indigo-500 shadow-sm flex-1 sm:flex-none">
-                            <option value="2">2명 단위</option>
-                            <option value="3">3명 단위</option>
-                            <option value="4" selected>4명 단위</option>
-                            <option value="5">5명 단위</option>
-                            <option value="6">6명 단위</option>
-                        </select>
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-3 print-hide">
+                    <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
+                        <span class="mr-2 text-indigo-500">🎲</span> 모둠 편성
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="flex items-center gap-1.5 text-[11px] sm:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-2 sm:px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            <span class="hidden sm:inline">프린트</span>
+                        </button>
+                        <button onclick="window.resetCurrentGroup()" class="bg-white border border-red-200 text-red-500 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-red-50 transition flex items-center justify-center gap-1">
+                            🗑️ 초기화
+                        </button>
                     </div>
                 </div>
                 
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4 print-hide">
-                    <div class="text-sm font-bold text-slate-600 flex items-center gap-1.5 w-full sm:w-auto">
-                        <span id="group-mode-desc" class="truncate bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200"><b>혼성 4명 단위</b> 편성 결과입니다.</span>
+                <!-- 편성 컨트롤 패널 -->
+                <div class="flex flex-col gap-4 mb-6 print-hide">
+                    
+                    <!-- 1. 기존 모둠 편성 (팀 수 기준) -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center shrink-0">
+                            <span class="text-sm font-black text-slate-700">📌 기존 팀 편성</span>
+                            <span class="text-[10px] text-slate-400 ml-2 font-normal">(무작위 배정)</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <button onclick="window.generateGroupsOld(2)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">2팀</button>
+                            <button onclick="window.generateGroupsOld(3)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">3팀</button>
+                            <button onclick="window.generateGroupsOld(4)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">4팀</button>
+                            <button onclick="window.generateGroupsOld(5)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">5팀</button>
+                            <button onclick="window.generateGroupsOld(6)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">6팀</button>
+                        </div>
                     </div>
-                    <div class="flex gap-2 w-full sm:w-auto">
-                        <button onclick="window.resetCurrentGroup()" class="w-full sm:w-auto bg-white border border-red-200 text-red-500 px-4 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold shadow-sm hover:bg-red-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
-                            <span>🗑️ 초기화</span>
-                        </button>
-                        <button onclick="window.generateCurrentGroup()" class="w-full sm:w-auto bg-indigo-500 text-white px-5 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold shadow-md hover:bg-indigo-600 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
-                            <span class="text-lg leading-none">🎲</span> <span id="generate-btn-text">새로 편성하기</span>
-                        </button>
+
+                    <!-- 2. 신규 모둠 편성 (인원 수 기준 밸런스) -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <div class="flex items-center shrink-0">
+                            <span class="text-sm font-black text-indigo-700">✨ 신규 밸런스 편성</span>
+                            <span class="text-[10px] text-indigo-400 ml-2 font-normal">(능력치 최적화)</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <select id="group-type-select" class="flex-1 sm:flex-none bg-white border border-indigo-200 text-indigo-800 px-3 py-2 rounded-lg text-sm font-bold shadow-sm focus:outline-indigo-500 cursor-pointer">
+                                <option value="mixed">👫 혼성 편성</option>
+                                <option value="gender">🙋‍♂️🙋‍♀️ 동성 편성</option>
+                            </select>
+                            <select id="group-size-select" class="flex-1 sm:flex-none bg-white border border-indigo-200 text-indigo-800 px-3 py-2 rounded-lg text-sm font-bold shadow-sm focus:outline-indigo-500 cursor-pointer">
+                                <option value="2">2명 단위</option>
+                                <option value="3">3명 단위</option>
+                                <option value="4" selected>4명 단위</option>
+                                <option value="5">5명 단위</option>
+                                <option value="6">6명 단위</option>
+                            </select>
+                            <button onclick="window.generateUnitGroups()" class="w-full sm:w-auto px-5 py-2 bg-indigo-500 text-white rounded-lg shadow-md text-sm font-black hover:bg-indigo-600 transition transform hover:scale-105">
+                                🎲 밸런스 편성 실행
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start sm:items-center gap-2 print-hide">
-                    <span class="text-indigo-500 mt-0.5 sm:mt-0">💡</span>
-                    <p class="text-[11px] sm:text-sm text-indigo-800 font-medium leading-relaxed">
-                        <b>전력 밸런싱:</b> 볼센스와 순발력이 균등하게 분배되도록 자동으로 팀이 섞입니다. (능력치가 같을 땐 랜덤 배정)<br>
-                        <span class="text-slate-500 text-[10px] sm:text-xs">※ 학생 카드를 끌어다 놓아 수동 자리 이동도 가능합니다. 체육 부장 지정은 이름을 터치하세요.</span>
-                    </p>
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4 print-hide">
+                    <div class="text-sm font-bold text-slate-600 flex items-center gap-1.5 w-full sm:w-auto">
+                        <span id="group-mode-desc" class="truncate bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">편성 방식을 선택해주세요.</span>
+                    </div>
                 </div>
                 
                 <div id="group-result" class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1">
@@ -810,7 +822,7 @@
         let sortState = { field: 'no', direction: 'asc' };
         let drawSortByScore = false; 
         
-        let currentGroupMode = 'mixed_4'; // 기본 모드: 혼성 4명 단위
+        let currentGroupMode = 'old_4'; // 기본 모드 세팅 (기존 방식 4팀)
         
         let currentTab = 'student'; 
         let activeTimers = {}; let activeStudentTimers = {}; let timerLoopStarted = false; let draggedStudentNo = null;
@@ -1315,41 +1327,58 @@
         }
 
         // ===============================================
-        // 🚀 다이나믹 모둠 편성 코어 로직 (볼센스/순발력 밸런싱)
+        // 🚀 기존 (팀 단위) 및 신규 (인원 단위 밸런스) 모둠 편성 로직
         // ===============================================
-        window.updateGroupSettings = function() {
+
+        // [기존 방식] N개 팀으로 나누기 (랜덤 배정)
+        window.generateGroupsOld = function(numTeams) {
+            if (!currentClass || !classData[currentClass]) return window.showModal("알림", "학급을 먼저 선택해주세요.");
+            const students = classData[currentClass].filter(s => s.attendance);
+            if (students.length < numTeams) return window.showModal("인원 부족", "참석 인원이 팀 수보다 적습니다.");
+
+            window.showModal(`${numTeams}팀 랜덤 편성`, `기존 방식대로 <b>${numTeams}팀</b>으로 무작위 편성을 진행하시겠습니까?`, true, () => {
+                currentGroupMode = `old_${numTeams}`;
+                document.getElementById('group-mode-desc').innerHTML = `<b>📌 기존 편성 (${numTeams}팀)</b> 결과입니다.`;
+                
+                classData[currentClass].forEach(s => s[`group_${currentGroupMode}`] = null);
+                
+                // 학생들을 무작위로 섞은 후 차례대로 1~numTeams 모둠에 배정
+                let shuffled = [...students].sort(() => Math.random() - 0.5);
+                shuffled.forEach((s, index) => {
+                    s[`group_${currentGroupMode}`] = (index % numTeams) + 1;
+                });
+                
+                if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
+                if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+                activeTimers = {}; saveData(); renderStudentList(); renderGroups();
+            });
+        }
+
+        // [신규 방식] 2~6명 단위 밸런스 편성 실행
+        window.generateUnitGroups = function() {
+            if (!currentClass || !classData[currentClass]) return window.showModal("알림", "학급을 먼저 선택해주세요.");
             const type = document.getElementById('group-type-select').value;
-            const size = document.getElementById('group-size-select').value;
-            currentGroupMode = `${type}_${size}`;
-            activeTimers = {};
+            const size = parseInt(document.getElementById('group-size-select').value, 10);
             const typeText = type === 'mixed' ? '혼성' : '동성';
-            document.getElementById('group-mode-desc').innerHTML = `<b>${typeText} ${size}명 단위</b> 편성 결과입니다.`;
-            renderStudentList(); renderGroups();
+
+            window.showModal(`신규 ${typeText} ${size}명 밸런스 편성`, `전력(볼센스+순발력) 밸런스를 최우선으로 하여 <b>${typeText} ${size}명 단위</b>로 자동 편성하시겠습니까?<br><br><span class='text-red-500 font-bold text-xs'>※ 동점자는 무작위로 자동 섞입니다.</span>`, true, () => {
+                currentGroupMode = `${type}_${size}`;
+                document.getElementById('group-mode-desc').innerHTML = `<b>✨ 신규 밸런스 편성 (${typeText} ${size}명 단위)</b> 결과입니다.`;
+                
+                if(type === 'mixed') window.generateMixedGroupsDynamic(size);
+                else window.generateGenderGroupsDynamic(size);
+            });
         }
 
         window.resetCurrentGroup = function() {
-            if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학급을 먼저 선택해주세요."); return; }
-            const typeText = document.getElementById('group-type-select').value === 'mixed' ? '혼성' : '동성';
-            const size = document.getElementById('group-size-select').value;
-            window.showModal("모둠 초기화", `정말 현재 학급의 <b>${typeText} ${size}명 단위</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 해당 모드의 점수와 기록도 함께 지워집니다.</span>`, true, () => {
+            if (!currentClass || !classData[currentClass]) return window.showModal("알림", "학급을 먼저 선택해주세요.");
+            window.showModal("모둠 초기화", `정말 현재 화면에 보이는 <b>모둠 편성 결과</b>를 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 해당 모드의 점수와 타이머 기록도 함께 지워집니다.</span>`, true, () => {
                 classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
                 if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
                 if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
                 activeTimers = {}; saveData(); renderStudentList(); renderGroups();
                 window.showModal("완료", "편성이 초기화되었습니다.");
             });
-        }
-
-        window.generateCurrentGroup = function() {
-            const type = document.getElementById('group-type-select').value;
-            const size = parseInt(document.getElementById('group-size-select').value, 10);
-            const typeText = type === 'mixed' ? '혼성' : '동성';
-            const title = `${typeText} ${size}명 단위 편성`;
-
-            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>전력(볼센스+순발력) 밸런스를 최우선으로, 동점자는 무작위로 자동 편성됩니다.</span>`, true, () => {
-                if(type === 'mixed') window.generateMixedGroupsDynamic(size);
-                else window.generateGenderGroupsDynamic(size);
-            }, "새로 편성하기");
         }
 
         window.updateGroupScore = function(groupId, change) { if (!groupScores[currentClass]) groupScores[currentClass] = {}; if (!groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {}; groupScores[currentClass][currentGroupMode][groupId] = (groupScores[currentClass][currentGroupMode][groupId] || 0) + change; saveData(); renderGroups(); }
@@ -1511,7 +1540,7 @@
                     </div>`;
                 container.appendChild(card);
             }
-            if (!hasAnyGroup) container.innerHTML = `<div class="col-span-1 lg:col-span-2 xl:col-span-4 text-center text-slate-400 py-10 font-bold bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 w-full">아직 편성된 모둠이 없습니다.<br>상단의 [새로 편성하기]를 클릭해주세요.</div>`;
+            if (!hasAnyGroup) container.innerHTML = `<div class="col-span-1 lg:col-span-2 xl:col-span-4 text-center text-slate-400 py-10 font-bold bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 w-full">아직 편성된 모둠이 없습니다.<br>원하시는 편성 방식을 선택해주세요.</div>`;
         }
 
         function getStudentRanks() {
