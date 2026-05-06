@@ -486,18 +486,18 @@
                             <span class="text-[10px] text-slate-400 ml-2 font-normal">(무작위 배정)</span>
                         </div>
                         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <button onclick="window.setGroupMode('old_2'); window.generateCurrentGroup();" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">2팀</button>
-                            <button onclick="window.setGroupMode('old_3'); window.generateCurrentGroup();" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">3팀</button>
-                            <button onclick="window.setGroupMode('old_4'); window.generateCurrentGroup();" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">4팀</button>
-                            <button onclick="window.setGroupMode('old_5'); window.generateCurrentGroup();" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">5팀</button>
-                            <button onclick="window.setGroupMode('old_6'); window.generateCurrentGroup();" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">6팀</button>
+                            <button onclick="window.generateGroupsOld(2)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">2팀</button>
+                            <button onclick="window.generateGroupsOld(3)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">3팀</button>
+                            <button onclick="window.generateGroupsOld(4)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">4팀</button>
+                            <button onclick="window.generateGroupsOld(5)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">5팀</button>
+                            <button onclick="window.generateGroupsOld(6)" class="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-bold hover:bg-blue-50 hover:text-blue-600 transition">6팀</button>
                         </div>
                     </div>
 
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 shadow-sm">
                         <div class="flex items-center shrink-0">
-                            <span class="text-sm font-black text-indigo-700">✨ 소그룹 밸런스 편성</span>
-                            <span class="text-[10px] text-indigo-400 ml-2 font-normal">(능력치 균등 분배)</span>
+                            <span class="text-sm font-black text-indigo-700">✨ 신규 밸런스 편성</span>
+                            <span class="text-[10px] text-indigo-400 ml-2 font-normal">(능력치 최적화)</span>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <select id="unit-group-type" class="flex-1 sm:flex-none bg-white border border-indigo-200 text-indigo-800 px-3 py-2 rounded-lg text-sm font-bold shadow-sm focus:outline-indigo-500 cursor-pointer">
@@ -505,14 +505,14 @@
                                 <option value="gender">🙋‍♂️🙋‍♀️ 동성 편성</option>
                             </select>
                             <select id="unit-group-size" class="flex-1 sm:flex-none bg-white border border-indigo-200 text-indigo-800 px-3 py-2 rounded-lg text-sm font-bold shadow-sm focus:outline-indigo-500 cursor-pointer">
-                                <option value="2">2명씩</option>
-                                <option value="3">3명씩</option>
-                                <option value="4" selected>4명씩</option>
-                                <option value="5">5명씩</option>
-                                <option value="6">6명씩</option>
+                                <option value="2">2명 단위</option>
+                                <option value="3">3명 단위</option>
+                                <option value="4" selected>4명 단위</option>
+                                <option value="5">5명 단위</option>
+                                <option value="6">6명 단위</option>
                             </select>
                             <button onclick="window.generateUnitGroups()" class="w-full sm:w-auto px-5 py-2 bg-indigo-500 text-white rounded-lg shadow-md text-sm font-black hover:bg-indigo-600 transition transform hover:scale-105">
-                                🎲 편성 실행
+                                🎲 밸런스 편성 실행
                             </button>
                         </div>
                     </div>
@@ -883,7 +883,7 @@
             document.getElementById('gaga-draw-stats').innerText = `대기: 총 ${availableTotal}명 (남 ${availableBoys} / 여 ${availableGirls})`;
         };
 
-        window.changeGagaScore = function(no, val) { const student = classData[currentClass].find(s => s.no == no); if(!student) return; if (val > 0) window.playCoinSound(); else window.playBumpSound(); student.score = Math.max(0, (student.score || 0) + val); saveData(); renderGagaball(); renderGagaRanking(); renderStudentList(); }
+        window.changeGagaScore = function(no, val) { const student = classData[currentClass].find(s => s.no == no); if(!student) return; if (val > 0) window.playCoinSound(); else window.playBumpSound(); student.score = Math.max(0, (student.score || 0) + val); saveData(); renderGagaball(); renderGagaRanking(); }
         window.renderGagaRanking = function() { const tbody = document.getElementById('gaga-ranking-body'); if(!tbody || !currentClass) return; tbody.innerHTML = ''; const studentsForRank = [...(classData[currentClass] || [])].filter(s => s.attendance).sort((a, b) => (b.score || 0) - (a.score || 0)); let rank = 1; studentsForRank.forEach((s, i) => { if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1; let rClass = rank === 1 ? 'rank-1' : (rank === 2 ? 'rank-2' : (rank === 3 ? 'rank-3' : '')); tbody.innerHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`; }); }
 
         window.triggerGagaDraw = function(targetGender) {
@@ -930,7 +930,7 @@
             }
         }
 
-        window.addGagaTeamScore = function(teamId) { const val = parseInt(document.getElementById(`ts-${teamId}`).value, 10); if(isNaN(val) || val === 0) return; if (val > 0) window.playCoinSound(); else window.playBumpSound(); const team = currentGagaTeams.find(t => t.id === teamId); team.members.forEach(m => { const student = classData[currentClass].find(s => s.no === m.no); if(student) { student.score = Math.max(0, (student.score || 0) + val); m.score = student.score; } }); saveData(); renderGagaTeamView(); renderGagaball(); renderGagaRanking(); renderStudentList(); }
+        window.addGagaTeamScore = function(teamId) { const val = parseInt(document.getElementById(`ts-${teamId}`).value, 10); if(isNaN(val) || val === 0) return; if (val > 0) window.playCoinSound(); else window.playBumpSound(); const team = currentGagaTeams.find(t => t.id === teamId); team.members.forEach(m => { const student = classData[currentClass].find(s => s.no === m.no); if(student) { student.score = Math.max(0, (student.score || 0) + val); m.score = student.score; } }); saveData(); renderGagaTeamView(); renderGagaball(); renderGagaRanking(); }
 
         window.openTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'flex'; }
         window.closeTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'none'; }
@@ -999,7 +999,7 @@
                     if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
                 }
                 window.renderClassSelect();
-                if (currentClass && classData[currentClass]) { renderStudentList(); if(typeof renderGroups === 'function') renderGroups(); if(typeof renderStampBoard === 'function') renderStampBoard(); if(typeof renderDrawSection === 'function') renderDrawSection(); window.renderGagaball(); } 
+                if (currentClass && classData[currentClass]) { renderStudentList(); if(typeof renderGroups === 'function') renderGroups(); if(typeof renderStampBoard === 'function') renderStampBoard(); if(typeof renderDrawSection === 'function') renderDrawSection(); } 
                 else if (currentClass && !classData[currentClass]) { currentClass = ""; const display = document.getElementById('current-class-display'); if (display) display.innerText = "학급을 선택해주세요"; ['tab-navigation', 'student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }); }
             }, (error) => { if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
         }
@@ -1015,3 +1015,4 @@
     </script>
 </body>
 </html>
+기존코드에서 가가볼 점수를 뽑기 점수에 불러와서 사용할 수 있도록 해줘. 그리고 도장판에서 현재 미션달성도를 삭제하고 1~20번 번호 대신 다른 이미지를 넣을 수 있게 해줘.
