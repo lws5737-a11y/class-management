@@ -526,7 +526,7 @@
 
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4 print-hide">
                     <div class="text-sm font-bold text-slate-600 flex items-center gap-1.5 w-full sm:w-auto">
-                        <span id="group-mode-desc" class="truncate bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">편성 방식을 선택해주세요.</span>
+                        <span id="group-mode-desc" class="truncate bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">현재 저장된 편성 결과입니다.</span>
                     </div>
                 </div>
                 
@@ -822,8 +822,6 @@
         let sortState = { field: 'no', direction: 'asc' };
         let drawSortByScore = false; 
         
-        let currentGroupMode = 'old_4'; // 기본 모드 세팅 (기존 방식 4팀)
-        
         let currentTab = 'student'; 
         let activeTimers = {}; let activeStudentTimers = {}; let timerLoopStarted = false; let draggedStudentNo = null;
 
@@ -841,8 +839,8 @@
 
             if (draggedIndex > -1 && targetIndex > -1) {
                 const draggedStudent = students[draggedIndex]; const targetStudent = students[targetIndex];
-                const draggedGroup = draggedStudent[`group_${currentGroupMode}`]; const targetGroup = targetStudent[`group_${currentGroupMode}`];
-                if (draggedGroup !== targetGroup) { draggedStudent[`group_${currentGroupMode}`] = targetGroup; targetStudent[`group_${currentGroupMode}`] = draggedGroup; } 
+                const draggedGroup = draggedStudent.group; const targetGroup = targetStudent.group;
+                if (draggedGroup !== targetGroup) { draggedStudent.group = targetGroup; targetStudent.group = draggedGroup; } 
                 else { students.splice(draggedIndex, 1); const newTargetIndex = students.findIndex(s => s.no === targetStudentNo); students.splice(newTargetIndex, 0, draggedStudent); }
                 saveData(); renderStudentList(); renderGroups();
             }
@@ -851,7 +849,7 @@
         window.handleDropOnGroup = function(e, targetGroupId) {
             e.preventDefault(); if (!draggedStudentNo) return;
             const students = classData[currentClass]; const draggedStudent = students.find(s => s.no === draggedStudentNo);
-            if (draggedStudent && draggedStudent[`group_${currentGroupMode}`] !== targetGroupId) { draggedStudent[`group_${currentGroupMode}`] = targetGroupId; saveData(); renderStudentList(); renderGroups(); }
+            if (draggedStudent && draggedStudent.group !== targetGroupId) { draggedStudent.group = targetGroupId; saveData(); renderStudentList(); renderGroups(); }
         };
 
         window.toggleClassDropdown = function(e) {
@@ -871,7 +869,7 @@
 
         const getGroupsCycle = () => {
             const students = classData[currentClass] || []; let max = 0;
-            students.forEach(s => { let g = s[`group_${currentGroupMode}`]; if(g && g > max) max = g; });
+            students.forEach(s => { let g = s.group; if(g && g > max) max = g; });
             if (max < 2) max = 8;
             const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
         };
@@ -1108,7 +1106,7 @@
                     const safeClassName = `="${className}"`; 
                     students.forEach((s, idx) => {
                         const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : ''; const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${s.ballSense||'-'},${s.agility||'-'},${s.attendance?'참석':'불참'},${s.score||0},${s[`group_${currentGroupMode}`]||''},${jsonScoreCol},${jsonRecordCol},${s.isCaptain?'Y':'N'},${s.recordMs||0}\n`;
+                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${s.ballSense||'-'},${s.agility||'-'},${s.attendance?'참석':'불참'},${s.score||0},${s.group||''},${jsonScoreCol},${jsonRecordCol},${s.isCaptain?'Y':'N'},${s.recordMs||0}\n`;
                     });
                 }
             }
@@ -1159,7 +1157,7 @@
                         if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
                         let studentData = { no: parseInt(parts[1].trim()) || (newData[className].length + 1), name: parts[2].trim(), gender: parts[3].trim(), ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain };
-                        studentData[`group_${currentGroupMode}`] = curGrp;
+                        studentData.group = curGrp;
                         newData[className].push(studentData);
                     }
 
@@ -1215,7 +1213,7 @@
                     const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
                     let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
                     const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false };
-                    newStudent[`group_${currentGroupMode}`] = group; classData[currentClass].push(newStudent); addedCount++;
+                    newStudent.group = group; classData[currentClass].push(newStudent); addedCount++;
                 }
             });
             if(addedCount > 0) {
@@ -1242,7 +1240,7 @@
             let groupVal = null; if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
             if (!classData[currentClass]) classData[currentClass] = [];
             const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false };
-            newStudent[`group_${currentGroupMode}`] = groupVal; classData[currentClass].push(newStudent);
+            newStudent.group = groupVal; classData[currentClass].push(newStudent);
             noInput.value = ""; nameInput.value = ""; groupInput.value = "";
             ['ballSense', 'agility'].forEach(type => { document.getElementById(`add-${type}`).value = "-"; const btn = document.getElementById(`btn-add-${type}`); let emoji = type === 'ballSense' ? '⚽' : '⚡'; btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`; btn.className = "w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500"; });
             saveData(); renderStudentList(); renderDrawSection(); window.renderGagaball();
@@ -1257,7 +1255,7 @@
         window.toggleCaptain = function(studentNo) { const student = classData[currentClass].find(s => s.no == studentNo); if (student && student.attendance) { student.isCaptain = !student.isCaptain; saveData(); renderStudentList(); renderGroups(); } }
 
         window.cycleStudentAbility = function(studentNo, type) { const student = classData[currentClass].find(s => s.no == studentNo); if (student && student.attendance) { let currentIdx = abilitiesCycle.indexOf(student[type] || '-'); if (currentIdx === -1) currentIdx = 0; student[type] = abilitiesCycle[(currentIdx + 1) % abilitiesCycle.length]; saveData(); renderStudentList(); renderGroups(); } }
-        window.cycleStudentGroup = function(studentNo) { const student = classData[currentClass].find(s => s.no == studentNo); if (student && student.attendance) { const cycle = getGroupsCycle(); let currentIdx = cycle.indexOf(student[`group_${currentGroupMode}`]); if (currentIdx === -1) currentIdx = 0; student[`group_${currentGroupMode}`] = cycle[(currentIdx + 1) % cycle.length]; saveData(); renderStudentList(); renderGroups(); } }
+        window.cycleStudentGroup = function(studentNo) { const student = classData[currentClass].find(s => s.no == studentNo); if (student && student.attendance) { const cycle = getGroupsCycle(); let currentIdx = cycle.indexOf(student.group); if (currentIdx === -1) currentIdx = 0; student.group = cycle[(currentIdx + 1) % cycle.length]; saveData(); renderStudentList(); renderGroups(); } }
 
         window.toggleSort = function(field) { if (sortState.field === field) sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc'; else { sortState.field = field; sortState.direction = 'asc'; } renderStudentList(); }
         function updateSortIcons() { ['no', 'name', 'recordMs', 'gender', 'ballSense', 'agility', 'group'].forEach(f => { const icon = document.getElementById(`sort-${f}-icon`); if (icon) { if (sortState.field === f) { icon.innerText = sortState.direction === 'asc' ? '▲' : '▼'; icon.classList.add('text-blue-500'); } else { icon.innerText = '↕'; icon.classList.remove('text-blue-500'); } } }); }
@@ -1269,8 +1267,8 @@
             
             const presentStudents = allStudents.filter(s => s.attendance);
             let groupCounts = []; let maxG = 0;
-            presentStudents.forEach(s => { let g = s[`group_${currentGroupMode}`]; if(g && g > maxG) maxG = g; });
-            for(let i=1; i<=maxG; i++){ let c = presentStudents.filter(s => s[`group_${currentGroupMode}`] === i).length; if(c>0) groupCounts.push(`${i}조 ${c}`); }
+            presentStudents.forEach(s => { let g = s.group; if(g && g > maxG) maxG = g; });
+            for(let i=1; i<=maxG; i++){ let c = presentStudents.filter(s => s.group === i).length; if(c>0) groupCounts.push(`${i}조 ${c}`); }
             
             const summaryEl = document.getElementById('student-summary');
             if (summaryEl) {
@@ -1279,21 +1277,21 @@
                         참석 <span class="text-blue-600">${presentStudents.length}</span>명 <span class="text-slate-400 text-[9px] sm:text-[10px] ml-1 font-normal">(전체 ${allStudents.length}명)</span> <span class="text-slate-300 mx-1">|</span> 남 <span class="text-blue-500">${presentStudents.filter(s => s.gender === '남').length}</span> <span class="text-slate-300 mx-1">·</span> 여 <span class="text-pink-500">${presentStudents.filter(s => s.gender === '여').length}</span>
                     </div>
                     <div class="flex flex-wrap justify-end gap-1.5 w-full">
-                        <div class="text-[9px] sm:text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 shadow-sm whitespace-nowrap">🎲 모둠: ${groupCounts.join(' · ')} · 미배정 ${presentStudents.filter(s => !s[`group_${currentGroupMode}`]).length}</div>
+                        <div class="text-[9px] sm:text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 shadow-sm whitespace-nowrap">🎲 모둠: ${groupCounts.join(' · ')} · 미배정 ${presentStudents.filter(s => !s.group).length}</div>
                     </div>
                 `;
             }
             
             allStudents.sort((a, b) => {
                 let valA = a[sortState.field]; let valB = b[sortState.field];
-                if (sortState.field === 'group') { valA = a[`group_${currentGroupMode}`] || 999; valB = b[`group_${currentGroupMode}`] || 999; }
+                if (sortState.field === 'group') { valA = a.group || 999; valB = b.group || 999; }
                 if (sortState.field === 'recordMs') { valA = a.recordMs || 0; valB = b.recordMs || 0; if (sortState.direction === 'asc') { if (valA === 0) valA = Infinity; if (valB === 0) valB = Infinity; } }
                 if (valA < valB) return sortState.direction === 'asc' ? -1 : 1; if (valA > valB) return sortState.direction === 'asc' ? 1 : -1; return 0;
             });
             if (typeof updateSortIcons === 'function') updateSortIcons();
 
             allStudents.forEach((s) => {
-                let rowBgClass = "hover:bg-slate-50"; const sGroup = s[`group_${currentGroupMode}`];
+                let rowBgClass = "hover:bg-slate-50"; const sGroup = s.group;
                 if (s.attendance) {
                     if (sortState.field === 'gender') rowBgClass = s.gender === '남' ? 'bg-blue-50/60 hover:bg-blue-100/60' : 'bg-pink-50/60 hover:bg-pink-100/60';
                     else if (sortState.field === 'ballSense' || sortState.field === 'agility') { const val = s[sortState.field]; if (val === '3') rowBgClass = 'bg-orange-50/60 hover:bg-orange-100/60'; else if (val === '2') rowBgClass = 'bg-emerald-50/60 hover:bg-emerald-100/60'; else if (val === '1') rowBgClass = 'bg-stone-50/60 hover:bg-stone-100/60'; } 
@@ -1337,19 +1335,18 @@
             if (students.length < numTeams) return window.showModal("인원 부족", "참석 인원이 팀 수보다 적습니다.");
 
             window.showModal(`${numTeams}팀 랜덤 편성`, `기존 방식대로 <b>${numTeams}팀</b>으로 무작위 편성을 진행하시겠습니까?`, true, () => {
-                currentGroupMode = `old_${numTeams}`;
-                document.getElementById('group-mode-desc').innerHTML = `<b>📌 기존 편성 (${numTeams}팀)</b> 결과입니다.`;
+                document.getElementById('group-mode-desc').innerHTML = `<b>📌 기존 랜덤 편성 (${numTeams}팀)</b> 결과입니다.`;
                 
-                classData[currentClass].forEach(s => s[`group_${currentGroupMode}`] = null);
+                classData[currentClass].forEach(s => s.group = null);
                 
                 // 학생들을 무작위로 섞은 후 차례대로 1~numTeams 모둠에 배정
                 let shuffled = [...students].sort(() => Math.random() - 0.5);
                 shuffled.forEach((s, index) => {
-                    s[`group_${currentGroupMode}`] = (index % numTeams) + 1;
+                    s.group = (index % numTeams) + 1;
                 });
                 
-                if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
-                if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+                if (!groupScores[currentClass]) groupScores[currentClass] = {};
+                if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
                 activeTimers = {}; saveData(); renderStudentList(); renderGroups();
             });
         }
@@ -1361,8 +1358,7 @@
             const size = parseInt(document.getElementById('group-size-select').value, 10);
             const typeText = type === 'mixed' ? '혼성' : '동성';
 
-            window.showModal(`신규 ${typeText} ${size}명 밸런스 편성`, `전력(볼센스+순발력) 밸런스를 최우선으로 하여 <b>${typeText} ${size}명 단위</b>로 자동 편성하시겠습니까?<br><br><span class='text-red-500 font-bold text-xs'>※ 동점자는 무작위로 자동 섞입니다.</span>`, true, () => {
-                currentGroupMode = `${type}_${size}`;
+            window.showModal(`신규 ${typeText} ${size}명 단위 밸런스 편성`, `전력(볼센스+순발력) 밸런스를 최우선으로 하여 <b>${typeText} ${size}명 단위</b>로 자동 편성하시겠습니까?<br><br><span class='text-red-500 font-bold text-xs'>※ 동점자는 무작위로 자동 섞입니다.</span>`, true, () => {
                 document.getElementById('group-mode-desc').innerHTML = `<b>✨ 신규 밸런스 편성 (${typeText} ${size}명 단위)</b> 결과입니다.`;
                 
                 if(type === 'mixed') window.generateMixedGroupsDynamic(size);
@@ -1372,17 +1368,16 @@
 
         window.resetCurrentGroup = function() {
             if (!currentClass || !classData[currentClass]) return window.showModal("알림", "학급을 먼저 선택해주세요.");
-            window.showModal("모둠 초기화", `정말 현재 화면에 보이는 <b>모둠 편성 결과</b>를 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 해당 모드의 점수와 타이머 기록도 함께 지워집니다.</span>`, true, () => {
-                classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
-                if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
-                if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
+            window.showModal("모둠 초기화", `정말 현재 화면에 보이는 <b>모둠 편성 결과</b>를 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 모둠 점수와 타이머 기록도 함께 지워집니다.</span>`, true, () => {
+                classData[currentClass].forEach(student => { student.group = null; student.isCaptain = false; });
+                groupScores[currentClass] = {}; groupRecords[currentClass] = {};
                 activeTimers = {}; saveData(); renderStudentList(); renderGroups();
                 window.showModal("완료", "편성이 초기화되었습니다.");
             });
         }
 
-        window.updateGroupScore = function(groupId, change) { if (!groupScores[currentClass]) groupScores[currentClass] = {}; if (!groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {}; groupScores[currentClass][currentGroupMode][groupId] = (groupScores[currentClass][currentGroupMode][groupId] || 0) + change; saveData(); renderGroups(); }
-        window.updateGroupRecord = function(groupId, value) { if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; if (!groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {}; groupRecords[currentClass][currentGroupMode][groupId] = value; saveData(); }
+        window.updateGroupScore = function(groupId, change) { if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][groupId] = (groupScores[currentClass][groupId] || 0) + change; saveData(); renderGroups(); }
+        window.updateGroupRecord = function(groupId, value) { if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][groupId] = value; saveData(); }
 
         const getPowerScore = (s) => {
             let p = (parseInt(s.ballSense)||0) + (parseInt(s.agility)||0);
@@ -1393,7 +1388,7 @@
             const students = classData[currentClass];
             const presentStudents = students.filter(s => s.attendance);
             if (presentStudents.length < size) return window.showModal("인원 부족", `참석 인원이 너무 적습니다.`);
-            students.forEach(s => s[`group_${currentGroupMode}`] = null);
+            students.forEach(s => s.group = null);
 
             const numGroups = Math.max(1, Math.ceil(presentStudents.length / size));
             const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
@@ -1417,7 +1412,7 @@
                 if (scoreCandidates.length > 0) candidates = scoreCandidates;
 
                 const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
-                student[`group_${currentGroupMode}`] = targetGroup.id;
+                student.group = targetGroup.id;
                 targetGroup.totalScore += stScore; targetGroup.total++;
                 if (isMale) targetGroup.male++; else targetGroup.female++;
             };
@@ -1432,8 +1427,8 @@
                 if(gIdx < girls.length) assign(girls[gIdx++]);
             }
 
-            if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
-            if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+            if (!groupScores[currentClass]) groupScores[currentClass] = {};
+            if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
             activeTimers = {}; saveData(); renderStudentList(); renderGroups();
         }
 
@@ -1441,7 +1436,7 @@
             const students = classData[currentClass];
             const presentStudents = students.filter(s => s.attendance);
             if (presentStudents.length < size) return window.showModal("인원 부족", `참석 인원이 너무 적습니다.`);
-            students.forEach(s => s[`group_${currentGroupMode}`] = null);
+            students.forEach(s => s.group = null);
 
             let boys = presentStudents.filter(s => s.gender === '남');
             let girls = presentStudents.filter(s => s.gender === '여');
@@ -1467,15 +1462,15 @@
                 if(scoreCandidates.length > 0) candidates = scoreCandidates;
 
                 const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
-                student[`group_${currentGroupMode}`] = targetGroup.id;
+                student.group = targetGroup.id;
                 targetGroup.totalScore += stScore; targetGroup.total++;
             };
 
             boys.sort((a,b) => getPowerScore(b) - getPowerScore(a)).forEach(b => assign(b, true));
             girls.sort((a,b) => getPowerScore(b) - getPowerScore(a)).forEach(g => assign(g, false));
 
-            if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
-            if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+            if (!groupScores[currentClass]) groupScores[currentClass] = {};
+            if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
             activeTimers = {}; saveData(); renderStudentList(); renderGroups();
         }
 
@@ -1484,13 +1479,13 @@
             const students = classData[currentClass] || [];
             
             let maxGroup = 0;
-            students.forEach(s => { let g = s[`group_${currentGroupMode}`]; if(g && g > maxGroup) maxGroup = g; });
+            students.forEach(s => { let g = s.group; if(g && g > maxGroup) maxGroup = g; });
             
             container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1';
             let hasAnyGroup = false;
 
             for (let i = 1; i <= maxGroup; i++) {
-                const members = students.filter(s => s[`group_${currentGroupMode}`] === i);
+                const members = students.filter(s => s.group === i);
                 if (members.length === 0) continue;
                 
                 hasAnyGroup = true;
@@ -1507,12 +1502,12 @@
 
                 const presentMembers = members.filter(m => m.attendance);
                 const maleCount = presentMembers.filter(m => m.gender === '남').length; const femaleCount = presentMembers.filter(m => m.gender === '여').length;
-                let score = 0; if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) score = groupScores[currentClass][currentGroupMode][i] || 0;
+                let score = 0; if (groupScores[currentClass]) score = groupScores[currentClass][i] || 0;
 
                 let groupTotalAbility = 0; presentMembers.forEach(m => { groupTotalAbility += (parseInt(m.ballSense)||0) + (parseInt(m.agility)||0); });
 
                 if (!activeTimers[i]) {
-                    let savedVal = ''; if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) savedVal = groupRecords[currentClass][currentGroupMode][i];
+                    let savedVal = ''; if (groupRecords[currentClass]) savedVal = groupRecords[currentClass][i];
                     let savedMs = 0; if (savedVal !== undefined && savedVal !== null && savedVal !== '') savedMs = window.parseTime(savedVal);
                     activeTimers[i] = { mode: 'stopwatch', isRunning: false, elapsed: savedMs, target: 60000, startTime: 0 };
                 }
