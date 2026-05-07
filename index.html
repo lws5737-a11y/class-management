@@ -109,27 +109,23 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        /* 🏟️ 가가볼 V44 스코어보드 전용 CSS (스마트 TV 대형 화면 최적화) */
+        /* 🏟️ 가가볼 V44 스코어보드 전용 CSS */
         #gagaball-section { font-family: 'Jua', sans-serif; letter-spacing: 0.5px; }
         #gagaball-section .gaga-primary { color: #3498db; }
         #gagaball-section .gaga-danger { color: #e74c3c; }
         #gagaball-section .gaga-dark { color: #2c3e50; }
         
-        /* 카드 크기 대폭 확대 (minmax 260px) */
         #gagaball-section .scoreboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 25px; }
         #gagaball-section .score-item { background: #fff; border: 4px solid #3498db; padding: 25px; border-radius: 16px; text-align: center; position: relative; transition: 0.2s; box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
         #gagaball-section .score-item.drawn { border-color: #bdc3c7 !important; background-color: #dcdde1 !important; opacity: 0.75; }
         
-        /* 아바타 120px로 확대 */
         #gagaball-section .avatar-img { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 15px; display: block; background: #fdfdfd; object-fit: cover; border: 4px solid; }
         #gagaball-section .score-item.drawn .avatar-img { filter: grayscale(70%); opacity: 0.9; border-color: #bdc3c7 !important; }
-        /* 폰트 확대 */
         #gagaball-section .score-item .name { font-size: 2.2rem; margin-bottom: 5px; color: #2c3e50; }
         #gagaball-section .score-item .score-val { font-size: 5rem; color: #e74c3c; margin: 10px 0; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
         #gagaball-section .score-item.drawn .name { color: #555; }
         #gagaball-section .score-item.drawn .score-val { color: #8e44ad; }
         
-        /* 컨트롤 버튼 확대 */
         #gagaball-section .score-ctrl { display: flex; justify-content: center; gap: 8px; margin-top: 10px;}
         #gagaball-section .score-ctrl button { font-size: 2.5rem; width: 65px; height: 50px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.1s; display: flex; align-items: center; justify-content: center;}
         #gagaball-section .score-ctrl button:active { transform: scale(0.9); }
@@ -176,7 +172,7 @@
         #rouletteCanvas { border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; height: 100%; }
         .roulette-pointer { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); font-size: 5rem; text-shadow: 0 5px 10px rgba(0,0,0,0.4); z-index: 10; }
         
-        /* 흔들기 애니메이션 (두구두구) */
+        /* 흔들기 애니메이션 */
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
             10% { transform: translate(-1px, -2px) rotate(-1deg); }
@@ -375,7 +371,6 @@
 
             </section>
 
-            <!-- 기존 섹션들 (student-management, group-section, draw-section, stamp-section) ...이하 내용은 동일 유지... -->
             <section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-3">
                     <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
@@ -701,7 +696,7 @@
         </div>
     </div>
     
-    <!-- 가가볼 전용 추첨 결과 모달 (크기 확대) -->
+    <!-- 가가볼 전용 추첨 결과 모달 -->
     <div id="gagaDrawModal" class="gaga-modal-overlay" onclick="window.closeGagaDrawModal()">
         <div class="gaga-modal-content" style="max-width: 1200px;" onclick="event.stopPropagation()">
             <h1 class="text-5xl sm:text-6xl font-black text-red-500 mb-8">🎉 참가 선수 🎉</h1>
@@ -721,77 +716,109 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 오디오 Context ---
-        let audioCtx;
-        window.playCoinSound = function() {
+        // ==========================================
+        // 🚨 오디오 컨텍스트(AudioContext) 누수 방지 최적화 로직
+        // ==========================================
+        let globalAudioCtx = null;
+        
+        function getAudioCtx() {
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(987.77, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
-            } catch(e) {}
-        }
-        window.playBumpSound = function() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
-            } catch(e) {}
-        }
-
-        // 🥁 이벤트 사운드 (두구두구 드럼롤)
-        window.playDrumRoll = function() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                for (let i = 0; i < 20; i++) {
-                    setTimeout(() => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(100 + Math.random() * 50, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-                    }, i * 100);
+                if (!globalAudioCtx) {
+                    globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
-            } catch(e) {}
+                if (globalAudioCtx.state === 'suspended') {
+                    globalAudioCtx.resume();
+                }
+                return globalAudioCtx;
+            } catch(e) {
+                console.warn("오디오를 지원하지 않는 환경입니다.", e);
+                return null;
+            }
         }
 
-        // 🎺 이벤트 사운드 (그랜드 팡파르)
-        window.playGrandFanfare = function() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                const playChord = (freqs, t, d) => {
-                    freqs.forEach(f => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'square';
-                        osc.frequency.value = f;
-                        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + t);
-                        gain.gain.linearRampToValueAtTime(0.0, audioCtx.currentTime + t + d);
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
-                    });
-                };
-                playChord([440, 554.37, 659.25], 0, 0.2); // A major
-                playChord([440, 554.37, 659.25], 0.2, 0.2);
-                playChord([440, 554.37, 659.25], 0.4, 0.2);
-                playChord([493.88, 587.33, 739.99], 0.6, 0.4); // B minor
-                playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); // C major
-            } catch(e) {}
+        window.playCoinSound = function() {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+            osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
         }
+
+        window.playBumpSound = function() {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(150, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+        }
+
+        window.playDrumRoll = function() {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(100 + Math.random() * 50, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.1);
+                }, i * 100);
+            }
+        }
+
+        window.playGrandFanfare = function() {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            const playChord = (freqs, t, d) => {
+                freqs.forEach(f => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = f;
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime + t);
+                    gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + t + d);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
+                });
+            };
+            playChord([440, 554.37, 659.25], 0, 0.2); // A major
+            playChord([440, 554.37, 659.25], 0.2, 0.2);
+            playChord([440, 554.37, 659.25], 0.4, 0.2);
+            playChord([493.88, 587.33, 739.99], 0.6, 0.4); // B minor
+            playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); // C major
+        }
+
+        window.playStampSound = () => {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            const now = ctx.currentTime;
+            const fallOsc = ctx.createOscillator(); const fallGain = ctx.createGain();
+            fallOsc.type = 'sine'; fallOsc.frequency.setValueAtTime(900, now); fallOsc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
+            fallGain.gain.setValueAtTime(0, now); fallGain.gain.linearRampToValueAtTime(0.4, now + 0.15); fallGain.gain.linearRampToValueAtTime(0, now + 0.35);
+            fallOsc.connect(fallGain); fallGain.connect(ctx.destination); fallOsc.start(now); fallOsc.stop(now + 0.35);
+
+            const boomOsc = ctx.createOscillator(); const boomGain = ctx.createGain();
+            boomOsc.type = 'square'; boomOsc.frequency.setValueAtTime(150, now + 0.35); boomOsc.frequency.exponentialRampToValueAtTime(20, now + 0.7);
+            boomGain.gain.setValueAtTime(0, now + 0.34); boomGain.gain.setValueAtTime(1.5, now + 0.35); boomGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+            boomOsc.connect(boomGain); boomGain.connect(ctx.destination); boomOsc.start(now + 0.35); boomOsc.stop(now + 0.7);
+        };
+        
+        const playTone = (freq, type, duration, gainVal) => {
+            const ctx = getAudioCtx(); if (!ctx) return;
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(gainVal, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + duration);
+        };
+
+        window.playEraseSound = () => [659, 880, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.4, 0.15), i * 50));
+        window.playFanfareSound = () => [392, 523, 659].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.8, 0.1), i * 150));
 
         // 🎉 화려한 폭죽(Confetti) 캔버스 로직
         window.fireConfetti = function() {
@@ -805,7 +832,7 @@
             
             for(let i = 0; i < 200; i++) {
                 particles.push({
-                    x: canvas.width / 2, // 정중앙 하단 부근에서 폭발
+                    x: canvas.width / 2,
                     y: canvas.height / 2 + 150,
                     r: Math.random() * 8 + 4,
                     dx: Math.random() * 30 - 15,
@@ -847,7 +874,7 @@
 
         // --- 볼센스로 통합된 UI 함수 ---
         window.getAbilityHTML = function(type, val) {
-            let emoji = type === 'ballSense' ? '⚽' : '⚡'; // 볼센스 통합
+            let emoji = type === 'ballSense' ? '⚽' : '⚡'; 
 
             if (val === '1' || val === '하') {
                 return `<div class="emoji-lvl-1"><span>${emoji}</span></div>`;
@@ -955,6 +982,7 @@
         function normalizeClassName(name) { return !name ? name : name.replace(/(\d+)\s*학년\s*(\d+)\s*반/g, '$1-$2'); }
 
         try {
+            // 주의: 클라이언트 코드에 포함된 설정입니다.
             const firebaseConfig = {
                 apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
                 authDomain: "lws5737-a6105.firebaseapp.com",
@@ -1000,7 +1028,7 @@
         } catch (e) { console.error("클라우드 서버 연결 오류:", e); }
 
         // ==========================================
-        // 🏟️ V44 가가볼 전용 로직 (TV & 화려한 효과 추가)
+        // 🏟️ V44 가가볼 전용 로직
         // ==========================================
         window.switchGagaTab = function(tab) {
             ['score', 'rank', 'team'].forEach(t => {
@@ -1020,12 +1048,14 @@
         function generateCuteAvatar(name) { return `https://robohash.org/${encodeURIComponent(name)}?set=set4&size=150x150`; }
         const fallbackSVG = `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23f1f2f6%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2268%22%20font-size%3D%2245%22%20text-anchor%3D%22middle%22%3E%F0%9F%91%A4%3C%2Ftext%3E%3C%2Fsvg%3E`;
 
+        // 🚨 렌더링 성능 최적화: innerHTML 누적 지연 렌더링 적용
         window.renderGagaball = function() {
             const activeGrid = document.getElementById('gaga-active-grid');
             const inactiveGrid = document.getElementById('gaga-inactive-grid');
             if(!activeGrid || !currentClass) return;
             
-            activeGrid.innerHTML = ''; inactiveGrid.innerHTML = '';
+            let activeHTML = '';
+            let inactiveHTML = '';
             let availableTotal = 0, availableBoys = 0, availableGirls = 0;
 
             const students = [...(classData[currentClass] || [])].sort((a,b) => a.no - b.no);
@@ -1060,8 +1090,13 @@
                         </div>
                     </div>
                 `;
-                if(s.attendance) activeGrid.innerHTML += cardHTML; else inactiveGrid.innerHTML += cardHTML;
+                
+                if(s.attendance) activeHTML += cardHTML; else inactiveHTML += cardHTML;
             });
+            
+            // 단 한 번의 DOM 접근으로 렌더링 최적화
+            activeGrid.innerHTML = activeHTML;
+            inactiveGrid.innerHTML = inactiveHTML;
             document.getElementById('gaga-draw-stats').innerText = `대기: 총 ${availableTotal}명 (남 ${availableBoys} / 여 ${availableGirls})`;
         };
 
@@ -1074,17 +1109,20 @@
             const modalSpan = document.getElementById(`modal-score-${no}`); if(modalSpan) modalSpan.innerText = student.score;
         }
 
+        // 🚨 렌더링 성능 최적화 적용
         window.renderGagaRanking = function() {
             const tbody = document.getElementById('gaga-ranking-body'); if(!tbody || !currentClass) return;
-            tbody.innerHTML = '';
             const studentsForRank = [...(classData[currentClass] || [])].filter(s => s.attendance).sort((a, b) => (b.score || 0) - (a.score || 0));
             
+            let rankHTML = '';
             let rank = 1;
             studentsForRank.forEach((s, i) => {
                 if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1;
                 let rClass = rank === 1 ? 'rank-1' : (rank === 2 ? 'rank-2' : (rank === 3 ? 'rank-3' : ''));
-                tbody.innerHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`;
+                rankHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`;
             });
+            
+            tbody.innerHTML = rankHTML;
         }
 
         // --- 화려한 추첨 이벤트 로직 ---
@@ -1221,9 +1259,10 @@
             window.fireConfetti();
         }
 
+        // 🚨 렌더링 최적화 적용
         window.renderGagaTeamView = function() {
             const container = document.getElementById('gaga-team-matchups');
-            container.innerHTML = '';
+            let teamHTML = '';
             
             for(let i = 0; i < currentGagaTeams.length; i += 2) {
                 const teamA = currentGagaTeams[i]; const teamB = currentGagaTeams[i+1];
@@ -1251,12 +1290,13 @@
                     </div>
                 `;
 
-                container.innerHTML += `
+                teamHTML += `
                     <div class="matchup-row">
                         <div class="team-card team-a">${createPanel(teamA)} <div class="team-card-right">${createBadges(teamA.members)}</div></div>
                         ${teamB ? `<div class="vs-badge">VS</div><div class="team-card team-b">${createPanel(teamB)} <div class="team-card-right">${createBadges(teamB.members)}</div></div>` : ''}
                     </div>`;
             }
+            container.innerHTML = teamHTML;
         }
 
         window.addGagaTeamScore = function(teamId) {
@@ -1324,18 +1364,18 @@
             canvas.style.transition = "transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)"; 
             canvas.style.transform = `rotate(${currentRouletteRotation}deg)`;
 
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let startTime = audioCtx.currentTime;
+            const actx = getAudioCtx();
+            if(actx) {
+                let startTime = actx.currentTime;
                 for(let i=0; i<45; i++) {
                     let t = i / 45; let tickTime = startTime + 4.0 * (1 - Math.pow(1 - t, 3.5)); 
-                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    const osc = actx.createOscillator(); const gain = actx.createGain();
                     osc.type = 'triangle'; osc.frequency.setValueAtTime(600 - (i*5), tickTime); 
                     gain.gain.setValueAtTime(0, tickTime); gain.gain.linearRampToValueAtTime(0.3, tickTime + 0.01); gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.05);
-                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.connect(gain); gain.connect(actx.destination);
                     osc.start(tickTime); osc.stop(tickTime + 0.05);
                 }
-            } catch(e) {}
+            }
 
             setTimeout(() => {
                 isSpinning = false;
@@ -1346,16 +1386,17 @@
                     if(pointerAngle >= currentPos && pointerAngle < currentPos + sliceSize) { winner = currentMissions[i]; break; }
                     currentPos += sliceSize;
                 }
-                try {
-                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const playTone = (f, t, d) => {
-                        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                        osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.frequency.setValueAtTime(f, audioCtx.currentTime + t); gain.gain.setValueAtTime(0.3, audioCtx.currentTime + t); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + d);
-                        osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                
+                const winCtx = getAudioCtx();
+                if(winCtx) {
+                    const playWinTone = (f, t, d) => {
+                        const osc = winCtx.createOscillator(); const gain = winCtx.createGain();
+                        osc.type = 'triangle'; osc.connect(gain); gain.connect(winCtx.destination);
+                        osc.frequency.setValueAtTime(f, winCtx.currentTime + t); gain.gain.setValueAtTime(0.3, winCtx.currentTime + t); gain.gain.exponentialRampToValueAtTime(0.01, winCtx.currentTime + t + d);
+                        osc.start(winCtx.currentTime + t); osc.stop(winCtx.currentTime + t + d);
                     };
-                    playTone(523.25, 0.0, 0.2); playTone(523.25, 0.2, 0.2); playTone(523.25, 0.4, 0.2); playTone(659.25, 0.6, 0.2); playTone(783.99, 0.8, 0.6); 
-                } catch(e) {}
+                    playWinTone(523.25, 0.0, 0.2); playWinTone(523.25, 0.2, 0.2); playWinTone(523.25, 0.4, 0.2); playWinTone(659.25, 0.6, 0.2); playWinTone(783.99, 0.8, 0.6); 
+                }
                 window.showMissionDescModal(winner.text, winner.desc);
             }, 4000);
         }
@@ -1376,15 +1417,15 @@
             titleEl.innerText = `${currentClass} 도장판`;
             if (!classStamps[currentClass]) classStamps[currentClass] = Array(TOTAL_STAMP_CELLS).fill(false);
 
-            board.innerHTML = ''; let stampedCount = 0;
+            let stampHTML = ''; let stampedCount = 0;
             classStamps[currentClass].forEach((isStamped, i) => {
                 if (isStamped) stampedCount++;
-                const cell = document.createElement('div');
-                cell.className = `stamp-cell w-full aspect-square border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-white hover:bg-green-50 ${isStamped ? 'stamped' : ''}`;
-                cell.innerHTML = `<span class="cell-number font-bold">${i + 1}</span><img src="${globalStampImage}" class="stamp-img">`;
-                cell.onclick = () => window.toggleStamp(i, cell);
-                board.appendChild(cell);
+                stampHTML += `
+                <div class="stamp-cell w-full aspect-square border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-white hover:bg-green-50 ${isStamped ? 'stamped' : ''}" onclick="window.toggleStamp(${i}, this)">
+                    <span class="cell-number font-bold">${i + 1}</span><img src="${globalStampImage}" class="stamp-img">
+                </div>`;
             });
+            board.innerHTML = stampHTML;
             document.getElementById('progressCount').innerText = stampedCount;
             window.checkMissionComplete(false);
         };
@@ -1408,31 +1449,6 @@
         window.resetStampBoard = () => {
             if (confirm("기록을 모두 초기화하시겠습니까?")) { classStamps[currentClass] = Array(TOTAL_STAMP_CELLS).fill(false); saveData(); renderStampBoard(); }
         };
-
-        window.playStampSound = () => {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const fallOsc = audioCtx.createOscillator(); const fallGain = audioCtx.createGain();
-            fallOsc.type = 'sine'; fallOsc.frequency.setValueAtTime(900, now); fallOsc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
-            fallGain.gain.setValueAtTime(0, now); fallGain.gain.linearRampToValueAtTime(0.4, now + 0.15); fallGain.gain.linearRampToValueAtTime(0, now + 0.35);
-            fallOsc.connect(fallGain); fallGain.connect(audioCtx.destination); fallOsc.start(now); fallOsc.stop(now + 0.35);
-
-            const boomOsc = audioCtx.createOscillator(); const boomGain = audioCtx.createGain();
-            boomOsc.type = 'square'; boomOsc.frequency.setValueAtTime(150, now + 0.35); boomOsc.frequency.exponentialRampToValueAtTime(20, now + 0.7);
-            boomGain.gain.setValueAtTime(0, now + 0.34); boomGain.gain.setValueAtTime(1.5, now + 0.35); boomGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
-            boomOsc.connect(boomGain); boomGain.connect(audioCtx.destination); boomOsc.start(now + 0.35); boomOsc.stop(now + 0.7);
-        };
-        
-        const playTone = (freq, type, duration, gainVal) => {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
-        };
-        window.playEraseSound = () => [659, 880, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.4, 0.15), i * 50));
-        window.playFanfareSound = () => [392, 523, 659].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.8, 0.1), i * 150));
 
         document.getElementById('stampUpload').addEventListener('change', (e) => {
             const file = e.target.files[0]; if (!file) return;
@@ -1618,7 +1634,7 @@
                 if (currentClass && classData[currentClass]) {
                     renderStudentList();
                     if(typeof renderGroups === 'function') renderGroups();
-                    if(typeof renderStampBoard === 'function') renderStampBoard();
+                    if(typeof window.renderStampBoard === 'function') window.renderStampBoard();
                     if(typeof renderDrawSection === 'function') renderDrawSection();
                     if(typeof window.renderGagaball === 'function') window.renderGagaball();
                 } else if (currentClass && !classData[currentClass]) {
@@ -1854,7 +1870,7 @@
                             finally { isDebouncing = false; }
                         }
 
-                        if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); window.renderGagaball(); }
+                        if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); window.renderStampBoard(); window.renderGagaball(); }
                         window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
                     } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
                     document.getElementById('csv-all-file-input').value = ''; 
@@ -1870,11 +1886,10 @@
             document.getElementById('current-class-display').innerText = `${className} 관리 중`;
             document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
             window.showTab(currentTab); window.renderClassSelect(); 
-            renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard();
+            renderStudentList(); renderGroups(); renderDrawSection(); window.renderStampBoard();
             window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
         }
 
-        // --- 스마트 TV를 위한 와이드 뷰 전환 추가 ---
         window.showTab = function(tabName) {
             currentTab = tabName;
             ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1884,7 +1899,6 @@
                 if(btn) btn.className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
             });
 
-            // 컨테이너 크기 조절 (가가볼은 TV 꽉 채우기)
             const mainContainer = document.getElementById('main-container');
             const headerContainer = document.getElementById('header-inner-container');
             const selectContainer = document.getElementById('class-select-inner-container');
@@ -1918,7 +1932,7 @@
                 } else if (tabName === 'stamp') {
                     document.getElementById('stamp-section').classList.remove('hidden');
                     document.getElementById('tab-stamp').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
-                    renderStampBoard();
+                    window.renderStampBoard();
                 }
             }
         }
@@ -1936,7 +1950,7 @@
                 if (parts.length >= 2) {
                     const no = parts[0]; const name = parts[1];
                     const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; // 볼센스
+                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
                     const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
                     let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
                     
@@ -1990,7 +2004,7 @@
             if (!currentClass) { window.showModal("알림", "먼저 학급을 선택해주세요."); return; }
             const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
             const genderInput = document.getElementById('add-gender'); 
-            const bsInput = document.getElementById('add-ballSense'); // 볼센스
+            const bsInput = document.getElementById('add-ballSense'); 
             const agInput = document.getElementById('add-agility'); 
             const groupInput = document.getElementById('add-group');
 
@@ -2076,10 +2090,11 @@
             });
         }
 
+        // 🚨 DOM 렌더링 성능 최적화 적용
         window.renderStudentList = function() {
             const tbody = document.getElementById('student-list-body'); 
             if (!tbody) return;
-            tbody.innerHTML = "";
+            
             const allStudents = [...(classData[currentClass] || [])];
             
             const excelSection = document.getElementById('excel-import-section');
@@ -2130,6 +2145,8 @@
 
             if (typeof updateSortIcons === 'function') updateSortIcons();
 
+            let tbodyHTML = '';
+
             allStudents.forEach((s) => {
                 let rowBgClass = "hover:bg-slate-50"; 
                 const sGroup = s[`group_${currentGroupMode}`];
@@ -2149,8 +2166,6 @@
                     }
                 } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
 
-                const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 student-row transition " + rowBgClass;
-                
                 const getAbilityColorClass = (val) => {
                     if (!s.attendance) return 'bg-slate-100 opacity-50 cursor-not-allowed border-transparent';
                     if (val === '3') return 'bg-orange-50 border-orange-200 hover:bg-orange-100 shadow-sm';
@@ -2180,7 +2195,8 @@
                 let stPlayIcon = st.isRunning ? '⏸' : '▶';
                 let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
 
-                tr.innerHTML = `
+                tbodyHTML += `
+                <tr class="border-b border-slate-100 student-row transition ${rowBgClass}">
                     <td class="px-0 py-1 sm:p-2 text-center font-mono font-bold text-[10px] sm:text-[13px] text-slate-500 w-4 sm:w-8">${s.no}</td>
                     <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
                         <button onclick="window.toggleCaptain(${s.no})" class="w-full h-full text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400'} px-1 py-0.5 rounded hover:bg-slate-200 transition" title="이름을 터치하면 체육부장(C) 토글">
@@ -2218,9 +2234,9 @@
                     </td>
 
                     <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8"><button onclick="window.deleteStudent(${s.no})" class="delete-btn text-slate-300 hover:text-red-500 transition p-0.5 sm:p-1"><svg class="h-3.5 w-3.5 sm:h-5 sm:w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
-                `;
-                tbody.appendChild(tr);
+                </tr>`;
             });
+            tbody.innerHTML = tbodyHTML;
         }
 
         window.setGroupMode = function(mode) {
@@ -2369,14 +2385,16 @@
             saveData(); renderStudentList(); renderGroups();
         }
 
+        // 🚨 DOM 렌더링 성능 최적화 적용
         function renderGroups() {
-            const container = document.getElementById('group-result'); if (container) container.innerHTML = "";
+            const container = document.getElementById('group-result'); if (!container) return;
             const students = classData[currentClass] || [];
             
             let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
             container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1';
 
             let hasAnyGroup = false;
+            let groupHTML = '';
 
             for (let i = 1; i <= maxGroup; i++) {
                 const members = students.filter(s => s[`group_${currentGroupMode}`] === i);
@@ -2389,11 +2407,6 @@
                 else if (themeIndex === 1) theme = { border: 'border-pink-200', hover: 'hover:border-pink-400', text: 'text-pink-700', btn: 'text-pink-600 hover:bg-pink-50', bg: 'bg-pink-50/50' };
                 else if (themeIndex === 2) theme = { border: 'border-emerald-200', hover: 'hover:border-emerald-400', text: 'text-emerald-700', btn: 'text-emerald-600 hover:bg-emerald-50', bg: 'bg-emerald-50/50' };
                 else if (themeIndex === 3) theme = { border: 'border-amber-200', hover: 'hover:border-amber-400', text: 'text-amber-700', btn: 'text-amber-600 hover:bg-amber-50', bg: 'bg-amber-50/50' };
-
-                const card = document.createElement('div');
-                card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]`;
-                card.setAttribute('ondragover', 'window.handleDragOver(event)');
-                card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
 
                 const presentMembers = members.filter(m => m.attendance);
                 const maleCount = presentMembers.filter(m => m.gender === '남').length; 
@@ -2423,73 +2436,77 @@
                 if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) timeColorClass = 'text-red-400';
                 if(t.mode === 'timer' && t.elapsed === 0) timeColorClass = 'text-red-500';
 
-                card.innerHTML = `
-                    <div class="flex flex-col xl:flex-row justify-between mb-3 sm:mb-4 border-b ${theme.border} pb-3 gap-2 group-header">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="font-black ${theme.text} text-base sm:text-lg shrink-0">${currentClass} ${i}모둠</h3>
-                            <div class="flex items-center gap-2 group-controls">
-                                <div class="flex items-center bg-white rounded-lg p-0.5 border ${theme.border}">
-                                    <button onclick="window.updateGroupScore(${i}, -1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">-</button>
-                                    <span class="font-black ${theme.text} text-sm sm:text-base w-6 sm:w-8 text-center">${score}</span>
-                                    <button onclick="window.updateGroupScore(${i}, 1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">+</button>
-                                </div>
-                                <div class="flex items-center bg-slate-800 rounded-lg p-1 shadow-inner select-none print-hide gap-1">
-                                    <button onclick="window.toggleTimerMode(${i})" class="w-6 h-6 flex items-center justify-center text-xs opacity-70 hover:opacity-100 transition bg-slate-700 hover:bg-slate-600 rounded">
-                                        <span id="mode-icon-${i}">${modeIcon}</span>
-                                    </button>
-                                    <div id="time-display-${i}" onclick="window.manualTimeEdit(${i})" class="w-16 sm:w-20 text-center text-[13px] sm:text-sm font-black tracking-wider cursor-pointer hover:text-blue-300 transition-colors ${timeColorClass} font-mono" title="클릭하여 시간 직접 설정">
-                                        ${window.formatTime(t.elapsed)}
+                groupHTML += `
+                    <div class="bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]"
+                         ondragover="window.handleDragOver(event)"
+                         ondrop="window.handleDropOnGroup(event, ${i})">
+                        <div class="flex flex-col xl:flex-row justify-between mb-3 sm:mb-4 border-b ${theme.border} pb-3 gap-2 group-header">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="font-black ${theme.text} text-base sm:text-lg shrink-0">${currentClass} ${i}모둠</h3>
+                                <div class="flex items-center gap-2 group-controls">
+                                    <div class="flex items-center bg-white rounded-lg p-0.5 border ${theme.border}">
+                                        <button onclick="window.updateGroupScore(${i}, -1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">-</button>
+                                        <span class="font-black ${theme.text} text-sm sm:text-base w-6 sm:w-8 text-center">${score}</span>
+                                        <button onclick="window.updateGroupScore(${i}, 1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">+</button>
                                     </div>
-                                    <div class="flex items-center bg-slate-700 rounded gap-0.5 p-0.5">
-                                        <button onclick="window.toggleTimerPlay(${i})" id="btn-play-${i}" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] ${playColor}">
-                                            ${playIcon}
+                                    <div class="flex items-center bg-slate-800 rounded-lg p-1 shadow-inner select-none print-hide gap-1">
+                                        <button onclick="window.toggleTimerMode(${i})" class="w-6 h-6 flex items-center justify-center text-xs opacity-70 hover:opacity-100 transition bg-slate-700 hover:bg-slate-600 rounded">
+                                            <span id="mode-icon-${i}">${modeIcon}</span>
                                         </button>
-                                        <button onclick="window.resetTimer(${i})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] text-red-400 font-bold">
-                                            ↻
-                                        </button>
+                                        <div id="time-display-${i}" onclick="window.manualTimeEdit(${i})" class="w-16 sm:w-20 text-center text-[13px] sm:text-sm font-black tracking-wider cursor-pointer hover:text-blue-300 transition-colors ${timeColorClass} font-mono" title="클릭하여 시간 직접 설정">
+                                            ${window.formatTime(t.elapsed)}
+                                        </div>
+                                        <div class="flex items-center bg-slate-700 rounded gap-0.5 p-0.5">
+                                            <button onclick="window.toggleTimerPlay(${i})" id="btn-play-${i}" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] ${playColor}">
+                                                ${playIcon}
+                                            </button>
+                                            <button onclick="window.resetTimer(${i})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] text-red-400 font-bold">
+                                                ↻
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="flex flex-col items-start xl:items-end gap-1 group-stats w-full xl:w-auto overflow-hidden">
+                                <span class="text-[9px] sm:text-[10px] font-bold ${theme.bg} ${theme.text} border ${theme.border} px-2 py-0.5 rounded-full mb-1 xl:mb-0">${members.length === 1 ? '단독 (1인)' : `남 ${maleCount} · 여 ${femaleCount}`}</span>
+                                ${headerExtra}
+                            </div>
                         </div>
-                        <div class="flex flex-col items-start xl:items-end gap-1 group-stats w-full xl:w-auto overflow-hidden">
-                            <span class="text-[9px] sm:text-[10px] font-bold ${theme.bg} ${theme.text} border ${theme.border} px-2 py-0.5 rounded-full mb-1 xl:mb-0">${members.length === 1 ? '단독 (1인)' : `남 ${maleCount} · 여 ${femaleCount}`}</span>
-                            ${headerExtra}
+                        
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                            ${members.map(m => {
+                                const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
+                                
+                                return `
+                                    <div draggable="true"
+                                         oncontextmenu="return false;"
+                                         ondragstart="window.handleDragStart(event, ${m.no})"
+                                         ondragend="window.handleDragEnd(event)"
+                                         ondragover="window.handleDragOver(event)"
+                                         ondrop="window.handleDropOnStudent(event, ${m.no})"
+                                         class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
+                                        
+                                        <div class="flex items-center justify-center gap-1 w-full mt-1">
+                                            <span class="text-[10px] sm:text-[11px] font-mono font-bold ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
+                                            <button onclick="event.stopPropagation(); window.toggleCaptain(${m.no})" class="flex items-center justify-center text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight hover:bg-slate-200/50 px-1 py-0.5 rounded transition" title="이름 터치시 체육부장 토글">
+                                                ${m.name}${captainBadgeHTML}
+                                            </button>
+                                            <span class="text-[9px] sm:text-[10px] ${m.gender === '남' ? 'text-blue-500' : 'text-pink-500'} font-bold shrink-0">${m.gender}</span>
+                                        </div>
+                                        
+                                        <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
+                                            <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
+                                            <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                        ${members.map(m => {
-                            const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
-                            
-                            return `
-                                <div draggable="true"
-                                     oncontextmenu="return false;"
-                                     ondragstart="window.handleDragStart(event, ${m.no})"
-                                     ondragend="window.handleDragEnd(event)"
-                                     ondragover="window.handleDragOver(event)"
-                                     ondrop="window.handleDropOnStudent(event, ${m.no})"
-                                     class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
-                                    
-                                    <div class="flex items-center justify-center gap-1 w-full mt-1">
-                                        <span class="text-[10px] sm:text-[11px] font-mono font-bold ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
-                                        <button onclick="event.stopPropagation(); window.toggleCaptain(${m.no})" class="flex items-center justify-center text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight hover:bg-slate-200/50 px-1 py-0.5 rounded transition" title="이름 터치시 체육부장 토글">
-                                            ${m.name}${captainBadgeHTML}
-                                        </button>
-                                        <span class="text-[9px] sm:text-[10px] ${m.gender === '남' ? 'text-blue-500' : 'text-pink-500'} font-bold shrink-0">${m.gender}</span>
-                                    </div>
-                                    
-                                    <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
-                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
-                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
                     </div>
                 `;
-                container.appendChild(card);
             }
             if (!hasAnyGroup) container.innerHTML = `<div class="col-span-1 lg:col-span-2 xl:col-span-4 text-center text-slate-400 py-10 font-bold bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 w-full">아직 편성된 모둠이 없습니다.<br>상단의 [새로 편성하기]를 클릭해주세요.</div>`;
+            else container.innerHTML = groupHTML;
         }
 
         window.updateDrawStatus = function() {
@@ -2581,30 +2598,29 @@
             });
         }
 
+        // 🚨 렌더링 최적화 적용
         function renderDrawSection() {
             const section = document.getElementById('draw-section'); if (!currentClass) return;
             window.updateDrawStatus();
             const listContainer = document.getElementById('draw-student-list');
             if (listContainer) {
-                listContainer.innerHTML = '';
                 const students = classData[currentClass] || []; const allStudents = [...students];
-
                 allStudents.sort((a, b) => a.no - b.no);
 
+                let listHTML = '';
                 allStudents.forEach(s => {
                     const isDrawn = s.drawn; const isAbsent = !s.attendance;
+                    const cardClass = `flex justify-between items-center p-2 sm:p-3 rounded-xl border transition shadow-sm ${isAbsent ? 'bg-slate-50 border-slate-200 opacity-60' : (isDrawn ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md')}`;
 
-                    const card = document.createElement('div');
-                    card.className = `flex justify-between items-center p-2 sm:p-3 rounded-xl border transition shadow-sm ${isAbsent ? 'bg-slate-50 border-slate-200 opacity-60' : (isDrawn ? 'bg-purple-50/50 border-purple-200 hover:border-purple-300' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md')}`;
-
-                    card.innerHTML = `
+                    listHTML += `
+                    <div class="${cardClass}">
                         <div class="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
                             <span class="text-[10px] sm:text-xs font-mono font-bold shrink-0 ${isAbsent ? 'text-slate-400' : 'text-slate-500'}">${s.no}</span>
                             <span class="text-[11px] sm:text-[13px] font-bold ${isAbsent ? 'text-slate-400 line-through' : 'text-slate-700'} break-words whitespace-normal leading-tight">${s.name}</span>
                         </div>
-                    `;
-                    listContainer.appendChild(card);
+                    </div>`;
                 });
+                listContainer.innerHTML = listHTML;
             }
         }
 
