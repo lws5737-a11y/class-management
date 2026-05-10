@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+        .font-jua { font-family: 'Jua', sans-serif; }
+        
+        .student-row:hover .delete-btn { opacity: 1; }
+        .delete-btn { opacity: 0; transition: opacity 0.2s; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .sort-header { cursor: pointer; transition: background 0.2s; }
+        .sort-header:hover { background-color: #f1f5f9; }
+        .sort-icon { font-size: 0.7rem; margin-left: 1px; color: #94a3b8; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        @media (max-width: 640px) {
+            .delete-btn { opacity: 1; }
+        }
+
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .student-card {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+        
+        .emoji-lvl-2 { position: relative; width: 18px; height: 14px; margin: 0 auto; }
+        .emoji-lvl-2 span { position: absolute; font-size: 11px; line-height: 1; top: 1px; }
+        .emoji-lvl-2 span:nth-child(1) { left: 0; z-index: 1; }
+        .emoji-lvl-2 span:nth-child(2) { right: 0; z-index: 2; }
+        
+        .emoji-lvl-3 { position: relative; width: 18px; height: 16px; margin: 0 auto; }
+        .emoji-lvl-3 span { position: absolute; font-size: 9px; line-height: 1; filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.3)); }
+        .emoji-lvl-3 span:nth-child(1) { left: 4.5px; top: -1px; z-index: 3; }
+        .emoji-lvl-3 span:nth-child(2) { left: -1px; top: 7px; z-index: 1; }
+        .emoji-lvl-3 span:nth-child(3) { right: -1px; top: 7px; z-index: 2; }
+
+        @media print {
+            .sticky.top-0, #tab-navigation { display: none !important; }
+            #student-management, #draw-section, #stamp-section, #gagaball-section { display: none !important; }
+            #group-section { display: block !important; border: none; box-shadow: none; padding: 0; margin: 0; }
+            .print-hide { display: none !important; }
+            body { background: white !important; }
+            main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { margin: 10mm; }
+        }
+
+        /* 도장판 CSS */
+        .stamp-cell { position: relative; cursor: pointer; transition: transform 0.1s ease-in-out, background-color 0.2s; }
+        .stamp-cell:active { transform: scale(0.95); }
+        @keyframes stampSlam {
+            0% { transform: translate(-50%, -200%) scale(5); opacity: 0; }
+            60% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .stamp-img {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(3);
+            width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
+        }
+        .stamp-cell.stamped .stamp-img { animation: stampSlam 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .cell-number { color: #d1d5db; font-size: 1.5rem; z-index: 0; }
+        .badge-animate { animation: popInAndShine 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popInAndShine {
+            0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(10deg); opacity: 1; }
+            80% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        /* 🏟️ 가가볼 V44 스코어보드 전용 CSS (스마트 TV 대형 화면 최적화) */
+        #gagaball-section { font-family: 'Jua', sans-serif; letter-spacing: 0.5px; }
+        #gagaball-section .gaga-primary { color: #3498db; }
+        #gagaball-section .gaga-danger { color: #e74c3c; }
+        #gagaball-section .gaga-dark { color: #2c3e50; }
+        
+        /* 카드 크기 대폭 확대 (minmax 260px) */
+        #gagaball-section .scoreboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        #gagaball-section .score-item { background: #fff; border: 4px solid #3498db; padding: 25px; border-radius: 16px; text-align: center; position: relative; transition: 0.2s; box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+        #gagaball-section .score-item.drawn { border-color: #bdc3c7 !important; background-color: #dcdde1 !important; opacity: 0.75; }
+        
+        /* 아바타 120px로 확대 */
+        #gagaball-section .avatar-img { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 15px; display: block; background: #fdfdfd; object-fit: cover; border: 4px solid; }
+        #gagaball-section .score-item.drawn .avatar-img { filter: grayscale(70%); opacity: 0.9; border-color: #bdc3c7 !important; }
+        /* 폰트 확대 */
+        #gagaball-section .score-item .name { font-size: 2.2rem; margin-bottom: 5px; color: #2c3e50; }
+        #gagaball-section .score-item .score-val { font-size: 5rem; color: #e74c3c; margin: 10px 0; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
+        #gagaball-section .score-item.drawn .name { color: #555; }
+        #gagaball-section .score-item.drawn .score-val { color: #8e44ad; }
+        
+        /* 컨트롤 버튼 확대 */
+        #gagaball-section .score-ctrl { display: flex; justify-content: center; gap: 8px; margin-top: 10px;}
+        #gagaball-section .score-ctrl button { font-size: 2.5rem; width: 65px; height: 50px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.1s; display: flex; align-items: center; justify-content: center;}
+        #gagaball-section .score-ctrl button:active { transform: scale(0.9); }
+        #gagaball-section .score-ctrl button.minus { background: #e74c3c; }
+        #gagaball-section .score-item.drawn .score-ctrl button { background: #95a5a6; }
+
+        #gagaball-section .inactive-grid .score-item { border-color: #ddd; background: #fdfdfd; opacity: 0.6; padding: 15px; }
+        
+        #gagaball-section .ranking-table { width: 100%; font-size: 1.8rem; margin-top: 20px; border-collapse: collapse; }
+        #gagaball-section .ranking-table th { background: #2c3e50; color: white; padding: 15px; font-weight: normal; font-size: 2rem;}
+        #gagaball-section .ranking-table td { padding: 15px; border-bottom: 1px solid #eee; text-align: center; color: #2c3e50; }
+        #gagaball-section .rank-1 { background-color: #fff9c4; font-weight: bold; font-size: 2.2rem;}
+        #gagaball-section .rank-2 { background-color: #f5f5f5; font-weight: bold; font-size: 2rem;}
+        #gagaball-section .rank-3 { background-color: #ffe0b2; font-weight: bold; font-size: 2rem;}
+
+        /* 팀전 화면 TV 최적화 */
+        #gagaball-section .matchup-row { display: flex; gap: 15px; background: white; padding: 15px 20px; border-radius: 20px; border: 4px solid #ecf0f1; box-shadow: 0 6px 12px rgba(0,0,0,0.08); align-items: stretch; margin-bottom: 15px; }
+        #gagaball-section .team-card { flex: 1; display: flex; padding: 12px; border-radius: 15px; }
+        #gagaball-section .team-a { background: #ffe0b2; border-left: 12px solid #ff9800; }
+        #gagaball-section .team-b { background: #f4ff81; border-right: 12px solid #76ff03; }
+        #gagaball-section .vs-badge { font-size: 3.5rem; display: flex; align-items: center; color: #2c3e50; text-shadow: 3px 3px 0px #bdc3c7; font-weight: 900;}
+        
+        #gagaball-section .team-card-left { width: 140px; border-right: 3px dashed rgba(0,0,0,0.2); padding-right: 15px; margin-right: 15px; display: flex; flex-direction: column; justify-content: space-between; }
+        #gagaball-section .team-title { font-size: 3rem; margin-bottom: 5px; color: #2c3e50; text-align: center; line-height: 1.1;}
+        #gagaball-section .team-card-right { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; justify-content: flex-start;}
+        
+        #gagaball-section .team-member-badge { display: flex; align-items: center; padding: 6px 12px; border-radius: 12px; border: 3px solid; background: white; width: 180px; flex: 0 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.08); box-sizing: border-box; }
+        #gagaball-section .team-member-badge img { width: 45px; height: 45px; border-radius: 50%; margin-right: 10px; background: #fdfdfd;}
+        #gagaball-section .member-info { display: flex; flex-direction: column; text-align: left; line-height: 1.2;}
+        #gagaball-section .member-info b { font-size: 1.6rem; color: #2c3e50; }
+        #gagaball-section .member-info span { font-size: 1.4rem; color: #e74c3c; }
+
+        #gagaball-section .stepper-ctrl { display: flex; align-items: stretch; justify-content: space-between; background: white; border: 2px solid #bdc3c7; border-radius: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; overflow: hidden; }
+        #gagaball-section .stepper-btn { background: #ecf0f1; border: none; flex: 1; padding: 5px 0; font-size: 1.8rem; cursor: pointer; color: #2c3e50; transition: 0.1s; }
+        #gagaball-section .team-score-input { width: 45px; flex: 0 0 45px; border: none; text-align: center; font-size: 1.8rem; color: #e74c3c; outline: none; background: transparent; padding: 0; margin: 0; font-weight: bold; }
+        #gagaball-section .btn-team-add { background: #3498db; color: white; font-size: 1.3rem; padding: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); width: 100%; transition: 0.2s; font-weight: bold;}
+        #gagaball-section .btn-team-add:hover { background: #2980b9; transform: translateY(-2px); }
+
+        /* 가가볼 룰렛 모달 */
+        .gaga-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; font-family: 'Jua', sans-serif;}
+        .gaga-modal-content { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 800px; width: 90%; position: relative; }
+        
+        .roulette-container { position: relative; width: 100%; max-width: 600px; aspect-ratio: 1 / 1; margin: 0 auto; display: flex; justify-content: center; align-items: center; }
+        #rouletteCanvas { border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; height: 100%; }
+        .roulette-pointer { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); font-size: 5rem; text-shadow: 0 5px 10px rgba(0,0,0,0.4); z-index: 10; }
+        
+        /* 흔들기 애니메이션 (두구두구) */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-shake { animation: shake 0.3s infinite; }
