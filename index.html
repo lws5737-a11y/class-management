@@ -963,8 +963,6 @@
         let db = null; let auth = null; let userId = null; let appId = 'smart-class-manager'; 
         let isDebouncing = false; let unsubscribeSnapshot = null;
 
-        function normalizeClassName(name) { return !name ? name : name.replace(/(\d+)\s*학년\s*(\d+)\s*반/g, '$1-$2'); }
-
         const firebaseConfig = {
             apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
             authDomain: "lws5737-a6105.firebaseapp.com",
@@ -1977,6 +1975,17 @@
             if (student && student.attendance) { student.isCaptain = !student.isCaptain; saveData(); renderStudentList(); renderGroups(); }
         }
 
+        // 선택/하이라이트 토글 기능 추가
+        window.toggleSelection = function(studentNo) {
+            if (!currentClass || !classData[currentClass]) return;
+            const student = classData[currentClass].find(s => s.no == studentNo);
+            if (student) {
+                student.selected = !student.selected;
+                saveData();
+                renderStudentList();
+            }
+        }
+
         window.cycleStudentAbility = function(studentNo, type) {
             const student = classData[currentClass].find(s => s.no == studentNo);
             if (student && student.attendance) {
@@ -2063,6 +2072,11 @@
                         else if (sGroup % 4 === 3) rowBgClass = 'bg-cyan-50/60 hover:bg-cyan-100/60'; else if (sGroup % 4 === 0) rowBgClass = 'bg-amber-50/60 hover:bg-amber-100/60';
                     }
                 } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
+                
+                // 학생 하이라이트 오버라이드
+                if (s.selected) {
+                    rowBgClass = "bg-yellow-100 hover:bg-yellow-200 shadow-[inset_0_0_0_2px_#fde047] z-10 relative";
+                }
 
                 const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 student-row transition " + rowBgClass;
                 
@@ -2087,10 +2101,14 @@
                 let st = activeStudentTimers[s.no]; let stPlayIcon = st.isRunning ? '⏸' : '▶'; let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
 
                 tr.innerHTML = `
-                    <td class="px-0 py-1 sm:p-2 text-center font-mono font-bold text-[10px] sm:text-[13px] text-slate-500 w-4 sm:w-8">${s.no}</td>
+                    <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8">
+                        <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[10px] sm:text-[13px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-300 line-through hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
+                            ${s.no}
+                        </button>
+                    </td>
                     
                     <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
-                        <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded hover:bg-slate-200 transition" title="이름을 터치하면 참석/불참 토글">
+                        <button onclick="window.toggleSelection(${s.no})" class="w-full h-full text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 학생 하이라이트 선택">
                             ${s.name}${captainBadge}
                         </button>
                     </td>
