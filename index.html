@@ -375,7 +375,6 @@
 
             </section>
 
-            <!-- 기존 섹션들 (student-management, group-section, draw-section, stamp-section) ...이하 내용은 동일 유지... -->
             <section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-3">
                     <h2 class="text-base sm:text-lg font-bold flex items-center text-slate-700">
@@ -721,79 +720,88 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 오디오 Context ---
+        // ==========================================
+        // 1. 오디오 통합 관리 (메모리 누수 방지 및 iOS 정책 대응)
+        // ==========================================
         let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+        // 사용자가 화면을 터치/클릭하면 오디오 컨텍스트 활성화
+        document.body.addEventListener('click', initAudio, { once: true });
+        document.body.addEventListener('touchstart', initAudio, { once: true });
+
         window.playCoinSound = function() {
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(987.77, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(1318.51, audioCtx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
-            } catch(e) {}
-        }
-        window.playBumpSound = function() {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
+                const ctx = initAudio();
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+                osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
             } catch(e) {}
         }
 
-        // 🥁 이벤트 사운드 (두구두구 드럼롤)
+        window.playBumpSound = function() {
+            try {
+                const ctx = initAudio();
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(150, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
         window.playDrumRoll = function() {
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const ctx = initAudio();
                 for (let i = 0; i < 20; i++) {
                     setTimeout(() => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
+                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
                         osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(100 + Math.random() * 50, audioCtx.currentTime);
-                        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+                        osc.frequency.setValueAtTime(100 + Math.random() * 50, ctx.currentTime);
+                        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.start(); osc.stop(ctx.currentTime + 0.1);
                     }, i * 100);
                 }
             } catch(e) {}
         }
 
-        // 🎺 이벤트 사운드 (그랜드 팡파르)
         window.playGrandFanfare = function() {
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const ctx = initAudio();
                 const playChord = (freqs, t, d) => {
                     freqs.forEach(f => {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'square';
-                        osc.frequency.value = f;
-                        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + t);
-                        gain.gain.linearRampToValueAtTime(0.0, audioCtx.currentTime + t + d);
-                        osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                        osc.type = 'square'; osc.frequency.value = f;
+                        gain.gain.setValueAtTime(0.15, ctx.currentTime + t);
+                        gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + t + d);
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
                     });
                 };
-                playChord([440, 554.37, 659.25], 0, 0.2); // A major
+                playChord([440, 554.37, 659.25], 0, 0.2); 
                 playChord([440, 554.37, 659.25], 0.2, 0.2);
                 playChord([440, 554.37, 659.25], 0.4, 0.2);
-                playChord([493.88, 587.33, 739.99], 0.6, 0.4); // B minor
-                playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); // C major
+                playChord([493.88, 587.33, 739.99], 0.6, 0.4); 
+                playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); 
             } catch(e) {}
         }
 
-        // 🎉 화려한 폭죽(Confetti) 캔버스 로직
+        // 🎉 폭죽(Confetti) 로직
         window.fireConfetti = function() {
             const canvas = document.getElementById('confetti-canvas');
             canvas.classList.remove('hidden');
@@ -805,15 +813,10 @@
             
             for(let i = 0; i < 200; i++) {
                 particles.push({
-                    x: canvas.width / 2, // 정중앙 하단 부근에서 폭발
-                    y: canvas.height / 2 + 150,
-                    r: Math.random() * 8 + 4,
-                    dx: Math.random() * 30 - 15,
-                    dy: Math.random() * -25 - 5,
+                    x: canvas.width / 2, y: canvas.height / 2 + 150,
+                    r: Math.random() * 8 + 4, dx: Math.random() * 30 - 15, dy: Math.random() * -25 - 5,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                    tilt: Math.floor(Math.random() * 10) - 10,
-                    tiltAngle: 0,
-                    tiltAngleInc: (Math.random() * 0.07) + 0.05
+                    tilt: Math.floor(Math.random() * 10) - 10, tiltAngle: 0, tiltAngleInc: (Math.random() * 0.07) + 0.05
                 });
             }
             let animationFrame;
@@ -824,38 +827,28 @@
                     p.tiltAngle += p.tiltAngleInc;
                     p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
                     p.x += Math.sin(p.tiltAngle) * 2;
-                    p.dy += 0.3; // 중력
-                    p.y += p.dy;
-                    p.x += p.dx;
+                    p.dy += 0.3; p.y += p.dy; p.x += p.dx;
                     if (p.y <= canvas.height) active = true;
                     
-                    ctx.beginPath();
-                    ctx.lineWidth = p.r;
-                    ctx.strokeStyle = p.color;
+                    ctx.beginPath(); ctx.lineWidth = p.r; ctx.strokeStyle = p.color;
                     ctx.moveTo(p.x + p.tilt + p.r, p.y);
                     ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
                     ctx.stroke();
                 });
                 if (active) animationFrame = requestAnimationFrame(render);
-                else {
-                    cancelAnimationFrame(animationFrame);
-                    canvas.classList.add('hidden');
-                }
+                else { cancelAnimationFrame(animationFrame); canvas.classList.add('hidden'); }
             }
             render();
         }
 
-        // --- 볼센스로 통합된 UI 함수 ---
+        // ==========================================
+        // 2. 상태 관리 및 유틸리티
+        // ==========================================
         window.getAbilityHTML = function(type, val) {
-            let emoji = type === 'ballSense' ? '⚽' : '⚡'; // 볼센스 통합
-
-            if (val === '1' || val === '하') {
-                return `<div class="emoji-lvl-1"><span>${emoji}</span></div>`;
-            } else if (val === '2' || val === '중') {
-                return `<div class="emoji-lvl-2"><span>${emoji}</span><span>${emoji}</span></div>`;
-            } else if (val === '3' || val === '상') {
-                return `<div class="emoji-lvl-3"><span>${emoji}</span><span>${emoji}</span><span>${emoji}</span></div>`;
-            }
+            let emoji = type === 'ballSense' ? '⚽' : '⚡';
+            if (val === '1' || val === '하') return `<div class="emoji-lvl-1"><span>${emoji}</span></div>`;
+            if (val === '2' || val === '중') return `<div class="emoji-lvl-2"><span>${emoji}</span><span>${emoji}</span></div>`;
+            if (val === '3' || val === '상') return `<div class="emoji-lvl-3"><span>${emoji}</span><span>${emoji}</span><span>${emoji}</span></div>`;
             return `<span class="text-slate-300 text-[10px] font-bold">-</span>`;
         };
 
@@ -873,16 +866,25 @@
         let timerLoopStarted = false; 
         let draggedStudentNo = null;
 
-        // 드래그 앤 드롭 ...
+        const TOTAL_STAMP_CELLS = 20;
+        const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
+        let globalStampImage = localStorage.getItem('customStamp') || defaultStampImg;
+
+        const abilitiesCycle = ['-', '1', '2', '3']; 
+        const getGroupsCycle = () => {
+            let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+            const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
+        };
+
+        // --- 드래그 앤 드롭 ---
         window.handleDragStart = function(e, studentNo) {
-            window.isDraggingCard = true;
-            draggedStudentNo = studentNo;
+            window.isDraggingCard = true; draggedStudentNo = studentNo;
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
         };
         window.handleDragEnd = function(e) {
-            window.isDraggingCard = false;
-            e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; draggedStudentNo = null;
+            window.isDraggingCard = false; draggedStudentNo = null;
+            e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
         };
         window.handleDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
 
@@ -919,14 +921,14 @@
             }
         };
 
+        // UI 토글 함수들
         window.toggleClassDropdown = function(e) {
             if(e) e.stopPropagation();
             const dropdown = document.getElementById('class-select-dropdown');
             const chevron = document.getElementById('class-select-chevron');
             if (dropdown) {
                 dropdown.classList.toggle('hidden');
-                if(!dropdown.classList.contains('hidden')) chevron.style.transform = 'rotate(180deg)';
-                else chevron.style.transform = 'rotate(0deg)';
+                chevron.style.transform = dropdown.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
             }
         }
 
@@ -939,43 +941,35 @@
             }
         });
 
-        const TOTAL_STAMP_CELLS = 20;
-        const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
-        let globalStampImage = localStorage.getItem('customStamp') || defaultStampImg;
-
-        const abilitiesCycle = ['-', '1', '2', '3']; 
-        const getGroupsCycle = () => {
-            let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
-            const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
-        };
-
+        // ==========================================
+        // 3. Firebase 연동
+        // ==========================================
         let db = null; let auth = null; let userId = null; let appId = 'smart-class-manager'; 
         let isDebouncing = false; let unsubscribeSnapshot = null;
 
         function normalizeClassName(name) { return !name ? name : name.replace(/(\d+)\s*학년\s*(\d+)\s*반/g, '$1-$2'); }
 
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
+            authDomain: "lws5737-a6105.firebaseapp.com",
+            projectId: "lws5737-a6105",
+            storageBucket: "lws5737-a6105.firebasestorage.app",
+            messagingSenderId: "729062934950",
+            appId: "1:729062934950:web:615529a26e02081c182767",
+            measurementId: "G-LVB2WTXNGV"
+        };
+        
         try {
-            const firebaseConfig = {
-                apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
-                authDomain: "lws5737-a6105.firebaseapp.com",
-                projectId: "lws5737-a6105",
-                storageBucket: "lws5737-a6105.firebasestorage.app",
-                messagingSenderId: "729062934950",
-                appId: "1:729062934950:web:615529a26e02081c182767",
-                measurementId: "G-LVB2WTXNGV"
-            };
-            
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app); db = getFirestore(app);
             const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
 
             window.signInWithGoogle = function() {
                 const btn = document.getElementById('btn-login');
-                btn.innerHTML = '<svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 로그인 중...';
-                
+                btn.innerHTML = '로그인 중...';
                 signInWithPopup(auth, provider).catch((error) => {
                     alert("로그인에 실패했습니다. 팝업이 차단되었는지 확인해주세요.");
-                    btn.innerHTML = '<svg class="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg> Google 계정으로 시작하기';
+                    btn.innerHTML = 'Google 계정으로 시작하기';
                 });
             };
 
@@ -999,8 +993,59 @@
             });
         } catch (e) { console.error("클라우드 서버 연결 오류:", e); }
 
+        function setupFirestoreListener() {
+            if (!userId || !db) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+            if (unsubscribeSnapshot) unsubscribeSnapshot(); 
+            const syncIcon = document.getElementById('sync-status');
+            if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+
+            unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+                if (isDebouncing) return;
+                if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    classData = data.data || {}; groupScores = data.scores || {}; groupRecords = data.records || {}; classStamps = data.stamps || {};
+                    if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
+                    migrateData();
+                }
+                window.renderClassSelect();
+                if (currentClass && classData[currentClass]) {
+                    renderStudentList();
+                    if(typeof renderGroups === 'function') renderGroups();
+                    if(typeof renderStampBoard === 'function') renderStampBoard();
+                    if(typeof renderDrawSection === 'function') renderDrawSection();
+                    if(typeof window.renderGagaball === 'function') window.renderGagaball();
+                } else if (currentClass && !classData[currentClass]) {
+                    currentClass = "";
+                    const display = document.getElementById('current-class-display');
+                    if (display) display.innerText = "학급을 선택해주세요";
+                    ['tab-navigation', 'student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+                }
+            }, (error) => {
+                console.error("데이터 동기화 오류:", error);
+                if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+            });
+        }
+
+        function saveData() {
+            if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
+            if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""];
+
+            if (userId && db) {
+                isDebouncing = true; 
+                const syncIcon = document.getElementById('sync-status');
+                if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+                
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+                setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage })
+                    .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
+                    .catch((error) => { console.error("클라우드 자동 저장 실패:", error); isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
+            }
+        }
+
         // ==========================================
-        // 🏟️ V44 가가볼 전용 로직 (TV & 화려한 효과 추가)
+        // 4. 가가볼 스코어보드 (DOM 렌더링 최적화)
         // ==========================================
         window.switchGagaTab = function(tab) {
             ['score', 'rank', 'team'].forEach(t => {
@@ -1025,10 +1070,11 @@
             const inactiveGrid = document.getElementById('gaga-inactive-grid');
             if(!activeGrid || !currentClass) return;
             
-            activeGrid.innerHTML = ''; inactiveGrid.innerHTML = '';
             let availableTotal = 0, availableBoys = 0, availableGirls = 0;
-
             const students = [...(classData[currentClass] || [])].sort((a,b) => a.no - b.no);
+
+            let activeHTML = '';
+            let inactiveHTML = '';
 
             students.forEach((s) => {
                 const isDrawn = s.drawn; const drawnClass = isDrawn ? 'drawn' : '';
@@ -1060,8 +1106,11 @@
                         </div>
                     </div>
                 `;
-                if(s.attendance) activeGrid.innerHTML += cardHTML; else inactiveGrid.innerHTML += cardHTML;
+                if(s.attendance) activeHTML += cardHTML; else inactiveHTML += cardHTML;
             });
+            
+            activeGrid.innerHTML = activeHTML;
+            inactiveGrid.innerHTML = inactiveHTML;
             document.getElementById('gaga-draw-stats').innerText = `대기: 총 ${availableTotal}명 (남 ${availableBoys} / 여 ${availableGirls})`;
         };
 
@@ -1076,30 +1125,29 @@
 
         window.renderGagaRanking = function() {
             const tbody = document.getElementById('gaga-ranking-body'); if(!tbody || !currentClass) return;
-            tbody.innerHTML = '';
             const studentsForRank = [...(classData[currentClass] || [])].filter(s => s.attendance).sort((a, b) => (b.score || 0) - (a.score || 0));
             
+            let rankHTML = '';
             let rank = 1;
             studentsForRank.forEach((s, i) => {
                 if (i > 0 && (studentsForRank[i].score || 0) < (studentsForRank[i-1].score || 0)) rank = i + 1;
                 let rClass = rank === 1 ? 'rank-1' : (rank === 2 ? 'rank-2' : (rank === 3 ? 'rank-3' : ''));
-                tbody.innerHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`;
+                rankHTML += `<tr class="${rClass}"><td>${rank}위</td><td class="font-bold">${s.name}</td><td class="font-black text-red-500">${s.score || 0}점</td></tr>`;
             });
+            tbody.innerHTML = rankHTML;
         }
 
-        // --- 화려한 추첨 이벤트 로직 ---
+        // --- 추첨 및 팀 편성 이벤트 ---
         window.triggerGagaDraw = function(targetGender) {
             if(!currentClass) return;
             const drawCount = parseInt(document.getElementById('gaga-draw-count').value, 10);
             let available = classData[currentClass].filter(s => s.attendance && !s.drawn && (targetGender === 'all' || s.gender === targetGender));
             if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
             
-            // 1) 로딩 오버레이 띄우고 드럼롤 재생
             document.getElementById('event-loading-overlay').classList.remove('hidden');
             document.getElementById('event-loading-overlay').classList.add('flex');
             window.playDrumRoll();
 
-            // 2) 2.5초 후 진짜 추첨 로직 실행
             setTimeout(() => {
                 document.getElementById('event-loading-overlay').classList.add('hidden');
                 document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -1109,12 +1157,10 @@
 
         window.executeGagaDraw = function(targetGender, drawCount, available) {
             const actualDrawCount = Math.min(drawCount, available.length);
-            
             for (let i = available.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [available[i], available[j]] = [available[j], available[i]];
             }
-
             const picked = available.slice(0, actualDrawCount);
             const pickedHTML = [];
 
@@ -1122,7 +1168,6 @@
                 s.drawn = true;
                 let borderColor = s.gender === '남' ? '#3498db' : '#e74c3c';
                 const cuteAvatar = generateCuteAvatar(s.name);
-                
                 pickedHTML.push(`
                     <div class="border-[6px] p-6 rounded-3xl text-center shadow-xl bg-white w-64 transform transition hover:scale-105" style="border-color: ${borderColor};">
                         <img src="${cuteAvatar}" class="w-32 h-32 rounded-full mx-auto mb-4 bg-slate-50 border-4 border-slate-100" onerror="this.onerror=null; this.src='${fallbackSVG}';">
@@ -1135,15 +1180,10 @@
                     </div>
                 `);
             });
-
             saveData(); renderGagaball(); renderDrawSection();
-            
             document.getElementById('gagaDrawResultGrid').innerHTML = pickedHTML.join('');
             document.getElementById('gagaDrawModal').style.display = 'flex';
-
-            // 결과 등장! 팡파르 & 폭죽
-            window.playGrandFanfare();
-            window.fireConfetti();
+            window.playGrandFanfare(); window.fireConfetti();
         }
 
         window.resetGagaDraw = function() {
@@ -1152,29 +1192,24 @@
                 classData[currentClass].forEach(s => s.drawn = false); saveData(); renderGagaball(); renderDrawSection();
             });
         }
-        
         window.closeGagaDrawModal = function() { document.getElementById('gagaDrawModal').style.display = 'none'; }
 
-        // --- 가가볼 팀 편성 (TV 최적화 & 화려한 이벤트) ---
         let currentGagaTeams = [];
-        
         window.triggerGagaTeams = function() {
             if(!currentClass) return;
             const numTeams = parseInt(document.getElementById('gaga-team-count').value, 10);
             let available = classData[currentClass].filter(s => s.attendance);
             if(available.length < numTeams) return window.showModal("인원 부족", `참가 학생이 너무 적습니다.`);
 
-            // 1) 로딩 오버레이 띄우고 드럼롤 재생
             document.getElementById('event-loading-overlay').classList.remove('hidden');
             document.getElementById('event-loading-overlay').classList.add('flex');
             document.getElementById('event-loading-text').innerText = "팀 밸런스 조정중...";
             window.playDrumRoll();
 
-            // 2) 2.5초 후 진짜 편성 로직 실행
             setTimeout(() => {
                 document.getElementById('event-loading-overlay').classList.add('hidden');
                 document.getElementById('event-loading-overlay').classList.remove('flex');
-                document.getElementById('event-loading-text').innerText = "두구두구두구..."; // 복구
+                document.getElementById('event-loading-text').innerText = "두구두구두구..."; 
                 window.executeGagaTeams(numTeams, available);
             }, 2500);
         }
@@ -1183,17 +1218,11 @@
             const totalParticipants = available.length;
             const baseSize = Math.floor(totalParticipants / numTeams);
             const remainder = totalParticipants % numTeams;
-            
             let targetSizes = new Array(numTeams).fill(baseSize);
             for(let i = 0; i < remainder; i++) targetSizes[i]++;
 
             const teams = Array.from({length: numTeams}, (_, i) => ({ id: i + 1, members: [], score: 0, targetSize: targetSizes[i] }));
-
-            const sortByPower = (a, b) => {
-                let powerA = (a.score || 0) * 10 + (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
-                let powerB = (b.score || 0) * 10 + (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
-                return powerB - powerA;
-            };
+            const sortByPower = (a, b) => ((b.score || 0)*10 + (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0)) - ((a.score || 0)*10 + (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0));
 
             let boys = available.filter(s => s.gender === '남').sort(sortByPower);
             let girls = available.filter(s => s.gender === '여').sort(sortByPower);
@@ -1203,40 +1232,28 @@
                     let eligibleTeams = teams.filter(t => t.members.length < t.targetSize);
                     let minMembers = Math.min(...eligibleTeams.map(t => t.members.length));
                     eligibleTeams = eligibleTeams.filter(t => t.members.length === minMembers);
-                    
                     eligibleTeams.sort(() => Math.random() - 0.5); 
                     eligibleTeams.sort((a, b) => a.score - b.score); 
-                    
                     eligibleTeams[0].members.push(student);
                     eligibleTeams[0].score += (student.score || 0);
                 });
             }
-            
             distribute(boys); distribute(girls);
             currentGagaTeams = teams;
             renderGagaTeamView();
-
-            // 결과 등장! 팡파르 & 폭죽
-            window.playGrandFanfare();
-            window.fireConfetti();
+            window.playGrandFanfare(); window.fireConfetti();
         }
 
         window.renderGagaTeamView = function() {
             const container = document.getElementById('gaga-team-matchups');
-            container.innerHTML = '';
-            
+            let teamHTML = '';
             for(let i = 0; i < currentGagaTeams.length; i += 2) {
                 const teamA = currentGagaTeams[i]; const teamB = currentGagaTeams[i+1];
-                
                 const createBadges = (members) => members.map(m => `
                     <div class="team-member-badge" style="border-color:${m.gender==='남'?'#3498db':'#e74c3c'};">
                         <img src="${generateCuteAvatar(m.name)}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
-                        <div class="member-info">
-                            <b>${m.name}</b>
-                            <span>${m.score || 0}점</span>
-                        </div>
+                        <div class="member-info"><b>${m.name}</b><span>${m.score || 0}점</span></div>
                     </div>`).join('');
-
                 const createPanel = (team) => `
                     <div class="team-card-left">
                         <div class="team-title">${team.id}팀</div>
@@ -1248,15 +1265,15 @@
                             </div>
                             <button class="btn-team-add" onclick="window.addGagaTeamScore(${team.id})">포인트 획득</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
 
-                container.innerHTML += `
+                teamHTML += `
                     <div class="matchup-row">
                         <div class="team-card team-a">${createPanel(teamA)} <div class="team-card-right">${createBadges(teamA.members)}</div></div>
                         ${teamB ? `<div class="vs-badge">VS</div><div class="team-card team-b">${createPanel(teamB)} <div class="team-card-right">${createBadges(teamB.members)}</div></div>` : ''}
                     </div>`;
             }
+            container.innerHTML = teamHTML;
         }
 
         window.addGagaTeamScore = function(teamId) {
@@ -1272,11 +1289,9 @@
             saveData(); renderGagaTeamView(); renderGagaball(); renderGagaRanking(); renderDrawSection(); renderStudentList();
         }
 
-        // --- 모달 헬퍼 ---
         window.openTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'flex'; }
         window.closeTimerSelectModal = function() { document.getElementById('timerSelectModal').style.display = 'none'; }
 
-        // --- 룰렛 모달 ---
         const individualMissions = [
             { text: "그냥 가가볼", weight: 70, color: "#81ecec", desc: "평소처럼 가가볼을 즐기세요." },
             { text: "체육쌤 레이드", weight: 10, color: "#ff7675", desc: "체육쌤이 경기장에 등장했습니다! 체육쌤을 아웃시키면 추가 점수가 주어집니다!" },
@@ -1325,14 +1340,14 @@
             canvas.style.transform = `rotate(${currentRouletteRotation}deg)`;
 
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let startTime = audioCtx.currentTime;
+                const ctx = initAudio();
+                let startTime = ctx.currentTime;
                 for(let i=0; i<45; i++) {
                     let t = i / 45; let tickTime = startTime + 4.0 * (1 - Math.pow(1 - t, 3.5)); 
-                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
                     osc.type = 'triangle'; osc.frequency.setValueAtTime(600 - (i*5), tickTime); 
                     gain.gain.setValueAtTime(0, tickTime); gain.gain.linearRampToValueAtTime(0.3, tickTime + 0.01); gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.05);
-                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.connect(gain); gain.connect(ctx.destination);
                     osc.start(tickTime); osc.stop(tickTime + 0.05);
                 }
             } catch(e) {}
@@ -1347,12 +1362,12 @@
                     currentPos += sliceSize;
                 }
                 try {
-                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const ctx = initAudio();
                     const playTone = (f, t, d) => {
-                        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                        osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
-                        osc.frequency.setValueAtTime(f, audioCtx.currentTime + t); gain.gain.setValueAtTime(0.3, audioCtx.currentTime + t); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + d);
-                        osc.start(audioCtx.currentTime + t); osc.stop(audioCtx.currentTime + t + d);
+                        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                        osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+                        osc.frequency.setValueAtTime(f, ctx.currentTime + t); gain.gain.setValueAtTime(0.3, ctx.currentTime + t); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + d);
+                        osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
                     };
                     playTone(523.25, 0.0, 0.2); playTone(523.25, 0.2, 0.2); playTone(523.25, 0.4, 0.2); playTone(659.25, 0.6, 0.2); playTone(783.99, 0.8, 0.6); 
                 } catch(e) {}
@@ -1366,7 +1381,7 @@
         window.closeMissionDescModal = function() { document.getElementById("missionDescModal").style.display = "none"; }
 
         // ==========================================
-        // 스마트 앱 기존 로직들
+        // 5. 도장판, 스톱워치 등 기존 공통 로직
         // ==========================================
         window.renderStampBoard = () => {
             const board = document.getElementById('stampBoard'); if (!board) return;
@@ -1410,26 +1425,25 @@
         };
 
         window.playStampSound = () => {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const fallOsc = audioCtx.createOscillator(); const fallGain = audioCtx.createGain();
+            const ctx = initAudio();
+            const now = ctx.currentTime;
+            const fallOsc = ctx.createOscillator(); const fallGain = ctx.createGain();
             fallOsc.type = 'sine'; fallOsc.frequency.setValueAtTime(900, now); fallOsc.frequency.exponentialRampToValueAtTime(100, now + 0.35);
             fallGain.gain.setValueAtTime(0, now); fallGain.gain.linearRampToValueAtTime(0.4, now + 0.15); fallGain.gain.linearRampToValueAtTime(0, now + 0.35);
-            fallOsc.connect(fallGain); fallGain.connect(audioCtx.destination); fallOsc.start(now); fallOsc.stop(now + 0.35);
+            fallOsc.connect(fallGain); fallGain.connect(ctx.destination); fallOsc.start(now); fallOsc.stop(now + 0.35);
 
-            const boomOsc = audioCtx.createOscillator(); const boomGain = audioCtx.createGain();
+            const boomOsc = ctx.createOscillator(); const boomGain = ctx.createGain();
             boomOsc.type = 'square'; boomOsc.frequency.setValueAtTime(150, now + 0.35); boomOsc.frequency.exponentialRampToValueAtTime(20, now + 0.7);
             boomGain.gain.setValueAtTime(0, now + 0.34); boomGain.gain.setValueAtTime(1.5, now + 0.35); boomGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
-            boomOsc.connect(boomGain); boomGain.connect(audioCtx.destination); boomOsc.start(now + 0.35); boomOsc.stop(now + 0.7);
+            boomOsc.connect(boomGain); boomGain.connect(ctx.destination); boomOsc.start(now + 0.35); boomOsc.stop(now + 0.7);
         };
         
         const playTone = (freq, type, duration, gainVal) => {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration);
+            const ctx = initAudio();
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(gainVal, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + duration);
         };
         window.playEraseSound = () => [659, 880, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.4, 0.15), i * 50));
         window.playFanfareSound = () => [392, 523, 659].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.8, 0.1), i * 150));
@@ -1595,57 +1609,6 @@
                     if (s.group_gender === undefined) s.group_gender = null;
                     delete s.group_partner;
                 });
-            }
-        }
-
-        function setupFirestoreListener() {
-            if (!userId || !db) return;
-            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
-            if (unsubscribeSnapshot) unsubscribeSnapshot(); 
-            const syncIcon = document.getElementById('sync-status');
-            if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
-
-            unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
-                if (isDebouncing) return;
-                if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    classData = data.data || {}; groupScores = data.scores || {}; groupRecords = data.records || {}; classStamps = data.stamps || {};
-                    if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
-                    migrateData();
-                }
-                window.renderClassSelect();
-                if (currentClass && classData[currentClass]) {
-                    renderStudentList();
-                    if(typeof renderGroups === 'function') renderGroups();
-                    if(typeof renderStampBoard === 'function') renderStampBoard();
-                    if(typeof renderDrawSection === 'function') renderDrawSection();
-                    if(typeof window.renderGagaball === 'function') window.renderGagaball();
-                } else if (currentClass && !classData[currentClass]) {
-                    currentClass = "";
-                    const display = document.getElementById('current-class-display');
-                    if (display) display.innerText = "학급을 선택해주세요";
-                    ['tab-navigation', 'student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
-                }
-            }, (error) => {
-                console.error("데이터 동기화 오류:", error);
-                if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
-            });
-        }
-
-        function saveData() {
-            if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
-            if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""];
-
-            if (userId && db) {
-                isDebouncing = true; 
-                const syncIcon = document.getElementById('sync-status');
-                if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
-                
-                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
-                setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage })
-                    .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
-                    .catch((error) => { console.error("클라우드 자동 저장 실패:", error); isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
             }
         }
 
@@ -1874,7 +1837,6 @@
             window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
         }
 
-        // --- 스마트 TV를 위한 와이드 뷰 전환 추가 ---
         window.showTab = function(tabName) {
             currentTab = tabName;
             ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1884,7 +1846,6 @@
                 if(btn) btn.className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
             });
 
-            // 컨테이너 크기 조절 (가가볼은 TV 꽉 채우기)
             const mainContainer = document.getElementById('main-container');
             const headerContainer = document.getElementById('header-inner-container');
             const selectContainer = document.getElementById('class-select-inner-container');
@@ -1931,16 +1892,20 @@
             const lines = input.split('\n');
             if (!classData[currentClass]) classData[currentClass] = [];
             let addedCount = 0;
+            
             lines.forEach(line => {
-                const parts = line.split(/\t|\s+/).filter(p => p.trim() !== "");
+                const parts = line.split('\t').map(p => p.trim());
                 if (parts.length >= 2) {
                     const no = parts[0]; const name = parts[1];
                     const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; // 볼센스
+                    const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
                     const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
                     let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
                     
-                    const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+                    const newStudent = { 
+                        no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, 
+                        attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
+                    };
                     newStudent[`group_${currentGroupMode}`] = group;
                     classData[currentClass].push(newStudent); addedCount++;
                 }
@@ -1949,18 +1914,11 @@
             if(addedCount > 0) {
                 document.getElementById('excel-input').value = ""; 
                 renderStudentList(); renderDrawSection(); window.renderGagaball();
-                
-                if (userId && db) {
-                    isDebouncing = true;
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage });
-                    } catch (error) { console.error("즉시 저장 실패:", error); } 
-                    finally { isDebouncing = false; }
-                }
-
+                saveData(); 
                 window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
-            } else { window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 띄어쓰기하여 입력해주세요."); }
+            } else { 
+                window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 엑셀에서 복사해 주세요."); 
+            }
         }
 
         window.cycleInputAbility = function(type) {
@@ -1990,7 +1948,7 @@
             if (!currentClass) { window.showModal("알림", "먼저 학급을 선택해주세요."); return; }
             const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
             const genderInput = document.getElementById('add-gender'); 
-            const bsInput = document.getElementById('add-ballSense'); // 볼센스
+            const bsInput = document.getElementById('add-ballSense'); 
             const agInput = document.getElementById('add-agility'); 
             const groupInput = document.getElementById('add-group');
 
