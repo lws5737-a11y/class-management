@@ -335,11 +335,22 @@
 
             <section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
                 <div class="flex justify-between items-center mb-4 px-1 gap-3">
-                    <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2 shrink-0">
-                        <span class="text-blue-500">📋</span> 출석부 및 명단
-                    </h3>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2">
+                            <span class="text-blue-500">📋</span> 출석부 및 명단
+                        </h3>
+                        <button onclick="window.evaluateAgilityByRecord()" class="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-emerald-200 transition font-bold whitespace-nowrap hidden sm:inline-block">
+                            ⚡ 기록으로 순발력 자동평가
+                        </button>
+                    </div>
                     <div id="student-summary" class="flex flex-col gap-1.5 items-end">
                     </div>
+                </div>
+                
+                <div class="mb-3 px-1 sm:hidden">
+                    <button onclick="window.evaluateAgilityByRecord()" class="w-full text-xs bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg shadow-sm hover:bg-emerald-200 transition font-bold">
+                        ⚡ 개인 기록을 바탕으로 순발력 자동평가
+                    </button>
                 </div>
 
                 <div class="overflow-x-auto overflow-y-auto max-h-[60vh] border border-slate-200 rounded-xl w-full relative">
@@ -434,7 +445,7 @@
                         <div>
                             <p class="text-[11px] sm:text-xs text-purple-700 leading-relaxed font-medium">
                                 • 불참생은 제외되며, 한 번 뽑힌 학생은 전원이 모두 뽑힐 때까지 제외됩니다.<br>
-                                • 다수를 뽑을 때 <b class="text-purple-800">능력치가 비슷한 학생</b>이 우선적으로 함께 뽑힙니다.
+                                • 다수를 뽑을 때 <b class="text-purple-800">능력치가 골고루 분산되도록</b> 뽑힙니다.
                             </p>
                             <p class="text-sm sm:text-base font-bold text-purple-800 mt-2" id="draw-status-text">
                                 남은 인원: 0명 / 참석 0명
@@ -762,6 +773,23 @@
                 playChord([440, 554.37, 659.25], 0.4, 0.2);
                 playChord([493.88, 587.33, 739.99], 0.6, 0.4); 
                 playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); 
+            } catch(e) {}
+        }
+
+        window.playTickSound = function() {
+            try {
+                const ctx = initAudio();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.05);
             } catch(e) {}
         }
 
@@ -1418,9 +1446,12 @@
 
         function updateTimersLoop() {
             let now = Date.now();
+            let anyRunning = false;
+            
             for (let i in activeTimers) {
                 let t = activeTimers[i];
                 if (t.isRunning) {
+                    anyRunning = true;
                     if (t.mode === 'stopwatch') t.elapsed = now - t.startTime;
                     else if (t.mode === 'timer') {
                         t.elapsed = t.target - (now - t.startTime);
@@ -1441,11 +1472,22 @@
             for (let i in activeStudentTimers) {
                 let t = activeStudentTimers[i];
                 if (t.isRunning) {
+                    anyRunning = true;
                     t.elapsed = now - t.startTime;
                     const display = document.getElementById(`st-time-display-${i}`);
                     if (display) display.innerText = window.formatTime(t.elapsed);
                 }
             }
+            
+            if (anyRunning) {
+                if (!window.lastTickTime || now - window.lastTickTime >= 1000) {
+                    window.playTickSound();
+                    window.lastTickTime = now;
+                }
+            } else {
+                window.lastTickTime = 0;
+            }
+            
             requestAnimationFrame(updateTimersLoop);
         }
         if(!timerLoopStarted) { timerLoopStarted = true; requestAnimationFrame(updateTimersLoop); }
@@ -1484,6 +1526,33 @@
             const student = classData[currentClass].find(s => s.no == studentNo);
             if (student) { student.recordMs = elapsedMs; saveData(); }
         }
+        
+        window.evaluateAgilityByRecord = function() {
+            if(!currentClass || !classData[currentClass]) return;
+            let students = classData[currentClass].filter(s => s.attendance && s.recordMs > 0);
+            if(students.length === 0) {
+                window.showModal("알림", "기록(시간)이 입력된 참석 학생이 없습니다.<br>개인 스톱워치로 기록을 먼저 측정해주세요.");
+                return;
+            }
+            window.showModal("순발력 자동 평가", `총 <b class="text-blue-500">${students.length}명</b>의 개인 기록을 바탕으로 순발력을 상/중/하로 자동 분류하시겠습니까?<br><br><span class='text-xs text-slate-500'>※ 기록이 짧을수록(시간이 적게 걸릴수록) '상'으로 평가됩니다.</span>`, true, () => {
+                students.sort((a, b) => a.recordMs - b.recordMs);
+                let total = students.length;
+                let topCount = Math.ceil(total / 3);
+                let midCount = Math.ceil((total - topCount) / 2);
+                
+                students.forEach((s, index) => {
+                    if (index < topCount) s.agility = '3';
+                    else if (index < topCount + midCount) s.agility = '2';
+                    else s.agility = '1';
+                });
+                
+                saveData();
+                renderStudentList();
+                renderGroups();
+                window.showModal("완료", "기록 기반 순발력 평가가 완료되었습니다.");
+            }, "자동 평가 시작");
+        }
+
         window.toggleTimerPlay = function(groupId) {
             let t = activeTimers[groupId]; if (!t) return;
             let now = Date.now();
@@ -2360,20 +2429,41 @@
             if (drawCount > availableStudents.length) drawCount = availableStudents.length;
 
             const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
-            shuffle(availableStudents); const anchorStudent = availableStudents[0];
+            shuffle(availableStudents);
+            
+            let selectedStudents = [];
+            
+            if (drawCount > 0) {
+                selectedStudents.push(availableStudents[0]);
+                availableStudents.splice(0, 1);
+            }
 
-            const getDistance = (s1, s2) => {
-                const bs1 = parseInt(s1.ballSense)||0, bs2 = parseInt(s2.ballSense)||0;
-                const ag1 = parseInt(s1.agility)||0, ag2 = parseInt(s2.agility)||0;
-                let distBs = (bs1 === 0 || bs2 === 0) ? 3 : Math.abs(bs1 - bs2);
-                let distAg = (ag1 === 0 || ag2 === 0) ? 3 : Math.abs(ag1 - ag2);
-                return distBs + distAg;
-            };
+            // 우수한 학생 분산 배치 (기존 멤버들의 평균 능력치와 거리가 가장 먼 학생을 순차적으로 선택)
+            while(selectedStudents.length < drawCount && availableStudents.length > 0) {
+                let avgBs = selectedStudents.reduce((sum, s) => sum + (parseInt(s.ballSense)||2), 0) / selectedStudents.length;
+                let avgAg = selectedStudents.reduce((sum, s) => sum + (parseInt(s.agility)||2), 0) / selectedStudents.length;
+                
+                let maxDist = -1;
+                let bestCandidateIdx = -1;
+                
+                for(let i=0; i<availableStudents.length; i++) {
+                    let s = availableStudents[i];
+                    let bs = parseInt(s.ballSense)||2;
+                    let ag = parseInt(s.agility)||2;
+                    let dist = Math.abs(bs - avgBs) + Math.abs(ag - avgAg);
+                    
+                    dist += Math.random() * 0.5; // 동일 능력치일 경우 무작위성 부여
+                    
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                        bestCandidateIdx = i;
+                    }
+                }
+                
+                selectedStudents.push(availableStudents[bestCandidateIdx]);
+                availableStudents.splice(bestCandidateIdx, 1);
+            }
 
-            const studentsWithDistance = availableStudents.map(s => ({ student: s, distance: getDistance(anchorStudent, s), rand: Math.random() }));
-            studentsWithDistance.sort((a, b) => { if (a.distance !== b.distance) return a.distance - b.distance; return a.rand - b.rand; });
-
-            const selectedStudents = studentsWithDistance.slice(0, drawCount).map(item => item.student);
             selectedStudents.forEach(s => s.drawn = true); saveData(); renderDrawSection();
             
             const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
