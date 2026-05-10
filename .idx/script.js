@@ -7,6 +7,7 @@ let audioCtx;
 window.playCoinSound = function() {
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
         osc.type = 'sine'; osc.connect(gain); gain.connect(audioCtx.destination);
         osc.frequency.setValueAtTime(987.77, audioCtx.currentTime);
@@ -14,11 +15,12 @@ window.playCoinSound = function() {
         gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
         osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.3);
-    } catch(e) {}
+    } catch(e) { console.error("Audio Error:", e); }
 }
 window.playBumpSound = function() {
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
         osc.type = 'triangle'; osc.connect(gain); gain.connect(audioCtx.destination);
         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
@@ -26,7 +28,7 @@ window.playBumpSound = function() {
         gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
         osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.2);
-    } catch(e) {}
+    } catch(e) { console.error("Audio Error:", e); }
 }
 
 // 🥁 이벤트 사운드 (두구두구 드럼롤)
@@ -46,7 +48,7 @@ window.playDrumRoll = function() {
                 osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             }, i * 100);
         }
-    } catch(e) {}
+    } catch(e) { console.error("Audio Error:", e); }
 }
 
 // 🎺 이벤트 사운드 (그랜드 팡파르)
@@ -71,7 +73,7 @@ window.playGrandFanfare = function() {
         playChord([440, 554.37, 659.25], 0.4, 0.2);
         playChord([493.88, 587.33, 739.99], 0.6, 0.4); // B minor
         playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); // C major
-    } catch(e) {}
+    } catch(e) { console.error("Audio Error:", e); }
 }
 
 // 🎉 화려한 폭죽(Confetti) 캔버스 로직
@@ -128,7 +130,7 @@ window.fireConfetti = function() {
 
 // --- 볼센스로 통합된 UI 함수 ---
 window.getAbilityHTML = function(type, val) {
-    let emoji = type === 'ballSense' ? '⚽' : '⚡'; // 볼센스 통합
+    let emoji = type === 'ballSense' ? '⚽' : '⚡';
 
     if (val === '1' || val === '하') {
         return `<div class="emoji-lvl-1"><span>${emoji}</span></div>`;
@@ -234,7 +236,6 @@ window.toggleAddStudentForm = function() {
     }
 }
 
-
 const TOTAL_STAMP_CELLS = 20;
 const defaultStampImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZWY0NDQ0IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIvPgogIDxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjM4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMSIvPgogIDx0ZXh0IHg9IjUwIiB5PSI0NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiNlZjQ0NDQiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ssLg8L3RleHQ+CiAgPHRleHQgeD0iNTAiIHk9IjcwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iI2VmNDQ0NCIgZm9udC13ZWlnaHQ9ImJvbGQiIHRleHQtYW5jaG9yPSJtaWRkbGUiPueemO2WiOyWtOyalDwvdGV4dD4KPC9zdmc+";
 let globalStampImage = localStorage.getItem('customStamp') || defaultStampImg;
@@ -251,9 +252,6 @@ let isDebouncing = false; let unsubscribeSnapshot = null;
 function normalizeClassName(name) { return !name ? name : name.replace(/(\d+)\s*학년\s*(\d+)\s*반/g, '$1-$2'); }
 
 try {
-    // Firebase 구성은 별도의 파일 (e.g., firebase-config.js)에서 가져오는 것을 권장합니다.
-    // const firebaseConfig = { apiKey: "...", ... };
-    // 지금은 기존 방식을 유지합니다.
     const firebaseConfig = {
         apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
         authDomain: "lws5737-a6105.firebaseapp.com",
@@ -273,6 +271,7 @@ try {
         btn.innerHTML = '<svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 로그인 중...';
         
         signInWithPopup(auth, provider).catch((error) => {
+            console.error("Login Failed:", error);
             alert("로그인에 실패했습니다. 팝업이 차단되었는지 확인해주세요.");
             btn.innerHTML = '<svg class="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg> Google 계정으로 시작하기';
         });
@@ -293,13 +292,15 @@ try {
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('app-container').classList.add('hidden');
             classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {};
-            currentClass = ""; window.renderClassSelect();
+            currentClass = ""; 
+            renderClassSelect();
         }
     });
-} catch (e) { console.error("클라우드 서버 연결 오류:", e); }
+} catch (e) { console.error("Firebase Init Error:", e); }
+
 
 // ==========================================
-// 🏟️ V44 가가볼 전용 로직 (TV & 화려한 효과 추가)
+// 🏟️ V44 가가볼 전용 로직
 // ==========================================
 window.switchGagaTab = function(tab) {
     ['score', 'rank', 'team'].forEach(t => {
@@ -344,16 +345,16 @@ window.renderGagaball = function() {
         const cuteAvatar = generateCuteAvatar(s.name); 
 
         const cardHTML = `
-            <div class="score-item ${drawnClass}" style="border-color: ${borderStyle}; background-color: ${bgColor};">
+            <div class="score-item ${drawnClass}" style="border-color: ${borderStyle}; background-color: ${bgColor};" onclick="window.toggleAttendance(${s.no})">
                 ${isDrawn ? '<div class="absolute -top-3 -right-3 bg-slate-800 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow">완료</div>' : ''}
                 <div class="flex justify-between items-center mb-3">
                     <span class="font-mono font-bold text-slate-500 text-lg">${s.no}번</span>
-                    <button class="${btnClass} px-3 py-1 rounded-md text-sm font-bold transition hover:opacity-80" onclick="window.toggleAttendance(${s.no})">${btnText}</button>
+                    <span class="${btnClass} px-3 py-1 rounded-md text-sm font-bold transition">${btnText}</span>
                 </div>
                 <img src="${cuteAvatar}" alt="avatar" class="avatar-img" onerror="this.onerror=null; this.src='${fallbackSVG}';" style="border-color: ${borderStyle};">
                 <div class="name">${s.name} <span class="text-lg">(${s.gender})</span></div>
                 <div class="score-val">${s.score || 0}</div>
-                <div class="score-ctrl">
+                <div class="score-ctrl" onclick="event.stopPropagation()">
                     <button class="minus hover:bg-red-600" onclick="window.changeGagaScore(${s.no}, -1)">-</button>
                     <button class="hover:bg-blue-600" onclick="window.changeGagaScore(${s.no}, 1)">+</button>
                 </div>
@@ -393,12 +394,10 @@ window.triggerGagaDraw = function(targetGender) {
     let available = classData[currentClass].filter(s => s.attendance && !s.drawn && (targetGender === 'all' || s.gender === targetGender));
     if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
     
-    // 1) 로딩 오버레이 띄우고 드럼롤 재생
     document.getElementById('event-loading-overlay').classList.remove('hidden');
     document.getElementById('event-loading-overlay').classList.add('flex');
     window.playDrumRoll();
 
-    // 2) 2.5초 후 진짜 추첨 로직 실행
     setTimeout(() => {
         document.getElementById('event-loading-overlay').classList.add('hidden');
         document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -440,7 +439,6 @@ window.executeGagaDraw = function(targetGender, drawCount, available) {
     document.getElementById('gagaDrawResultGrid').innerHTML = pickedHTML.join('');
     document.getElementById('gagaDrawModal').style.display = 'flex';
 
-    // 결과 등장! 팡파르 & 폭죽
     window.playGrandFanfare();
     window.fireConfetti();
 }
@@ -463,13 +461,11 @@ window.triggerGagaTeams = function() {
     let available = classData[currentClass].filter(s => s.attendance);
     if(available.length < numTeams) return window.showModal("인원 부족", `참가 학생이 너무 적습니다.`);
 
-    // 1) 로딩 오버레이 띄우고 드럼롤 재생
     document.getElementById('event-loading-overlay').classList.remove('hidden');
     document.getElementById('event-loading-overlay').classList.add('flex');
     document.getElementById('event-loading-text').innerText = "팀 밸런스 조정중...";
     window.playDrumRoll();
 
-    // 2) 2.5초 후 진짜 편성 로직 실행
     setTimeout(() => {
         document.getElementById('event-loading-overlay').classList.add('hidden');
         document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -515,18 +511,19 @@ window.executeGagaTeams = function(numTeams, available) {
     currentGagaTeams = teams;
     renderGagaTeamView();
 
-    // 결과 등장! 팡파르 & 폭죽
     window.playGrandFanfare();
     window.fireConfetti();
 }
 
 window.renderGagaTeamView = function() {
     const container = document.getElementById('gaga-team-matchups');
+    if (!container) return;
     container.innerHTML = '';
     
     for(let i = 0; i < currentGagaTeams.length; i += 2) {
         const teamA = currentGagaTeams[i]; const teamB = currentGagaTeams[i+1];
-        
+        if (!teamA) continue;
+
         const createBadges = (members) => members.map(m => `
             <div class="team-member-badge" style="border-color:${m.gender==='남'?'#3498db':'#e74c3c'};">
                 <img src="${generateCuteAvatar(m.name)}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
@@ -564,6 +561,7 @@ window.addGagaTeamScore = function(teamId) {
     if (val > 0) window.playCoinSound(); else window.playBumpSound();
 
     const team = currentGagaTeams.find(t => t.id === teamId);
+    if (!team) return;
     team.members.forEach(m => {
         const student = classData[currentClass].find(s => s.no === m.no);
         if(student) { student.score = Math.max(0, (student.score || 0) + val); m.score = student.score; }
@@ -909,22 +907,27 @@ function setupFirestoreListener() {
         if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
         if (docSnap.exists()) {
             const data = docSnap.data();
-            classData = data.data || {}; groupScores = data.scores || {}; groupRecords = data.records || {}; classStamps = data.stamps || {};
-            if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
+            classData = data.data || {}; 
+            groupScores = data.scores || {}; 
+            groupRecords = data.records || {}; 
+            classStamps = data.stamps || {};
+            if (data.stampImage) { 
+                globalStampImage = data.stampImage; 
+                localStorage.setItem('customStamp', globalStampImage); 
+                document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); 
+            }
             migrateData();
         }
-        window.renderClassSelect();
+        renderClassSelect();
         if (currentClass && classData[currentClass]) {
-            renderStudentList();
-            if(typeof renderGroups === 'function') renderGroups();
-            if(typeof renderStampBoard === 'function') renderStampBoard();
-            if(typeof renderDrawSection === 'function') renderDrawSection();
-            if(typeof window.renderGagaball === 'function') window.renderGagaball();
+            showTab(currentTab);
         } else if (currentClass && !classData[currentClass]) {
             currentClass = "";
-            const display = document.getElementById('current-class-display');
-            if (display) display.innerText = "학급을 선택해주세요";
-            ['tab-navigation', 'student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+            document.getElementById('tab-navigation').classList.add('hidden');
+            ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+            renderClassSelect();
+        } else {
+            renderClassSelect();
         }
     }, (error) => {
         console.error("데이터 동기화 오류:", error);
@@ -943,7 +946,7 @@ function saveData() {
         
         const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
         setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage })
-            .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
+            .then(() => { isDebouncing = false; setTimeout(() => {if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }}, 500); } )
             .catch((error) => { console.error("클라우드 자동 저장 실패:", error); isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
     }
 }
@@ -1020,12 +1023,12 @@ window.addNewClass = function() {
     classStamps[newClassName] = Array(TOTAL_STAMP_CELLS).fill(false);
     saveData(); input.value = ""; 
     window.selectClass(newClassName);
-    renderClassSelect(); // 모달 내용 업데이트
+    renderClassSelect();
     window.showModal("학급 추가 완료", `<b class="text-blue-600">${newClassName}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
 }
 
 window.deleteCurrentClass = function() {
-    if (!currentClass) return;
+    if (!currentClass) { window.showModal("알림", "삭제할 학급을 먼저 선택해주세요."); return; }
     window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
         delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass];
         saveData(); currentClass = ""; activeTimers = {}; activeStudentTimers = {};
@@ -1033,7 +1036,7 @@ window.deleteCurrentClass = function() {
         document.getElementById('tab-navigation').classList.add('hidden');
         ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
         
-        renderClassSelect(); // 변경된 목록으로 모달과 헤더 업데이트
+        renderClassSelect();
         window.closeClassSelectionModal();
         window.showModal("삭제 완료", "학급이 성공적으로 삭제되었습니다.");
     }, "삭제");
@@ -1182,7 +1185,7 @@ window.handleAllCSVUpload = function(event) {
                 }
 
                 renderClassSelect();
-                if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); window.renderGagaball(); }
+                if (currentClass) { showTab(currentTab); }
                 window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
             document.getElementById('csv-all-file-input').value = ''; 
@@ -1197,12 +1200,14 @@ window.selectClass = function(className) {
     document.getElementById('tab-navigation').classList.remove('hidden');
     window.showTab(currentTab); 
     window.renderClassSelect(); 
-    renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard();
-    window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
 }
 
-// --- 스마트 TV를 위한 와이드 뷰 전환 추가 ---
 window.showTab = function(tabName) {
+    if (!currentClass) {
+        window.openClassSelectionModal();
+        return;
+    }
+
     currentTab = tabName;
     ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
     
@@ -1231,6 +1236,7 @@ window.showTab = function(tabName) {
         if (tabName === 'student') {
             document.getElementById('student-management').classList.remove('hidden');
             document.getElementById('tab-student').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-blue-600 shadow-md border border-blue-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+            renderStudentList();
         } else if (tabName === 'group') {
             document.getElementById('group-section').classList.remove('hidden');
             document.getElementById('tab-group').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-indigo-600 shadow-md border border-indigo-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
@@ -1238,6 +1244,7 @@ window.showTab = function(tabName) {
         } else if (tabName === 'draw') {
             document.getElementById('draw-section').classList.remove('hidden');
             document.getElementById('tab-draw').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-purple-600 shadow-md border border-purple-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+            renderDrawSection();
         } else if (tabName === 'stamp') {
             document.getElementById('stamp-section').classList.remove('hidden');
             document.getElementById('tab-stamp').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
@@ -1254,4 +1261,488 @@ window.importFromExcel = async function() {
     const lines = input.split('\n');
     if (!classData[currentClass]) classData[currentClass] = [];
     let addedCount = 0;
-    lines.forEach(
+    lines.forEach(line => {
+        const parts = line.split(/\t|\s+/).filter(p => p.trim() !== "");
+        if (parts.length >= 2) {
+            const no = parts[0]; const name = parts[1];
+            const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
+            const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; // 볼센스
+            const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
+            let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
+            
+            const existingStudent = classData[currentClass].find(s => s.no == no);
+            if(existingStudent) return; // 이미 있는 번호는 건너뛰기
+
+            const newStudent = { no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+            newStudent[`group_${currentGroupMode}`] = group;
+            classData[currentClass].push(newStudent); addedCount++;
+        }
+    });
+
+    if(addedCount > 0) {
+        document.getElementById('excel-input').value = ""; 
+        saveData();
+        renderStudentList(); renderDrawSection(); window.renderGagaball();
+        window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
+    } else { window.showModal("형식 오류 또는 중복", "형식이 올바르지 않거나 이미 등록된 번호일 수 있습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 띄어쓰기하여 입력해주세요."); }
+}
+
+window.cycleInputAbility = function(type) {
+    const hiddenInput = document.getElementById(`add-${type}`); 
+    const btn = document.getElementById(`btn-add-${type}`);
+    let currentIdx = abilitiesCycle.indexOf(hiddenInput.value); if(currentIdx === -1) currentIdx = 0;
+    const nextIdx = (currentIdx + 1) % abilitiesCycle.length; 
+    const nextVal = abilitiesCycle[nextIdx];
+    hiddenInput.value = nextVal;
+    
+    let emoji = type === 'ballSense' ? '⚽' : '⚡';
+    
+    if (nextVal === '-') {
+        btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`;
+    } else {
+        btn.innerHTML = window.getAbilityHTML(type, nextVal);
+    }
+    
+    btn.className = "w-[42px] sm:w-[60px] h-[36px] border rounded-lg shadow-sm transition flex items-center justify-center focus:outline-blue-500 ";
+    if(nextVal === '3') btn.className += "bg-orange-50 border-orange-200 hover:bg-orange-100";
+    else if(nextVal === '2') btn.className += "bg-emerald-50 border-emerald-200 hover:bg-emerald-100";
+    else if(nextVal === '1') btn.className += "bg-stone-50 border-stone-200 hover:bg-stone-100";
+    else btn.className += "bg-white border-slate-200 hover:bg-slate-50";
+}
+
+window.addSingleStudent = function() {
+    if (!currentClass) { window.showModal("알림", "먼저 학급을 선택해주세요."); return; }
+    const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
+    const genderInput = document.getElementById('add-gender'); 
+    const bsInput = document.getElementById('add-ballSense');
+    const agInput = document.getElementById('add-agility'); 
+    const groupInput = document.getElementById('add-group');
+
+    if(!noInput.value || !nameInput.value) { window.showModal("입력 오류", "번호와 이름을 모두 입력해주세요."); return; }
+    if(classData[currentClass].find(s => s.no == noInput.value)) { window.showModal("입력 오류", "이미 존재하는 학생 번호입니다."); return; }
+
+    let groupVal = null;
+    if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
+    if (!classData[currentClass]) classData[currentClass] = [];
+    
+    const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+    newStudent[`group_${currentGroupMode}`] = groupVal;
+    classData[currentClass].push(newStudent);
+    
+    noInput.value = ""; nameInput.value = ""; groupInput.value = "";
+    ['ballSense', 'agility'].forEach(type => {
+        document.getElementById(`add-${type}`).value = "-";
+        const btn = document.getElementById(`btn-add-${type}`);
+        let emoji = type === 'ballSense' ? '⚽' : '⚡';
+        btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`;
+        btn.className = "w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500";
+    });
+    saveData(); renderStudentList(); renderDrawSection(); window.renderGagaball();
+}
+
+window.deleteStudent = function(studentNo) {
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if (!student) return;
+    window.showModal("학생 정보 삭제", `<span class="font-bold text-red-500">${student.no}번 ${student.name}</span> 학생의 정보를 정말로 삭제하시겠습니까?`, true, () => {
+        const idx = classData[currentClass].findIndex(s => s.no == studentNo);
+        if (idx > -1) { 
+            classData[currentClass].splice(idx, 1); 
+            saveData(); renderStudentList(); renderDrawSection(); window.renderGagaball(); window.renderGagaTeamView(); renderGroups();
+        }
+    }, "삭제");
+}
+
+window.handleNameClick = function(studentNo) {
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if (!student) return;
+
+    if (currentTab === 'group') { // 모둠 탭에서는 체육부장 토글
+        if (student.attendance) {
+            student.isCaptain = !student.isCaptain;
+            saveData();
+            renderStudentList();
+            renderGroups();
+        }
+    } else { // 다른 탭에서는 출석 토글
+        student.attendance = !student.attendance;
+        saveData();
+        renderStudentList();
+        renderGroups();
+        renderDrawSection();
+        window.renderGagaball();
+    }
+}
+
+window.toggleAttendance = function(studentNo) {
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if (student) { 
+        student.attendance = !student.attendance; 
+        saveData(); renderStudentList(); renderGroups(); renderDrawSection(); window.renderGagaball();
+    }
+}
+
+window.cycleStudentAbility = function(studentNo, type) {
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if (student && student.attendance) {
+        let currentIdx = abilitiesCycle.indexOf(student[type] || '-'); if (currentIdx === -1) currentIdx = 0;
+        const nextIdx = (currentIdx + 1) % abilitiesCycle.length; student[type] = abilitiesCycle[nextIdx];
+        saveData(); renderStudentList(); renderGroups();
+    }
+}
+
+window.cycleStudentGroup = function(studentNo) {
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if (student && student.attendance) {
+        const cycle = getGroupsCycle();
+        let currentVal = student[`group_${currentGroupMode}`];
+        let currentIdx = cycle.indexOf(currentVal); if (currentIdx === -1) currentIdx = 0;
+        const nextIdx = (currentIdx + 1) % cycle.length; student[`group_${currentGroupMode}`] = cycle[nextIdx];
+        saveData(); renderStudentList(); renderGroups();
+    }
+}
+
+window.toggleSort = function(field) {
+    if (sortState.field === field) sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    else { sortState.field = field; sortState.direction = 'asc'; }
+    renderStudentList();
+}
+
+function updateSortIcons() {
+    ['no', 'name', 'recordMs', 'gender', 'ballSense', 'agility', 'group'].forEach(f => {
+        const icon = document.getElementById(`sort-${f}-icon`);
+        if (icon) {
+            if (sortState.field === f) { icon.innerText = sortState.direction === 'asc' ? '▲' : '▼'; icon.classList.add('text-blue-500'); } 
+            else { icon.innerText = '↕'; icon.classList.remove('text-blue-500'); }
+        }
+    });
+}
+
+window.renderStudentList = function() {
+    const tbody = document.getElementById('student-list-body'); 
+    if (!tbody || !currentClass) return;
+    tbody.innerHTML = "";
+    const allStudents = [...(classData[currentClass] || [])];
+    
+    const excelSection = document.getElementById('excel-import-section');
+    if (excelSection) { if (allStudents.length > 0) excelSection.classList.add('hidden'); else excelSection.classList.remove('hidden'); }
+    
+    const presentStudents = allStudents.filter(s => s.attendance);
+    const presentCount = presentStudents.length;
+    const maleCount = presentStudents.filter(s => s.gender === '남').length;
+    const femaleCount = presentStudents.filter(s => s.gender === '여').length;
+
+    let groupCounts = "";
+    const g1 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 1).length;
+    const g2 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 2).length;
+    const g3 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 3).length;
+    const g4 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 4).length;
+    if(currentGroupMode === 'mixed2') groupCounts = `1조 ${g1} · 2조 ${g2}`;
+    else if(currentGroupMode === 'mixed3') groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3}`;
+    else groupCounts = `1조 ${g1} · 2조 ${g2} · 3조 ${g3} · 4조 ${g4}`;
+    
+    const unassigned = presentStudents.filter(s => !s[`group_${currentGroupMode}`]).length;
+
+    const summaryEl = document.getElementById('student-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <div class="text-[10px] sm:text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-slate-200 shadow-sm w-fit mb-1">
+                참석 <span class="text-blue-600">${presentCount}</span>명 <span class="text-slate-400 text-[9px] sm:text-[10px] ml-1 font-normal">(전체 ${allStudents.length}명)</span> <span class="text-slate-300 mx-1">|</span> 남 <span class="text-blue-500">${maleCount}</span> <span class="text-slate-300 mx-1">·</span> 여 <span class="text-pink-500">${femaleCount}</span>
+            </div>
+            <div class="flex flex-wrap justify-end gap-1.5 w-full">
+                <div class="text-[9px] sm:text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 shadow-sm whitespace-nowrap">🎲 모둠: ${groupCounts} · 미배정 ${unassigned}</div>
+            </div>
+        `;
+    }
+    
+    allStudents.sort((a, b) => {
+        let valA = a[sortState.field]; let valB = b[sortState.field];
+        if (sortState.field === 'group') { valA = a[`group_${currentGroupMode}`] || 999; valB = b[`group_${currentGroupMode}`] || 999; }
+        if (sortState.field === 'recordMs') { 
+            valA = a.recordMs || 0; valB = b.recordMs || 0;
+            if (sortState.direction === 'asc') {
+                if (valA === 0) valA = Infinity;
+                if (valB === 0) valB = Infinity;
+            }
+        }
+        if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
+        return a.no - b.no;
+    });
+
+    if (typeof updateSortIcons === 'function') updateSortIcons();
+
+    allStudents.forEach((s) => {
+        let rowBgClass = "hover:bg-slate-50"; 
+        if (!s.attendance) { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
+
+        const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 student-row transition " + rowBgClass;
+        
+        const getAbilityColorClass = (val) => {
+            if (!s.attendance) return 'bg-slate-100 opacity-50 cursor-not-allowed border-transparent';
+            if (val === '3') return 'bg-orange-50 border-orange-200 hover:bg-orange-100 shadow-sm';
+            if (val === '2') return 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100 shadow-sm';
+            if (val === '1') return 'bg-stone-50 border-stone-200 hover:bg-stone-100 shadow-sm';
+            return 'bg-white hover:bg-slate-100 border border-slate-200 shadow-sm';
+        };
+
+        const bsColor = getAbilityColorClass(s.ballSense);
+        const agColor = getAbilityColorClass(s.agility);
+
+        let groupColorClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200';
+        if (!s.attendance) groupColorClass = 'bg-slate-200 text-slate-400 cursor-not-allowed';
+        else if (s[`group_${currentGroupMode}`]) {
+            const sGroup = s[`group_${currentGroupMode}`];
+            if (sGroup % 4 === 1) groupColorClass = 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm';
+            else if (sGroup % 4 === 2) groupColorClass = 'bg-fuchsia-500 text-white hover:bg-fuchsia-600 shadow-sm';
+            else if (sGroup % 4 === 3) groupColorClass = 'bg-cyan-500 text-white hover:bg-cyan-600 shadow-sm';
+            else if (sGroup % 4 === 0) groupColorClass = 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm';
+        }
+        
+        const captainBadge = s.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5">C</span>' : '';
+
+        if (!activeStudentTimers[s.no]) {
+            activeStudentTimers[s.no] = { isRunning: false, elapsed: s.recordMs || 0, startTime: 0 };
+        }
+        let st = activeStudentTimers[s.no];
+        let stPlayIcon = st.isRunning ? '⏸' : '▶';
+        let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
+
+        tr.innerHTML = `
+            <td class="px-0 py-1 sm:p-2 text-center font-mono font-bold text-[10px] sm:text-[13px] text-slate-500 w-4 sm:w-8">${s.no}</td>
+            <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
+                <button onclick="window.handleNameClick(${s.no})" class="w-full h-full text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400'} px-1 py-0.5 rounded hover:bg-slate-200 transition" title="출석부/모둠: 출석/체육부장 토글">
+                    ${s.name}${captainBadge}
+                </button>
+            </td>
+            <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
+                <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
+                    <div id="st-time-display-${s.no}" onclick="window.manualStudentTimeEdit(${s.no})" class="w-8 sm:w-12 text-center text-[8px] sm:text-[11px] font-bold tracking-tighter cursor-pointer hover:text-blue-500 transition-colors font-mono">
+                        ${window.formatTime(st.elapsed)}
+                    </div>
+                    <button onclick="window.toggleStudentTimerPlay(${s.no})" id="btn-st-play-${s.no}" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] ${stPlayColor}">
+                        ${stPlayIcon}
+                    </button>
+                    <button onclick="window.resetStudentTimer(${s.no})" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] text-red-400 font-bold">↻</button>
+                </div>
+            </td>
+            <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span></td>
+            <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass}" ${!s.attendance ? 'disabled' : ''}>${s[`group_${currentGroupMode}`] ? s[`group_${currentGroupMode}`] : '-'}</button></td>
+            <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
+                <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
+                    ${window.getAbilityHTML('ballSense', s.ballSense)}
+                </button>
+            </td>
+            <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
+                <button onclick="window.cycleStudentAbility(${s.no}, 'agility')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${agColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
+                    ${window.getAbilityHTML('agility', s.agility)}
+                </button>
+            </td>
+            <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8"><button onclick="window.deleteStudent(${s.no})" class="delete-btn text-slate-300 hover:text-red-500 transition p-0.5 sm:p-1"><svg class="h-3.5 w-3.5 sm:h-5 sm:w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.setGroupMode = function(mode) {
+    currentGroupMode = mode; activeTimers = {}; 
+    ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
+        const btn = document.getElementById(`btn-mode-${m}`);
+        if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
+    });
+
+    const descEl = document.getElementById('group-mode-desc');
+    const btnText = document.getElementById('generate-btn-text');
+
+    if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
+    else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
+    else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
+    else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+    
+    renderStudentList(); renderGroups();
+}
+
+window.resetCurrentGroup = function() {
+    if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학급을 먼저 선택해주세요."); return; }
+    let modeName = currentGroupMode === 'mixed2' ? '혼성 2팀' : (currentGroupMode === 'mixed3' ? '혼성 3팀' : (currentGroupMode === 'mixed4' ? '혼성 4팀' : '동성 4팀'));
+    
+    window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 부여된 모둠 점수와 기록도 함께 지워집니다.</span>`, true, () => {
+        classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
+        if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
+        if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
+        activeTimers = {}; saveData(); renderStudentList(); renderGroups();
+        window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
+    });
+}
+
+window.generateCurrentGroup = function() {
+    let title = "", callback = null;
+    if (currentGroupMode === 'mixed2') { title = "혼성 2팀 편성"; callback = () => window.generateMixedGroups(2); }
+    else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback = () => window.generateMixedGroups(3); }
+    else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
+    else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
+
+    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
+}
+
+window.updateGroupScore = function(groupId, change) {
+    if (!groupScores[currentClass]) groupScores[currentClass] = {};
+    if (!groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
+    groupScores[currentClass][currentGroupMode][groupId] = (groupScores[currentClass][currentGroupMode][groupId] || 0) + change;
+    saveData(); renderGroups();
+}
+
+window.updateGroupRecord = function(groupId, value) {
+    if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
+    if (!groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
+    groupRecords[currentClass][currentGroupMode][groupId] = value;
+    saveData();
+}
+
+window.generateMixedGroups = function(numGroups) {
+    const students = classData[currentClass];
+    if (!students || students.length < numGroups) { window.showModal("인원 부족", `학생 정보가 부족합니다. 최소 ${numGroups}명 이상 등록되어야 합니다.`); return; }
+
+    const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
+    const presentStudents = students.filter(s => s.attendance); shuffle(presentStudents);
+    students.forEach(s => {
+        s[`group_${currentGroupMode}`] = null;
+        s.isCaptain = false;
+    });
+
+    const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
+
+    const assignToOptimalGroup = (student) => {
+        let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
+        const isMale = student.gender === '남';
+
+        let minTotalScore = Math.min(...groups.map(g => g.totalScore));
+        let candidates = groups.filter(g => g.totalScore === minTotalScore);
+
+        let minTotal = Math.min(...candidates.map(g => g.total));
+        candidates = candidates.filter(g => g.total === minTotal);
+
+        let minGender = Math.min(...candidates.map(g => isMale ? g.male : g.female));
+        let genderCandidates = candidates.filter(g => (isMale ? g.male : g.female) === minGender);
+        if (genderCandidates.length > 0) candidates = genderCandidates;
+
+        const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
+        student[`group_${currentGroupMode}`] = targetGroup.id;
+        
+        targetGroup.totalScore += stScore; targetGroup.total++;
+        if (isMale) targetGroup.male++; else targetGroup.female++;
+    };
+
+    presentStudents.sort((a, b) => {
+        let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+        let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
+        return scoreB - scoreA;
+    });
+    presentStudents.forEach(s => assignToOptimalGroup(s));
+
+    if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
+    for(let i=1; i<=numGroups; i++) groupScores[currentClass][currentGroupMode][i] = 0;
+    if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+    activeTimers = {};
+
+    saveData(); renderStudentList(); renderGroups();
+}
+
+window.generateGenderGroups = function() {
+    const students = classData[currentClass];
+    if (!students || students.length < 4) { window.showModal("인원 부족", "학생 정보가 부족합니다. 최소 4명 이상 등록되어야 합니다."); return; }
+
+    const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
+    students.forEach(s => {
+        s[`group_${currentGroupMode}`] = null;
+        s.isCaptain = false;
+    });
+
+    const distribute = (targetStudents, groupIds) => {
+        shuffle(targetStudents);
+        targetStudents.sort((a, b) => {
+            let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+            let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
+            return scoreB - scoreA;
+        });
+
+        const groups = groupIds.map(id => ({ id: id, total: 0, totalScore: 0 }));
+        
+        const assignToOptimalGroup = (student) => {
+            let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
+            let minTotalScore = Math.min(...groups.map(g => g.totalScore));
+            let candidates = groups.filter(g => g.totalScore === minTotalScore);
+            let minTotal = Math.min(...candidates.map(g => g.total));
+            candidates = candidates.filter(g => g.total === minTotal);
+
+            const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
+            student[`group_${currentGroupMode}`] = targetGroup.id;
+            targetGroup.totalScore += stScore; targetGroup.total++;
+        };
+        
+        targetStudents.forEach(s => assignToOptimalGroup(s));
+    };
+
+    const boys = students.filter(s => s.gender === '남' && s.attendance);
+    const girls = students.filter(s => s.gender === '여' && s.attendance);
+
+    if(boys.length > 0) distribute(boys, [1, 2]); 
+    if(girls.length > 0) distribute(girls, [3, 4]);
+
+    if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {1:0, 2:0, 3:0, 4:0};
+    if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
+    activeTimers = {};
+
+    saveData(); renderStudentList(); renderGroups();
+}
+
+function renderGroups() {
+    const container = document.getElementById('group-result'); if (!container) return; container.innerHTML = "";
+    const students = classData[currentClass] || [];
+    
+    let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+    container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1';
+
+    let hasAnyGroup = false;
+
+    for (let i = 1; i <= maxGroup; i++) {
+        const members = students.filter(s => s[`group_${currentGroupMode}`] === i);
+        if (members.length === 0) continue;
+        
+        hasAnyGroup = true;
+        let themeIndex = (i - 1) % 4;
+        let theme = { border: 'border-slate-200', hover: 'hover:border-slate-400', text: 'text-slate-700', btn: 'text-slate-500 hover:bg-slate-100', bg: 'bg-slate-50' };
+        if (themeIndex === 0) theme = { border: 'border-blue-200', hover: 'hover:border-blue-400', text: 'text-blue-700', btn: 'text-blue-600 hover:bg-blue-50', bg: 'bg-blue-50/50' };
+        else if (themeIndex === 1) theme = { border: 'border-pink-200', hover: 'hover:border-pink-400', text: 'text-pink-700', btn: 'text-pink-600 hover:bg-pink-50', bg: 'bg-pink-50/50' };
+        else if (themeIndex === 2) theme = { border: 'border-emerald-200', hover: 'hover:border-emerald-400', text: 'text-emerald-700', btn: 'text-emerald-600 hover:bg-emerald-50', bg: 'bg-emerald-50/50' };
+        else if (themeIndex === 3) theme = { border: 'border-amber-200', hover: 'hover:border-amber-400', text: 'text-amber-700', btn: 'text-amber-600 hover:bg-amber-50', bg: 'bg-amber-50/50' };
+
+        const card = document.createElement('div');
+        card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]`;
+        card.setAttribute('ondragover', 'window.handleDragOver(event)');
+        card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
+
+        const presentMembers = members.filter(m => m.attendance);
+        const maleCount = presentMembers.filter(m => m.gender === '남').length; 
+        const femaleCount = presentMembers.filter(m => m.gender === '여').length;
+        
+        let score = 0; if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) score = groupScores[currentClass][currentGroupMode][i] || 0;
+
+        let groupTotalAbility = 0;
+        presentMembers.forEach(m => { groupTotalAbility += (parseInt(m.ballSense)||0) + (parseInt(m.agility)||0); });
+
+        const headerExtra = `
+            <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full items-center">
+                <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-slate-500">종합 전력: ${groupTotalAbility}점</span>
+            </div>
+        `;
+
+        if (!activeTimers[i]) {
+            let savedVal = '';
+            if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) savedVal = groupRecords[currentClass][currentGroupMode][i];
+            let savedMs = 0; if (savedVal !== undefined && savedVal !== null && savedVal !== '') savedMs = window.parseTime(savedVal);
+            activeTimers[i] = { mode: 'stopwatch', isRunning: false, elapsed: savedMs, target: 60000, startTime: 0 };
+        }
+        let t = activeTimers[i];
+        let playIcon = t.isRunning ? '⏸' : '▶'; let playColor = t.isRunning ? 'text-amber-400' : 'text-slate-300';
+        let modeIcon = t.mode === 'stopwatch' ? '⏱️' : '⏳';
+        let timeColorClass = 'text-white';
