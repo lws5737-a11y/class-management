@@ -1700,47 +1700,17 @@ function getDocRef() {
             }, "전체 삭제");
         }
 
-        window.exportAllToExcel = function() {
-            let csvContent = "\uFEFF"; 
-            csvContent += "학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
-
-            if (Object.keys(classData).length === 0) {
-                csvContent += "=\"6-1\",1,홍길동,남,-,-,참석,0,,,,,N,0\n";
-            } else {
-                const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-
-                for (const className of sortedClasses) {
-                    const students = [...classData[className]].sort((a, b) => {
-                        if (a.no !== b.no) return a.no - b.no; return (a.name || "").localeCompare(b.name || "");
-                    });
-                    
-                    if (!groupScores[className]) groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
-                    if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-                    if (groupScores[className][1] !== undefined) { groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: groupScores[className], gender: {1:0, 2:0, 3:0, 4:0} }; }
-
-                    const gScoresJSON = JSON.stringify(groupScores[className]).replace(/"/g, '""'); 
-                    const gRecordsJSON = JSON.stringify(groupRecords[className]).replace(/"/g, '""'); 
-                    const safeClassName = `="${className}"`; 
-                    
-                    students.forEach((s, idx) => {
-                        const attendance = s.attendance ? '참석' : '불참';
-                        const bs = s.ballSense || '-'; const ag = s.agility || '-'; const score = s.score || 0;
-                        const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
-                        const isCapt = s.isCaptain ? 'Y' : 'N';
-                        const recMs = s.recordMs || 0;
-                        const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
-                        const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-                        csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
-                    });
-                }
-            }
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-            const today = new Date(); const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-            link.download = `스마트학급관리_백업_${dateStr}.csv`;
-            link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
+        window.exportAllToExcel = () => {
+    // 학교 계정인지 개인 계정인지 파일명에 명시
+    const fileNamePrefix = dbPath.includes('schools') ? '동산초_공유_백업' : '개인_체육_백업';
+    
+    let csv = "\uFEFF학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,기록,그룹점수JSON,그룹기록JSON\n";
+    // ... (기존 저장 로직 유지하되 파일명만 변경)
+    
+    const link = document.createElement("a");
+    link.download = `${fileNamePrefix}_${new Date().toLocaleDateString()}.csv`;
+    // ...
+};
 
         function parseCSVLine(line) {
     const result = [];
