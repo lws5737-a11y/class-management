@@ -354,6 +354,7 @@ Google 계정으로 시작하기
 </div>
 </section>
 
+<section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
 <div class="flex justify-between items-center mb-3">
     <h2 class="text-base sm:text-lg font-black text-slate-700">👨‍🎓 학생 명단 및 출결</h2>
     
@@ -365,9 +366,7 @@ Google 계정으로 시작하기
             ❌ 전체 불참
         </button>
     </div>
-    </div>
-    
-<section id="student-management" class="bg-white p-2 sm:p-6 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
+</div>
 <div class="flex justify-between items-center mb-4 px-1 gap-3">
 <div class="flex items-center gap-2 shrink-0">
 <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2">
@@ -1991,33 +1990,31 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.attendance = !student.attendance; saveData(); renderStudentList(); renderGroups(); renderDrawSection(); window.renderGagaball(); }
 }
 
-    // ▼ 여기부터 복사해서 추가하세요 ▼
-// 전체 참석 / 전체 불참 일괄 처리 함수
+// 전체 참석 / 전체 불참 일괄 처리 함수 (수정됨)
 window.setAllAttendance = function(isAbsent) {
-    // 선택된 학급이 없으면 작동하지 않음
     if (!currentClass || !classData[currentClass]) return;
     
-    // 버튼 진동 효과 (지원하는 기기에서만 작동)
     if (window.triggerVibration) window.triggerVibration(30);
     
     const actionText = isAbsent ? "불참(결석)" : "참석";
     
-    // 실수로 누르는 것을 방지하기 위해 한 번 더 확인
     if (confirm(`현재 학급의 모든 학생을 '${actionText}' 처리하시겠습니까?`)) {
         
-        // 현재 학급의 모든 학생의 isAbsent 상태를 일괄 변경
+        // isAbsent가 false(전체참석) 이면 attendance는 true가 됨
+        // isAbsent가 true(전체불참) 이면 attendance는 false가 됨
         classData[currentClass].forEach(student => {
-            student.isAbsent = isAbsent;
+            student.attendance = !isAbsent; 
         });
         
-        // 변경된 데이터를 파이어베이스 공유 DB에 저장하고 화면 새로고침
         saveData(false); 
-        if (typeof renderStudentList === 'function') {
-            renderStudentList();
-        }
+        
+        // 명단뿐만 아니라 모든 관련 화면을 동시에 새로고침합니다.
+        if (typeof renderStudentList === 'function') renderStudentList();
+        if (typeof renderGroups === 'function') renderGroups();
+        if (typeof renderDrawSection === 'function') renderDrawSection();
+        if (typeof window.renderGagaball === 'function') window.renderGagaball();
     }
 };
-// ▲ 여기까지 ▲
 
 window.toggleCaptain = function(studentNo) {
 const student = classData[currentClass].find(s => s.no == studentNo);
