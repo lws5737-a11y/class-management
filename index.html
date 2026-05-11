@@ -172,13 +172,6 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 </head>
 <body class="bg-gray-50 min-h-screen pb-28 sm:pb-32 text-slate-800 overflow-x-hidden w-full max-w-[100vw]">
 
-    <!-- 다중 스톱워치 플로팅 버튼 -->
-    <div id="floating-group-btn-container" class="fixed top-[4.5rem] sm:top-20 left-1/2 transform -translate-x-1/2 z-[100] hidden pointer-events-none transition-all print-hide">
-        <button onclick="window.openGroupStopwatch()" class="pointer-events-auto bg-yellow-400 text-yellow-900 border-4 border-yellow-500 px-5 sm:px-8 py-2 sm:py-3 rounded-full shadow-2xl font-black text-sm sm:text-base hover:bg-yellow-500 hover:scale-105 active:scale-95 transition-transform animate-bounce flex items-center gap-2">
-            ⏱️ 다중 스톱워치 <span id="float-group-count" class="bg-white text-yellow-900 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs sm:text-sm shadow-inner">0명</span>
-        </button>
-    </div>
-
 <!-- 이벤트 로딩 오버레이 (두구두구) -->
 <div id="event-loading-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
 <div class="text-7xl sm:text-9xl animate-shake mb-8" style="filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));">🥁</div>
@@ -364,7 +357,7 @@ Google 계정으로 시작하기
 <table class="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[320px] max-w-full">
 <thead>
 <tr class="bg-slate-50">
-<th onclick="window.toggleSort('no')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
+<th onclick="window.toggleSort('no')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 w-10 sm:w-14 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 번호<span id="sort-no-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('name')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 text-center sm:text-left text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-auto">
@@ -561,8 +554,6 @@ Google 계정으로 시작하기
 </main>
 </div> 
 
-    <!-- 학급 및 학생 관리 모달 -->
-    <!-- 학급 및 학생 관리 모달 (새로 추가됨) -->
 <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 hidden items-start justify-center z-[250] backdrop-blur-sm overflow-y-auto pt-10 pb-10 px-4">
 <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-6 sm:p-8 my-auto border border-slate-200">
 <button onclick="window.closeManageModal()" class="absolute top-4 right-5 text-slate-400 hover:text-red-500 text-3xl font-black transition">&times;</button>
@@ -624,40 +615,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 </div>
-
-    <!-- 다중 스톱워치 모달 창 -->
-    <div id="group-stopwatch-modal" class="fixed inset-0 bg-slate-900/95 z-[9999] hidden flex-col items-center justify-start sm:justify-center p-2 sm:p-4 backdrop-blur-md transition-all overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] sm:max-h-[90vh]">
-            <div class="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
-                <h2 class="text-xl sm:text-3xl font-black text-slate-800 flex items-center gap-2">
-                    <span class="text-2xl sm:text-4xl">⏱️</span> 다중 기록 측정
-                </h2>
-                <button onclick="window.closeGroupStopwatch()" class="text-slate-400 hover:text-red-500 text-3xl sm:text-4xl font-black transition leading-none">&times;</button>
-            </div>
-            
-            <div class="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white border-b border-slate-100 shrink-0">
-                <div class="text-center sm:text-left w-full sm:w-auto">
-                    <div id="gs-main-time" class="font-mono text-5xl sm:text-6xl font-black text-slate-800 tracking-tighter">00:00.00</div>
-                    <div class="text-sm font-bold text-slate-500 mt-1">기준 시간 (동시 출발용)</div>
-                </div>
-                <div class="flex gap-2 sm:gap-3 w-full sm:w-auto">
-                    <button onclick="window.handleGroupAction('start')" class="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl font-black text-lg sm:text-xl shadow-lg transition transform active:scale-95">전원 출발</button>
-                    <button onclick="window.handleGroupAction('stop')" class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-xl font-black text-lg sm:text-xl shadow-lg transition transform active:scale-95">전원 정지</button>
-                    <button onclick="window.handleGroupAction('reset')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-4 rounded-xl font-black text-lg shadow-sm transition transform active:scale-95">초기화</button>
-                </div>
-            </div>
-
-            <div class="p-2 sm:p-4 overflow-y-auto flex-1 bg-slate-50/50">
-                <div id="gs-student-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                    <!-- 동적 생성 -->
-                </div>
-            </div>
-            
-            <div class="p-4 bg-white rounded-b-2xl border-t border-slate-100 shrink-0 flex justify-end">
-                 <button onclick="window.saveAndCloseGroupStopwatch()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-black text-lg shadow-lg transition transform active:scale-95">기록 저장 및 닫기</button>
-            </div>
-        </div>
-    </div>
 
 <!-- 기존 모달들 -->
 <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[300] backdrop-blur-sm transition-opacity">
@@ -815,23 +772,6 @@ playChord([440, 554.37, 659.25], 0.2, 0.2);
 playChord([440, 554.37, 659.25], 0.4, 0.2);
 playChord([493.88, 587.33, 739.99], 0.6, 0.4); 
 playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); 
-} catch(e) {}
-}
-
-window.playTickSound = function() {
-try {
-const ctx = initAudio();
-const osc = ctx.createOscillator();
-const gain = ctx.createGain();
-osc.type = 'square';
-osc.frequency.setValueAtTime(800, ctx.currentTime);
-osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.05);
-gain.gain.setValueAtTime(0.05, ctx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-osc.connect(gain);
-gain.connect(ctx.destination);
-osc.start(ctx.currentTime);
-osc.stop(ctx.currentTime + 0.05);
 } catch(e) {}
 }
 
@@ -1400,171 +1340,6 @@ window.closeMissionDescModal = function() { document.getElementById("missionDesc
 // ==========================================
 // 5. 도장판, 스톱워치 등 기존 공통 로직
 // ==========================================
-        
-        // --- [NEW] 다중 스톱워치 로직 ---
-        let groupStudents = [];
-        let groupStarts = []; // 개별 출발 시간 저장 배열
-        let groupStops = [];  // 개별 도착 시간(ms) 저장 배열
-        let groupLoopId = null;
-        let globalStartTime = null;
-
-        window.openGroupStopwatch = function() {
-            if (!currentClass || !classData[currentClass]) {
-                window.showModal("알림", "학급을 먼저 선택해주세요.");
-                return;
-            }
-            groupStudents = classData[currentClass].filter(s => s.attendance).sort((a,b) => a.no - b.no);
-            if(groupStudents.length === 0) {
-                window.showModal("알림", "참석한 학생이 없습니다."); 
-                return;
-            }
-            
-            groupStarts = new Array(groupStudents.length).fill(null);
-            groupStops = new Array(groupStudents.length).fill(null);
-            globalStartTime = null;
-            
-            document.getElementById('gs-main-time').innerText = "00:00.00";
-            renderGroupStopwatchGrid();
-            
-            document.getElementById('group-stopwatch-modal').classList.remove('hidden');
-            document.getElementById('group-stopwatch-modal').classList.add('flex');
-            
-            if (!groupLoopId) {
-                groupLoopId = requestAnimationFrame(groupTimerLoop);
-            }
-        };
-
-        window.closeGroupStopwatch = function() {
-            document.getElementById('group-stopwatch-modal').classList.add('hidden');
-            document.getElementById('group-stopwatch-modal').classList.remove('flex');
-            if (groupLoopId) {
-                cancelAnimationFrame(groupLoopId);
-                groupLoopId = null;
-            }
-        };
-
-        window.saveAndCloseGroupStopwatch = function() {
-            let updated = false;
-            groupStudents.forEach((s, idx) => {
-                if (groupStops[idx] !== null) {
-                    // 원본 classData 에 기록 업데이트
-                    const targetStudent = classData[currentClass].find(cs => cs.no === s.no);
-                    if (targetStudent) {
-                        targetStudent.recordMs = groupStops[idx];
-                        updated = true;
-                    }
-                }
-            });
-            if (updated) {
-                saveData();
-                renderStudentList();
-            }
-            window.closeGroupStopwatch();
-        };
-
-        window.handleGroupAction = function(action) {
-            let now = Date.now();
-            if (action === 'start') {
-                globalStartTime = now;
-                for (let i = 0; i < groupStudents.length; i++) {
-                    if (groupStops[i] === null) {
-                        groupStarts[i] = now;
-                    }
-                }
-            } else if (action === 'stop') {
-                for (let i = 0; i < groupStudents.length; i++) {
-                    if (groupStarts[i] !== null && groupStops[i] === null) {
-                        groupStops[i] = now - groupStarts[i];
-                    }
-                }
-                globalStartTime = null; // 메인 타이머도 정지
-            } else if (action === 'reset') {
-                globalStartTime = null;
-                for (let i = 0; i < groupStudents.length; i++) {
-                    groupStarts[i] = null;
-                    groupStops[i] = null;
-                }
-                document.getElementById('gs-main-time').innerText = "00:00.00";
-            }
-            renderGroupStopwatchGrid();
-        };
-
-        window.toggleIndividualTimer = function(idx) {
-            let now = Date.now();
-            if (groupStops[idx] !== null) {
-                // 이미 기록이 있는 경우(완주 완료 상태) -> 재시작(실수 보정)
-                groupStops[idx] = null;
-                // 전체 출발 시간이 있다면 거기에 맞추고, 없다면 지금 출발
-                groupStarts[idx] = globalStartTime !== null ? globalStartTime : now;
-            } else if (groupStarts[idx] !== null) {
-                // 달리는 중 -> 도착
-                groupStops[idx] = now - groupStarts[idx];
-                window.playTickSound();
-            } else {
-                // 대기 중 -> 개별 출발
-                groupStarts[idx] = now;
-            }
-            renderGroupStopwatchGrid();
-        };
-
-        function renderGroupStopwatchGrid() {
-            const grid = document.getElementById('gs-student-grid');
-            if(!grid) return;
-            let html = '';
-            
-            groupStudents.forEach((s, i) => {
-                let statusClass = "bg-white border-slate-200 text-slate-700";
-                let timeText = "대기중";
-                let isRunning = false;
-                
-                if (groupStops[i] !== null) {
-                    statusClass = "bg-blue-50 border-blue-400 text-blue-700 shadow-inner";
-                    timeText = window.formatTime(groupStops[i]);
-                } else if (groupStarts[i] !== null) {
-                    statusClass = "bg-amber-50 border-amber-400 text-amber-700 animate-pulse";
-                    timeText = "측정중...";
-                    isRunning = true;
-                }
-                
-                html += `
-                    <div onclick="window.toggleIndividualTimer(${i})" class="cursor-pointer border-2 rounded-xl p-3 sm:p-4 flex flex-col items-center justify-center transition hover:scale-105 active:scale-95 select-none ${statusClass}">
-                        <div class="flex items-center gap-1 mb-1">
-                            <span class="text-xs font-bold opacity-60">${s.no}</span>
-                            <span class="text-sm sm:text-base font-black truncate">${s.name}</span>
-                        </div>
-                        <div id="gs-time-${i}" class="font-mono text-lg sm:text-xl font-black tracking-tighter ${isRunning ? 'text-amber-600' : ''}">${timeText}</div>
-                    </div>
-                `;
-            });
-            grid.innerHTML = html;
-        }
-
-        function groupTimerLoop() {
-            let now = Date.now();
-            
-            // 기준 시간 업데이트
-            if (globalStartTime !== null) {
-                document.getElementById('gs-main-time').innerText = window.formatTime(now - globalStartTime);
-            }
-            
-            // 달리는 중인 개별 학생 시간 업데이트
-            for (let i = 0; i < groupStudents.length; i++) {
-                if (groupStarts[i] !== null && groupStops[i] === null) {
-                    const el = document.getElementById(`gs-time-${i}`);
-                    if (el) {
-                        el.innerText = window.formatTime(now - groupStarts[i]);
-                    }
-                }
-            }
-            
-            if (document.getElementById('group-stopwatch-modal').classList.contains('hidden')) {
-                groupLoopId = null;
-                return;
-            }
-            groupLoopId = requestAnimationFrame(groupTimerLoop);
-        }
-        // --- [NEW] 다중 스톱워치 로직 끝 ---
-
 window.renderStampBoard = () => {
 const board = document.getElementById('stampBoard'); if (!board) return;
 const titleEl = document.getElementById('stamp-class-title');
@@ -1682,15 +1457,6 @@ t.elapsed = now - t.startTime;
 const display = document.getElementById(`st-time-display-${i}`);
 if (display) display.innerText = window.formatTime(t.elapsed);
 }
-}
-
-if (anyRunning) {
-if (!window.lastTickTime || now - window.lastTickTime >= 1000) {
-window.playTickSound();
-window.lastTickTime = now;
-}
-} else {
-window.lastTickTime = 0;
 }
 
 requestAnimationFrame(updateTimersLoop);
@@ -1950,89 +1716,106 @@ result.push(current); return result;
 }
 
 window.handleAllCSVUpload = function(event) {
-const file = event.target.files[0]; if (!file) return;
-const reader = new FileReader();
-reader.onload = function(e) {
-let text = e.target.result; text = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
-const lines = text.split('\n').filter(l => l.trim() !== '');
-if (lines.length < 2) { window.showModal("오류", "파일 형식이 올바르지 않거나 데이터가 없습니다."); event.target.value = ''; return; }
+    const file = event.target.files[0]; if (!file) return;
+    
+    // 파일 처리 함수
+    const processCSV = function(text) {
+        text = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
+        const lines = text.split('\n').filter(l => l.trim() !== '');
+        if (lines.length < 2) { window.showModal("오류", "파일 형식이 올바르지 않거나 데이터가 없습니다."); event.target.value = ''; return; }
 
-const header = parseCSVLine(lines[0]);
-if (header[0].trim() !== '학급') { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); event.target.value = ''; return; }
+        const header = parseCSVLine(lines[0]);
+        if (!header[0].includes('학급')) { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); event.target.value = ''; return; }
 
-window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
-const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
-let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
-let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); let idxPersonalRec = header.indexOf('개인기록');
-let idxBall = header.indexOf('볼센스'); let idxAgil = header.indexOf('순발력');
+        window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
+            const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
+            let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
+            let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); let idxPersonalRec = header.indexOf('개인기록');
+            let idxBall = header.indexOf('볼센스'); let idxAgil = header.indexOf('순발력');
 
-for (let i = 1; i < lines.length; i++) {
-const parts = parseCSVLine(lines[i]); if (parts.length < 5) continue;
+            for (let i = 1; i < lines.length; i++) {
+                const parts = parseCSVLine(lines[i]); if (parts.length < 5) continue;
 
-let className = parts[0].trim();
-if (className.startsWith('="') && className.endsWith('"')) className = className.slice(2, -1);
-else if (className.startsWith('=')) className = className.substring(1);
-className = normalizeClassName(className);
-if (!className) continue; 
+                let className = parts[0].trim();
+                if (className.startsWith('="') && className.endsWith('"')) className = className.slice(2, -1);
+                else if (className.startsWith('=')) className = className.substring(1);
+                className = normalizeClassName(className);
+                if (!className) continue; 
 
-if (!newData[className]) {
-newData[className] = [];
-newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
-newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
-}
+                if (!newData[className]) {
+                    newData[className] = [];
+                    newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+                    newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+                    if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
+                }
 
-const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
-let bs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
-let g2 = null, g3 = null, g4 = null, gg = null;
+                const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
+                let bs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
+                let g2 = null, g3 = null, g4 = null, gg = null;
 
-if (idxBall > -1) bs = parts[idxBall].trim() === '-' ? '-' : parts[idxBall].trim();
-if (idxAgil > -1) ag = parts[idxAgil].trim() === '-' ? '-' : parts[idxAgil].trim();
+                if (idxBall > -1) bs = parts[idxBall].trim() === '-' ? '-' : parts[idxBall].trim();
+                if (idxAgil > -1) ag = parts[idxAgil].trim() === '-' ? '-' : parts[idxAgil].trim();
 
-let attIdx = header.indexOf('참석상태');
-if(attIdx > -1) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
-let scoreIdx = header.indexOf('개인점수');
-if(scoreIdx > -1) score = parseInt(parts[scoreIdx].trim()) || 0;
+                let attIdx = header.indexOf('참석상태');
+                if(attIdx > -1) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
+                let scoreIdx = header.indexOf('개인점수');
+                if(scoreIdx > -1) score = parseInt(parts[scoreIdx].trim()) || 0;
 
-if (idxG2 > -1 && parts[idxG2]) g2 = parseInt(parts[idxG2].trim()) || null;
-if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
-if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
-if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
-if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
-if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
+                if (idxG2 > -1 && parts[idxG2]) g2 = parseInt(parts[idxG2].trim()) || null;
+                if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
+                if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
+                if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
+                if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
+                if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
 
-if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
-if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
+                if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
+                if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
-}
+                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+            }
 
-if (Object.keys(newData).length > 0) {
-classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
-activeTimers = {}; activeStudentTimers = {};
-window.renderClassSelect();
-if (currentClass && !classData[currentClass]) {
-currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
-document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
-['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
-}
+            if (Object.keys(newData).length > 0) {
+                classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
+                activeTimers = {}; activeStudentTimers = {};
+                window.renderClassSelect();
+                if (currentClass && !classData[currentClass]) {
+                    currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
+                    document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
+                    ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                }
 
-if (userId && db) {
-isDebouncing = true;
-try {
-const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
-await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage });
-} catch (error) { console.error("즉시 저장 실패:", error); } 
-finally { isDebouncing = false; }
-}
+                if (userId && db) {
+                    isDebouncing = true;
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage });
+                    } catch (error) { console.error("즉시 저장 실패:", error); } 
+                    finally { isDebouncing = false; }
+                }
 
-if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); window.renderGagaball(); }
-window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
-} else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
-document.getElementById('csv-all-file-input').value = ''; 
-}, "전체 복구하기");
-};
-reader.readAsText(file, "utf-8");
+                if (currentClass) { renderStudentList(); renderGroups(); renderDrawSection(); renderStampBoard(); window.renderGagaball(); }
+                window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
+            } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
+            document.getElementById('csv-all-file-input').value = ''; 
+        }, "전체 복구하기");
+    };
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        let text = e.target.result;
+        // 엑셀에서 파일 저장시 ANSI (EUC-KR) 방식으로 저장되어 한글이 깨지는 현상 방지 처리
+        if (text.includes('')) {
+            const eucReader = new FileReader();
+            eucReader.onload = function(e2) {
+                processCSV(e2.target.result);
+            };
+            eucReader.readAsText(file, "euc-kr");
+        } else {
+            processCSV(text);
+        }
+    };
+    // 기본적으로 utf-8로 읽기 시도
+    reader.readAsText(file, "utf-8");
 }
 
 window.selectClass = function(className) {
@@ -2049,13 +1832,6 @@ window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView()
 window.showTab = function(tabName) {
 currentTab = tabName;
 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
-
-            // [NEW] 출석부 탭일 때만 다중 스톱워치 버튼 표시
-            if (tabName === 'student') {
-                document.getElementById('floating-group-btn-container').classList.remove('hidden');
-            } else {
-                document.getElementById('floating-group-btn-container').classList.add('hidden');
-            }
 
 ['draw', 'student', 'group', 'stamp', 'gagaball'].forEach(t => {
 const btn = document.getElementById(`tab-${t}`);
@@ -2248,10 +2024,6 @@ const allStudents = [...(classData[currentClass] || [])];
 const presentStudents = allStudents.filter(s => s.attendance);
 const presentCount = presentStudents.length; const maleCount = presentStudents.filter(s => s.gender === '남').length; const femaleCount = presentStudents.filter(s => s.gender === '여').length;
 
-            // [NEW] 다중 스톱워치 버튼 인원수 업데이트
-            const floatCountEl = document.getElementById('float-group-count');
-            if (floatCountEl) floatCountEl.innerText = presentCount + "명";
-
 let groupCounts = "";
 const g1 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 1).length; const g2 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 2).length;
 const g3 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 3).length; const g4 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 4).length;
@@ -2324,9 +2096,9 @@ if (!activeStudentTimers[s.no]) activeStudentTimers[s.no] = { isRunning: false, 
 let st = activeStudentTimers[s.no]; let stPlayIcon = st.isRunning ? '⏸' : '▶'; let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
 
 tr.innerHTML = `
-                   <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8">
-                       <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[10px] sm:text-[13px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-300 line-through hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
-                           ${s.no}
+                   <td class="px-0 py-1 sm:p-2 text-center w-12 sm:w-16">
+                       <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[10px] sm:text-[13px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-400 hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
+                           ${s.no}(${s.attendance ? '참' : '불'})
                        </button>
                    </td>
                    
@@ -2406,7 +2178,6 @@ else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점 삼수 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
             window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
 }
 
