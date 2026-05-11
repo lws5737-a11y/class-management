@@ -1004,7 +1004,7 @@ currentClass = ""; window.renderClassSelect();
 
 function setupFirestoreListener() {
 if (!userId || !db) return;
-const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
 if (unsubscribeSnapshot) unsubscribeSnapshot(); 
 const syncIcon = document.getElementById('sync-status');
 if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
@@ -1046,7 +1046,7 @@ isDebouncing = true;
 const syncIcon = document.getElementById('sync-status');
 if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
 
-const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
 setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage })
 .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
 .catch((error) => { console.error("클라우드 자동 저장 실패:", error); isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
@@ -1800,7 +1800,7 @@ window.handleAllCSVUpload = function(event) {
                 if (userId && db) {
                     isDebouncing = true;
                     try {
-                        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'classData', 'mainDoc');
+                        const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
                         await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage });
                     } catch (error) { console.error("즉시 저장 실패:", error); } 
                     finally { isDebouncing = false; }
