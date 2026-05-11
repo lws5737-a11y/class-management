@@ -172,6 +172,13 @@
 </head>
 <body class="bg-gray-50 min-h-screen pb-28 sm:pb-32 text-slate-800 overflow-x-hidden w-full max-w-[100vw]">
 
+    <!-- 다중 스톱워치 플로팅 버튼 -->
+    <div id="floating-group-btn-container" class="fixed top-[4.5rem] sm:top-20 left-1/2 transform -translate-x-1/2 z-[100] hidden pointer-events-none transition-all print-hide">
+        <button onclick="window.openGroupStopwatch()" class="pointer-events-auto bg-yellow-400 text-yellow-900 border-4 border-yellow-500 px-5 sm:px-8 py-2 sm:py-3 rounded-full shadow-2xl font-black text-sm sm:text-base hover:bg-yellow-500 hover:scale-105 active:scale-95 transition-transform animate-bounce flex items-center gap-2">
+            ⏱️ 다중 스톱워치 <span id="float-group-count" class="bg-white text-yellow-900 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs sm:text-sm shadow-inner">0명</span>
+        </button>
+    </div>
+
     <!-- 이벤트 로딩 오버레이 (두구두구) -->
     <div id="event-loading-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
         <div class="text-7xl sm:text-9xl animate-shake mb-8" style="filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));">🥁</div>
@@ -554,7 +561,7 @@
         </main>
     </div> 
     
-    <!-- 학급 및 학생 관리 모달 (새로 추가됨) -->
+    <!-- 학급 및 학생 관리 모달 -->
     <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 hidden items-start justify-center z-[250] backdrop-blur-sm overflow-y-auto pt-10 pb-10 px-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-6 sm:p-8 my-auto border border-slate-200">
             <button onclick="window.closeManageModal()" class="absolute top-4 right-5 text-slate-400 hover:text-red-500 text-3xl font-black transition">&times;</button>
@@ -613,6 +620,40 @@
             
             <div class="mt-8 flex justify-center">
                 <button onclick="window.closeManageModal()" class="bg-slate-800 text-white px-10 py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-slate-900 transition focus:outline-none">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 다중 스톱워치 모달 창 -->
+    <div id="group-stopwatch-modal" class="fixed inset-0 bg-slate-900/95 z-[9999] hidden flex-col items-center justify-start sm:justify-center p-2 sm:p-4 backdrop-blur-md transition-all overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+            <div class="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
+                <h2 class="text-xl sm:text-3xl font-black text-slate-800 flex items-center gap-2">
+                    <span class="text-2xl sm:text-4xl">⏱️</span> 다중 기록 측정
+                </h2>
+                <button onclick="window.closeGroupStopwatch()" class="text-slate-400 hover:text-red-500 text-3xl sm:text-4xl font-black transition leading-none">&times;</button>
+            </div>
+            
+            <div class="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white border-b border-slate-100 shrink-0">
+                <div class="text-center sm:text-left w-full sm:w-auto">
+                    <div id="gs-main-time" class="font-mono text-5xl sm:text-6xl font-black text-slate-800 tracking-tighter">00:00.00</div>
+                    <div class="text-sm font-bold text-slate-500 mt-1">기준 시간 (동시 출발용)</div>
+                </div>
+                <div class="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                    <button onclick="window.handleGroupAction('start')" class="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-xl font-black text-lg sm:text-xl shadow-lg transition transform active:scale-95">전원 출발</button>
+                    <button onclick="window.handleGroupAction('stop')" class="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-xl font-black text-lg sm:text-xl shadow-lg transition transform active:scale-95">전원 정지</button>
+                    <button onclick="window.handleGroupAction('reset')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-4 rounded-xl font-black text-lg shadow-sm transition transform active:scale-95">초기화</button>
+                </div>
+            </div>
+
+            <div class="p-2 sm:p-4 overflow-y-auto flex-1 bg-slate-50/50">
+                <div id="gs-student-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                    <!-- 동적 생성 -->
+                </div>
+            </div>
+            
+            <div class="p-4 bg-white rounded-b-2xl border-t border-slate-100 shrink-0 flex justify-end">
+                 <button onclick="window.saveAndCloseGroupStopwatch()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-black text-lg shadow-lg transition transform active:scale-95">기록 저장 및 닫기</button>
             </div>
         </div>
     </div>
@@ -1358,6 +1399,171 @@
         // ==========================================
         // 5. 도장판, 스톱워치 등 기존 공통 로직
         // ==========================================
+        
+        // --- [NEW] 다중 스톱워치 로직 ---
+        let groupStudents = [];
+        let groupStarts = []; // 개별 출발 시간 저장 배열
+        let groupStops = [];  // 개별 도착 시간(ms) 저장 배열
+        let groupLoopId = null;
+        let globalStartTime = null;
+
+        window.openGroupStopwatch = function() {
+            if (!currentClass || !classData[currentClass]) {
+                window.showModal("알림", "학급을 먼저 선택해주세요.");
+                return;
+            }
+            groupStudents = classData[currentClass].filter(s => s.attendance).sort((a,b) => a.no - b.no);
+            if(groupStudents.length === 0) {
+                window.showModal("알림", "참석한 학생이 없습니다."); 
+                return;
+            }
+            
+            groupStarts = new Array(groupStudents.length).fill(null);
+            groupStops = new Array(groupStudents.length).fill(null);
+            globalStartTime = null;
+            
+            document.getElementById('gs-main-time').innerText = "00:00.00";
+            renderGroupStopwatchGrid();
+            
+            document.getElementById('group-stopwatch-modal').classList.remove('hidden');
+            document.getElementById('group-stopwatch-modal').classList.add('flex');
+            
+            if (!groupLoopId) {
+                groupLoopId = requestAnimationFrame(groupTimerLoop);
+            }
+        };
+
+        window.closeGroupStopwatch = function() {
+            document.getElementById('group-stopwatch-modal').classList.add('hidden');
+            document.getElementById('group-stopwatch-modal').classList.remove('flex');
+            if (groupLoopId) {
+                cancelAnimationFrame(groupLoopId);
+                groupLoopId = null;
+            }
+        };
+
+        window.saveAndCloseGroupStopwatch = function() {
+            let updated = false;
+            groupStudents.forEach((s, idx) => {
+                if (groupStops[idx] !== null) {
+                    // 원본 classData 에 기록 업데이트
+                    const targetStudent = classData[currentClass].find(cs => cs.no === s.no);
+                    if (targetStudent) {
+                        targetStudent.recordMs = groupStops[idx];
+                        updated = true;
+                    }
+                }
+            });
+            if (updated) {
+                saveData();
+                renderStudentList();
+            }
+            window.closeGroupStopwatch();
+        };
+
+        window.handleGroupAction = function(action) {
+            let now = Date.now();
+            if (action === 'start') {
+                globalStartTime = now;
+                for (let i = 0; i < groupStudents.length; i++) {
+                    if (groupStops[i] === null) {
+                        groupStarts[i] = now;
+                    }
+                }
+            } else if (action === 'stop') {
+                for (let i = 0; i < groupStudents.length; i++) {
+                    if (groupStarts[i] !== null && groupStops[i] === null) {
+                        groupStops[i] = now - groupStarts[i];
+                    }
+                }
+                globalStartTime = null; // 메인 타이머도 정지
+            } else if (action === 'reset') {
+                globalStartTime = null;
+                for (let i = 0; i < groupStudents.length; i++) {
+                    groupStarts[i] = null;
+                    groupStops[i] = null;
+                }
+                document.getElementById('gs-main-time').innerText = "00:00.00";
+            }
+            renderGroupStopwatchGrid();
+        };
+
+        window.toggleIndividualTimer = function(idx) {
+            let now = Date.now();
+            if (groupStops[idx] !== null) {
+                // 이미 기록이 있는 경우(완주 완료 상태) -> 재시작(실수 보정)
+                groupStops[idx] = null;
+                // 전체 출발 시간이 있다면 거기에 맞추고, 없다면 지금 출발
+                groupStarts[idx] = globalStartTime !== null ? globalStartTime : now;
+            } else if (groupStarts[idx] !== null) {
+                // 달리는 중 -> 도착
+                groupStops[idx] = now - groupStarts[idx];
+                window.playTickSound();
+            } else {
+                // 대기 중 -> 개별 출발
+                groupStarts[idx] = now;
+            }
+            renderGroupStopwatchGrid();
+        };
+
+        function renderGroupStopwatchGrid() {
+            const grid = document.getElementById('gs-student-grid');
+            if(!grid) return;
+            let html = '';
+            
+            groupStudents.forEach((s, i) => {
+                let statusClass = "bg-white border-slate-200 text-slate-700";
+                let timeText = "대기중";
+                let isRunning = false;
+                
+                if (groupStops[i] !== null) {
+                    statusClass = "bg-blue-50 border-blue-400 text-blue-700 shadow-inner";
+                    timeText = window.formatTime(groupStops[i]);
+                } else if (groupStarts[i] !== null) {
+                    statusClass = "bg-amber-50 border-amber-400 text-amber-700 animate-pulse";
+                    timeText = "측정중...";
+                    isRunning = true;
+                }
+                
+                html += `
+                    <div onclick="window.toggleIndividualTimer(${i})" class="cursor-pointer border-2 rounded-xl p-3 sm:p-4 flex flex-col items-center justify-center transition hover:scale-105 active:scale-95 select-none ${statusClass}">
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="text-xs font-bold opacity-60">${s.no}</span>
+                            <span class="text-sm sm:text-base font-black truncate">${s.name}</span>
+                        </div>
+                        <div id="gs-time-${i}" class="font-mono text-lg sm:text-xl font-black tracking-tighter ${isRunning ? 'text-amber-600' : ''}">${timeText}</div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        function groupTimerLoop() {
+            let now = Date.now();
+            
+            // 기준 시간 업데이트
+            if (globalStartTime !== null) {
+                document.getElementById('gs-main-time').innerText = window.formatTime(now - globalStartTime);
+            }
+            
+            // 달리는 중인 개별 학생 시간 업데이트
+            for (let i = 0; i < groupStudents.length; i++) {
+                if (groupStarts[i] !== null && groupStops[i] === null) {
+                    const el = document.getElementById(`gs-time-${i}`);
+                    if (el) {
+                        el.innerText = window.formatTime(now - groupStarts[i]);
+                    }
+                }
+            }
+            
+            if (document.getElementById('group-stopwatch-modal').classList.contains('hidden')) {
+                groupLoopId = null;
+                return;
+            }
+            groupLoopId = requestAnimationFrame(groupTimerLoop);
+        }
+        // --- [NEW] 다중 스톱워치 로직 끝 ---
+
         window.renderStampBoard = () => {
             const board = document.getElementById('stampBoard'); if (!board) return;
             const titleEl = document.getElementById('stamp-class-title');
@@ -1662,6 +1868,11 @@
             window.showModal("학급 추가 완료", `<b class="text-blue-600">${newClassName}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
         }
 
+        // 학급명 정규화 헬퍼 함수
+        function normalizeClassName(name) {
+            return name ? name.trim().replace(/\s+/g, '') : name;
+        }
+
         window.deleteCurrentClass = function() {
             if (!currentClass) return;
             window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
@@ -1838,6 +2049,13 @@
             currentTab = tabName;
             ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
             
+            // [NEW] 출석부 탭일 때만 다중 스톱워치 버튼 표시
+            if (tabName === 'student') {
+                document.getElementById('floating-group-btn-container').classList.remove('hidden');
+            } else {
+                document.getElementById('floating-group-btn-container').classList.add('hidden');
+            }
+
             ['draw', 'student', 'group', 'stamp', 'gagaball'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 if(btn) btn.className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
@@ -2029,6 +2247,10 @@
             const presentStudents = allStudents.filter(s => s.attendance);
             const presentCount = presentStudents.length; const maleCount = presentStudents.filter(s => s.gender === '남').length; const femaleCount = presentStudents.filter(s => s.gender === '여').length;
 
+            // [NEW] 다중 스톱워치 버튼 인원수 업데이트
+            const floatCountEl = document.getElementById('float-group-count');
+            if (floatCountEl) floatCountEl.innerText = presentCount + "명";
+
             let groupCounts = "";
             const g1 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 1).length; const g2 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 2).length;
             const g3 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 3).length; const g4 = presentStudents.filter(s => s[`group_${currentGroupMode}`] === 4).length;
@@ -2183,7 +2405,7 @@
             else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
             else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
+            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점 삼수 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
         }
 
         window.updateGroupScore = function(groupId, change) {
