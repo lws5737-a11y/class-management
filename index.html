@@ -168,11 +168,39 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
 .animate-shake { animation: shake 0.3s infinite; }
+
+/* 스마트폰 세로 화면 최적화 (모바일 뷰) */
+@media screen and (max-width: 640px) {
+    /* 테이블 컨테이너 터치 스크롤 부드럽게 */
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+    /* 폰트 및 여백 축소로 화면 내 정보량 확보 */
+    table th, 
+    table td {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+        white-space: nowrap; 
+    }
+    /* 버튼 터치 영역 확보 (스마트폰 조작 최적화) */
+    .student-row button {
+        min-height: 32px; 
+    }
+    /* 이름 텍스트 줄바꿈 방지 */
+    .student-row td:nth-child(2) button {
+        white-space: nowrap;
+    }
+    /* 기록 시간 터치 영역 확보 */
+    [id^="st-time-display-"] {
+        font-size: 11px !important;
+        min-height: 24px;
+        line-height: 24px;
+    }
+}
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen pb-28 sm:pb-32 text-slate-800 overflow-x-hidden w-full max-w-[100vw]">
 
-<!-- 이벤트 로딩 오버레이 (두구두구) -->
 <div id="event-loading-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
 <div class="text-7xl sm:text-9xl animate-shake mb-8" style="filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));">🥁</div>
 <h2 id="event-loading-text" class="text-4xl sm:text-6xl font-black text-white font-jua tracking-widest text-shadow-lg animate-pulse">두구두구두구...</h2>
@@ -196,13 +224,11 @@ Google 계정으로 시작하기
 
 <header class="bg-blue-600 text-white p-3 sm:p-4 w-full print-hide relative z-50">
 <div class="max-w-4xl mx-auto flex flex-col justify-between gap-2" id="header-inner-container">
-<!-- Top Row: Title + Right Side Controls -->
 <div class="flex flex-row justify-between items-center w-full">
 <div class="flex items-center gap-2">
 <h1 class="text-lg sm:text-xl font-bold flex items-center gap-2 whitespace-nowrap">
 <span>🏫</span> 스마트 체육 수업 매니저 <span class="text-sm font-normal text-blue-200 hidden md:inline ml-1">made by 우석쌤</span>
 </h1>
-<!-- PC Button Group (hidden on mobile) -->
 <div class="hidden lg:flex gap-1.5 ml-4">
 <button onclick="document.getElementById('csv-all-file-input').click()" class="text-[11px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">불러오기</button>
 <button onclick="window.exportAllToExcel()" class="text-[11px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">저장하기</button>
@@ -227,7 +253,6 @@ Google 계정으로 시작하기
 </div>
 </div>
 
-<!-- Mobile Button Group -->
 <div class="flex lg:hidden flex-wrap gap-1.5 w-full justify-start mt-1">
 <button onclick="document.getElementById('csv-all-file-input').click()" class="text-[10px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">불러오기</button>
 <button onclick="window.exportAllToExcel()" class="text-[10px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">저장하기</button>
@@ -265,7 +290,6 @@ Google 계정으로 시작하기
 </div>
 </div>
 
-<!-- 🏟️ 가가볼 V44 TV 최적화 섹션 -->
 <section id="gagaball-section" class="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-100 hidden w-full">
 
 <div class="flex justify-center gap-3 mb-8 border-b-4 border-slate-800 pb-5">
@@ -274,7 +298,6 @@ Google 계정으로 시작하기
 <button onclick="window.switchGagaTab('team')" id="gaga-btn-team" class="px-6 py-3 font-black text-xl sm:text-3xl rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition transform hover:scale-105">⚔️ 대진표</button>
 </div>
 
-<!-- 1) 스코어보드 화면 -->
 <div id="gaga-view-score">
 <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm">
 <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -303,7 +326,6 @@ Google 계정으로 시작하기
 <div id="gaga-inactive-grid" class="scoreboard-grid inactive-grid"></div>
 </div>
 
-<!-- 2) 순위표 화면 -->
 <div id="gaga-view-rank" class="hidden">
 <h2 class="text-4xl font-black text-slate-800 mb-6 text-center">🥇 개인별 점수 랭킹</h2>
 <table class="ranking-table shadow-sm">
@@ -312,7 +334,6 @@ Google 계정으로 시작하기
 </table>
 </div>
 
-<!-- 3) 대진표 화면 -->
 <div id="gaga-view-team" class="hidden">
 <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 shadow-sm">
 <div class="flex items-center gap-3">
@@ -358,7 +379,7 @@ Google 계정으로 시작하기
 <thead>
 <tr class="bg-slate-50">
 <th onclick="window.toggleSort('no')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 w-10 sm:w-14 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
-번호<span id="sort-no-icon" class="sort-icon">↕</span>
+번호(참/불)<span id="sort-no-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('name')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 text-center sm:text-left text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-auto">
 이름<span id="sort-name-icon" class="sort-icon">↕</span>
@@ -561,7 +582,6 @@ Google 계정으로 시작하기
 <h2 class="text-xl sm:text-2xl font-black text-slate-800 mb-4 border-b pb-2"><span class="text-blue-500 mr-2">📁</span> 학급 선택 및 추가</h2>
 <div class="mb-6">
 <div id="modal-class-list" class="flex flex-wrap gap-2 mb-4">
-<!-- Class buttons injected here -->
 </div>
 <div class="flex gap-2 w-full sm:w-2/3">
 <input type="text" id="new-class-input" placeholder="새 학급명 입력" class="flex-1 p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-blue-500">
@@ -572,7 +592,6 @@ Google 계정으로 시작하기
 <h2 class="text-xl sm:text-2xl font-black text-slate-800 mb-4 border-b pb-2 mt-8"><span class="text-green-500 mr-2">👥</span> 학생 추가 (현재 학급)</h2>
 <div class="mb-4">
 <p class="text-xs text-slate-500 font-bold mb-2">※ 먼저 상단에서 학급을 선택한 후 학생을 추가해주세요.</p>
-<!-- Individual Add Section -->
 <div class="flex flex-wrap items-center gap-1.5 mb-6 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200">
 <input id="add-no" type="number" placeholder="번호" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500">
 <input id="add-name" type="text" placeholder="이름" class="flex-1 min-w-[60px] border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500">
@@ -595,7 +614,6 @@ Google 계정으로 시작하기
 <button onclick="window.addSingleStudent()" class="w-full sm:w-auto bg-slate-800 text-white px-4 py-2 sm:py-2.5 rounded-lg hover:bg-slate-900 text-sm font-bold transition mt-1 sm:mt-0">개별 추가</button>
 </div>
 
-<!-- Excel Add Section -->
 <div id="excel-import-section" class="p-4 sm:p-5 bg-blue-50 rounded-xl border border-blue-100">
 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
 <label class="text-sm font-bold text-blue-800">Excel 데이터 붙여넣기 일괄 추가</label>
@@ -616,7 +634,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 
-<!-- 기존 모달들 -->
 <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[300] backdrop-blur-sm transition-opacity">
 <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4 transform transition-all">
 <h3 id="modal-title" class="text-lg font-bold text-slate-800 mb-2">알림</h3>
@@ -645,7 +662,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 
-<!-- 타이머 모달 -->
 <div id="timerSelectModal" class="gaga-modal-overlay" onclick="window.closeTimerSelectModal()">
 <div class="gaga-modal-content" style="max-width: 400px; padding:30px;" onclick="event.stopPropagation()">
 <h2 class="text-3xl font-black text-orange-500 mb-6">⏱️ 가가볼 타이머</h2>
@@ -656,7 +672,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 
-<!-- 룰렛 모달 -->
 <div id="rouletteModal" class="gaga-modal-overlay" style="z-index: 1002;" onclick="window.closeRouletteModal()">
 <div class="gaga-modal-content" style="max-width: 950px; padding: 50px;" onclick="event.stopPropagation()">
 <h2 id="rouletteModalTitle" class="text-4xl sm:text-5xl font-black text-slate-800 mb-8">🎡 오늘의 미션 룰렛</h2>
@@ -670,7 +685,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 
-<!-- 미션 설명 모달 -->
 <div id="missionDescModal" class="gaga-modal-overlay" style="z-index: 1003;" onclick="window.closeMissionDescModal()">
 <div class="gaga-modal-content" style="max-width: 550px; padding: 40px;" onclick="event.stopPropagation()">
 <h2 id="missionDescTitle" class="text-3xl sm:text-4xl font-black text-blue-500 mb-4"></h2>
@@ -679,7 +693,6 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 </div>
 
-<!-- 가가볼 전용 추첨 결과 모달 -->
 <div id="gagaDrawModal" class="gaga-modal-overlay" onclick="window.closeGagaDrawModal()">
 <div class="gaga-modal-content" style="max-width: 1200px;" onclick="event.stopPropagation()">
 <h1 class="text-5xl sm:text-6xl font-black text-red-500 mb-8">🎉 참가 선수 🎉</h1>
@@ -1653,7 +1666,7 @@ window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공�
 }
 
 window.deleteAllClasses = function() {
-window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
+window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 정으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
 classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; saveData(); currentClass = "";
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -2097,8 +2110,8 @@ let st = activeStudentTimers[s.no]; let stPlayIcon = st.isRunning ? '⏸' : '▶
 
 tr.innerHTML = `
                    <td class="px-0 py-1 sm:p-2 text-center w-12 sm:w-16">
-                       <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[10px] sm:text-[13px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-400 hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
-                           ${s.no}(${s.attendance ? '참' : '불'})
+                       <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[12px] sm:text-[14px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-400 hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
+                           ${s.no}
                        </button>
                    </td>
                    
