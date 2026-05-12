@@ -368,29 +368,29 @@ Google 계정으로 시작하기
 <table class="w-full text-left text-[10px] sm:text-sm border-collapse min-w-[320px] max-w-full">
 <thead>
 <tr class="bg-slate-50">
-<th onclick="window.toggleSort('no')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 w-10 sm:w-14 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
+<th onclick="window.toggleSort('no')" class="bg-slate-50 border-b border-slate-200 sort-header px-0.5 py-1.5 sm:p-2 w-10 sm:w-14 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 번호(참/불)<span id="sort-no-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('name')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0.5 py-1.5 sm:p-2 text-center sm:text-left text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-auto">
+<th onclick="window.toggleSort('name')" class="bg-slate-50 border-b border-slate-200 sort-header px-0.5 py-1.5 sm:p-2 text-center sm:text-left text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-auto">
 이름<span id="sort-name-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('recordMs')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
+<th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 기록<span id="sort-recordMs-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('gender')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
+<th onclick="window.toggleSort('gender')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 성별<span id="sort-gender-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('group')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[8px] sm:text-xs">
+<th onclick="window.toggleSort('group')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[8px] sm:text-xs">
 모둠<span id="sort-group-icon" class="sort-icon">↕</span>
 </th>
 
-<th onclick="window.toggleSort('ballSense')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
+<th onclick="window.toggleSort('ballSense')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
 ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('agility')" class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="순발력">
+<th onclick="window.toggleSort('agility')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="순발력">
 ⚡<span id="sort-agility-icon" class="sort-icon">↕</span>
 </th>
-<th class="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_#e2e8f0] px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
+<th class="bg-slate-50 border-b border-slate-200 px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
 </tr>
 </thead>
 <tbody id="student-list-body">
@@ -624,6 +624,14 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 <button onclick="window.saveScore()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-100 transition text-base">저장하기</button>
 </div>
+</div>
+
+<div id="drawResultModal" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center z-[1100] backdrop-blur-sm transition-opacity" onclick="window.closeDrawResultModal()">
+    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 text-center transform scale-100 transition-transform animate-pop-in" onclick="event.stopPropagation()">
+        <h2 class="text-3xl sm:text-4xl font-black text-purple-600 mb-6">🎉 뽑기 결과 🎉</h2>
+        <div id="drawResultGrid" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8 max-h-[50vh] overflow-y-auto p-2"></div>
+        <button class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-purple-700 transition shadow-md" onclick="window.closeDrawResultModal()">확인</button>
+    </div>
 </div>
 
 <div id="timerSelectModal" class="gaga-modal-overlay" onclick="window.closeTimerSelectModal()">
@@ -2479,6 +2487,12 @@ if (statusText) {
 }
 }
 
+// 팝업 모달 닫기
+window.closeDrawResultModal = function() {
+    document.getElementById('drawResultModal').classList.add('hidden');
+    document.getElementById('drawResultModal').classList.remove('flex');
+}
+
 window.drawStudents = function() {
 const students = classData[currentClass]; if (!students) return;
 const targetDropdown = document.getElementById('draw-target'); const target = targetDropdown ? targetDropdown.value : 'all';
@@ -2538,21 +2552,38 @@ availableStudents.splice(bestCandidateIdx, 1);
 
 selectedStudents.forEach(s => s.drawn = true); saveData(); renderStudentList();
 
-const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
-
+// 플로팅 모달에 결과 그리기
+const modalGrid = document.getElementById('drawResultGrid');
+modalGrid.innerHTML = "";
 selectedStudents.forEach((s, index) => {
-setTimeout(() => {
-const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center animate-pop-in cursor-pointer hover:border-purple-400 transition";
-card.dataset.studentNo = s.no;
+    const card = document.createElement('div');
+    card.className = "bg-purple-50 border-4 border-purple-300 p-4 rounded-2xl shadow-md text-center flex flex-col items-center justify-center animate-pop-in w-28 h-28 sm:w-36 sm:h-36";
+    card.style.animationDelay = `${index * 0.1}s`;
+    card.innerHTML = `
+        <span class="text-base sm:text-lg font-mono font-bold text-purple-400 mb-1 sm:mb-2">${s.no}번</span>
+        <span class="text-xl sm:text-3xl font-black text-purple-700 break-keep">${s.name}</span>
+    `;
+    modalGrid.appendChild(card);
+});
 
-card.innerHTML = `
-                       <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
-                           <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
-                       </div>
-                       <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
-                   `;
-container.appendChild(card);
-}, index * 100); 
+// 모달 표시 및 이펙트 발생
+document.getElementById('drawResultModal').classList.remove('hidden');
+document.getElementById('drawResultModal').classList.add('flex');
+window.fireConfetti();
+window.playGrandFanfare();
+
+// 기존 인라인 리스트에도 추가 (기록 확인용)
+const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
+selectedStudents.forEach((s, index) => {
+    const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 transition";
+    card.dataset.studentNo = s.no;
+    card.innerHTML = `
+        <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
+            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
+        </div>
+        <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
+    `;
+    container.appendChild(card);
 });
 }
 
