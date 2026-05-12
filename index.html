@@ -6,24 +6,6 @@
 <title>스마트 체육 수업 매니저 made by 우석쌤</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/index.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-beta.0/default.css">
-<script>
-window.isDraggingCard = false;
-document.addEventListener("DOMContentLoaded", function() {
-    MobileDragDrop.polyfill({
-        dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-        holdToDrag: 250
-    });
-    // 모바일 터치 시 스크롤 등 기본 동작과의 충돌을 섬세하게 제어
-    window.addEventListener('touchmove', function(e) {
-        if (window.isDraggingCard) {
-            e.preventDefault();
-        }
-    }, { passive: false });
-});
-</script>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
@@ -57,15 +39,14 @@ input[type=number] { -moz-appearance: textfield; }
 animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* 모바일 터치 시 컨텍스트 메뉴, 텍스트 선택 등 기본 동작 완벽 차단 */
+/* 터치 조작 시 텍스트 선택 등 방지 (스크롤은 자유롭게 허용) */
 .student-card {
-    -webkit-touch-callout: none; /* iOS 롱터치 팝업 금지 */
-    -webkit-user-select: none;   /* 텍스트 선택 금지 */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
     -khtml-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    touch-action: pan-y;         /* 가로 스와이프는 막고 세로 스크롤만 허용하여 드래그 앤 드롭 향상 */
 }
 
 .emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
@@ -461,7 +442,7 @@ Google 계정으로 시작하기
 <div class="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start sm:items-center gap-2 print-hide">
 <span class="text-indigo-500 mt-0.5 sm:mt-0">💡</span>
 <p class="text-[11px] sm:text-sm text-indigo-800 font-medium leading-relaxed">
-<b>자리 이동:</b> 학생 카드를 끌어다 놓으세요(Drag & Drop). 스마트폰에서는 지원되지 않으며, 모바일 환경 자리 이동은 '출석부' 탭에서 가능합니다.<br>
+<b>자리 이동:</b> 학생 카드를 터치(클릭)하여 선택한 후, 바꿀 학생이나 이동할 모둠의 빈 공간을 터치하세요. (마우스 드래그 앤 드롭도 가능합니다.)<br>
 <span class="text-slate-500 text-[10px] sm:text-xs">※ 체육 부장 지정은 모둠 편성 창에서 학생 <b>이름</b> 부분을 터치하세요.</span>
 </p>
 </div>
@@ -721,6 +702,9 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 
 <script type="module">
+window.isDraggingCard = false; // 드래그 상태 초기화
+window.selectedGroupStudent = null; // 터치/클릭 이동을 위한 선택 학생 상태 초기화
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -875,9 +859,48 @@ let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3
 const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
 
-// --- 드래그 앤 드롭 ---
+// --- 드래그 앤 드롭 및 터치 이동 ---
+
+window.handleStudentCardClick = function(studentNo) {
+    if (window.selectedGroupStudent === null) {
+        window.selectedGroupStudent = studentNo;
+    } else if (window.selectedGroupStudent === studentNo) {
+        window.selectedGroupStudent = null; // 선택 해제
+    } else {
+        // 학생끼리 자리 바꾸기
+        const students = classData[currentClass];
+        const studentA = students.find(s => s.no === window.selectedGroupStudent);
+        const studentB = students.find(s => s.no === studentNo);
+        
+        if (studentA && studentB) {
+            let tempGroup = studentA[`group_${currentGroupMode}`];
+            studentA[`group_${currentGroupMode}`] = studentB[`group_${currentGroupMode}`];
+            studentB[`group_${currentGroupMode}`] = tempGroup;
+            saveData(); renderStudentList(); 
+        }
+        window.selectedGroupStudent = null;
+    }
+    renderGroups();
+};
+
+window.handleGroupAreaClick = function(groupId) {
+    // 빈 모둠을 터치했을 때 해당 모둠으로 이동
+    if (window.selectedGroupStudent !== null) {
+        const students = classData[currentClass];
+        const studentA = students.find(s => s.no === window.selectedGroupStudent);
+        if (studentA && studentA[`group_${currentGroupMode}`] !== groupId) {
+            studentA[`group_${currentGroupMode}`] = groupId;
+            saveData(); renderStudentList();
+        }
+        window.selectedGroupStudent = null;
+        renderGroups();
+    }
+};
+
 window.handleDragStart = function(e, studentNo) {
 window.isDraggingCard = true; draggedStudentNo = studentNo;
+window.selectedGroupStudent = null; // 드래그 시 기존 터치 선택 초기화
+renderGroups(); // 선택 하이라이트 해제
 e.dataTransfer.effectAllowed = 'move';
 setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
@@ -1670,7 +1693,7 @@ window.deleteCurrentClass = function() {
 if (!currentClass) return;
 window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
 delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass];
-saveData(); currentClass = ""; activeTimers = {}; activeStudentTimers = {};
+saveData(); currentClass = ""; activeTimers = {}; activeStudentTimers = {}; window.selectedGroupStudent = null;
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1680,7 +1703,7 @@ window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공�
 
 window.deleteAllClasses = function() {
 window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 정으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
-classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; saveData(); currentClass = "";
+classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1802,7 +1825,7 @@ window.handleAllCSVUpload = function(event) {
 
             if (Object.keys(newData).length > 0) {
                 classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
-                activeTimers = {}; activeStudentTimers = {};
+                activeTimers = {}; activeStudentTimers = {}; window.selectedGroupStudent = null;
                 window.renderClassSelect();
                 if (currentClass && !classData[currentClass]) {
                     currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
@@ -1845,7 +1868,7 @@ window.handleAllCSVUpload = function(event) {
 }
 
 window.selectClass = function(className) {
-currentClass = className; activeTimers = {}; activeStudentTimers = {};
+currentClass = className; activeTimers = {}; activeStudentTimers = {}; window.selectedGroupStudent = null;
 const displayBtn = document.getElementById('current-class-display');
 if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
@@ -1856,7 +1879,7 @@ window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView()
 }
 
 window.showTab = function(tabName) {
-currentTab = tabName;
+currentTab = tabName; window.selectedGroupStudent = null;
 ['student-management', 'group-section', 'draw-section', 'stamp-section', 'gagaball-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
 
 ['draw', 'student', 'group', 'stamp', 'gagaball'].forEach(t => {
@@ -1903,7 +1926,7 @@ if (!input) { window.showModal("입력 오류", "내용을 입력해주세요.")
 
 const lines = input.split('\n');
 if (!classData[currentClass]) classData[currentClass] = [];
-let addedCount = 0;
+let addedCount = 0; window.selectedGroupStudent = null;
 
 lines.forEach(line => {
 const parts = line.split('\t').map(p => p.trim());
@@ -1991,7 +2014,7 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.attendance = !student.attendance; saveData(); renderStudentList(); renderGroups(); renderDrawSection(); window.renderGagaball(); }
 }
 
-// 전체 참석 / 전체 불참 일괄 처리 함수 (수정됨)
+// 전체 참석 / 전체 불참 일괄 처리 함수
 window.setAllAttendance = function(isAbsent) {
     if (!currentClass || !classData[currentClass]) return;
     
@@ -2000,16 +2023,12 @@ window.setAllAttendance = function(isAbsent) {
     const actionText = isAbsent ? "불참(결석)" : "참석";
     
     if (confirm(`현재 학급의 모든 학생을 '${actionText}' 처리하시겠습니까?`)) {
-        
-        // isAbsent가 false(전체참석) 이면 attendance는 true가 됨
-        // isAbsent가 true(전체불참) 이면 attendance는 false가 됨
         classData[currentClass].forEach(student => {
             student.attendance = !isAbsent; 
         });
         
         saveData(false); 
         
-        // 명단뿐만 아니라 모든 관련 화면을 동시에 새로고침합니다.
         if (typeof renderStudentList === 'function') renderStudentList();
         if (typeof renderGroups === 'function') renderGroups();
         if (typeof renderDrawSection === 'function') renderDrawSection();
@@ -2022,7 +2041,7 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student && student.attendance) { student.isCaptain = !student.isCaptain; saveData(); renderStudentList(); renderGroups(); }
 }
 
-// 선택/하이라이트 토글 기능 추가
+// 출석부 화면 하이라이트 토글 기능
 window.toggleSelection = function(studentNo) {
 if (!currentClass || !classData[currentClass]) return;
 const student = classData[currentClass].find(s => s.no == studentNo);
@@ -2194,7 +2213,7 @@ tbody.appendChild(tr);
 }
 
 window.setGroupMode = function(mode) {
-currentGroupMode = mode; activeTimers = {}; 
+currentGroupMode = mode; activeTimers = {}; window.selectedGroupStudent = null;
 ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
 const btn = document.getElementById(`btn-mode-${m}`);
 if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
@@ -2218,19 +2237,20 @@ window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b>
 classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
 if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
 if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
-activeTimers = {}; saveData(); renderStudentList(); renderGroups();
+activeTimers = {}; window.selectedGroupStudent = null; saveData(); renderStudentList(); renderGroups();
 window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
 });
 }
 
 window.generateCurrentGroup = function() {
+window.selectedGroupStudent = null;
 let title = "", callback = null;
 if (currentGroupMode === 'mixed2') { title = "혼성 2팀 편성"; callback = () => window.generateMixedGroups(2); }
 else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback = () => window.generateMixedGroups(3); }
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
+            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점 삼화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
 }
 
 window.updateGroupScore = function(groupId, change) {
@@ -2359,8 +2379,10 @@ else if (themeIndex === 2) theme = { border: 'border-emerald-200', hover: 'hover
 else if (themeIndex === 3) theme = { border: 'border-amber-200', hover: 'hover:border-amber-400', text: 'text-amber-700', btn: 'text-amber-600 hover:bg-amber-50', bg: 'bg-amber-50/50' };
 
 const card = document.createElement('div');
-card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px]`;
-card.setAttribute('ondragover', 'window.handleDragOver(event)'); card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
+card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px] cursor-pointer`;
+card.setAttribute('ondragover', 'window.handleDragOver(event)'); 
+card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
+card.setAttribute('onclick', `window.handleGroupAreaClick(${i})`);
 
 const presentMembers = members.filter(m => m.attendance);
 const maleCount = presentMembers.filter(m => m.gender === '남').length; const femaleCount = presentMembers.filter(m => m.gender === '여').length;
@@ -2390,27 +2412,27 @@ if(t.mode === 'timer' && t.elapsed <= 5000 && t.elapsed > 0) timeColorClass = 't
 if(t.mode === 'timer' && t.elapsed === 0) timeColorClass = 'text-red-500';
 
 card.innerHTML = `
-                   <div class="flex flex-col xl:flex-row justify-between mb-3 sm:mb-4 border-b ${theme.border} pb-3 gap-2 group-header">
+                   <div class="flex flex-col xl:flex-row justify-between mb-3 sm:mb-4 border-b ${theme.border} pb-3 gap-2 group-header cursor-default" onclick="event.stopPropagation()">
                        <div class="flex flex-wrap items-center gap-2">
                            <h3 class="font-black ${theme.text} text-base sm:text-lg shrink-0">${currentClass} ${i}모둠</h3>
                            <div class="flex items-center gap-2 group-controls">
                                <div class="flex items-center bg-white rounded-lg p-0.5 border ${theme.border}">
-                                   <button onclick="window.updateGroupScore(${i}, -1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">-</button>
+                                   <button onclick="event.stopPropagation(); window.updateGroupScore(${i}, -1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">-</button>
                                    <span class="font-black ${theme.text} text-sm sm:text-base w-6 sm:w-8 text-center">${score}</span>
-                                   <button onclick="window.updateGroupScore(${i}, 1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">+</button>
+                                   <button onclick="event.stopPropagation(); window.updateGroupScore(${i}, 1)" class="print-hide w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded font-bold transition ${theme.btn}">+</button>
                                </div>
                                <div class="flex items-center bg-slate-800 rounded-lg p-1 shadow-inner select-none print-hide gap-1">
-                                   <button onclick="window.toggleTimerMode(${i})" class="w-6 h-6 flex items-center justify-center text-xs opacity-70 hover:opacity-100 transition bg-slate-700 hover:bg-slate-600 rounded">
+                                   <button onclick="event.stopPropagation(); window.toggleTimerMode(${i})" class="w-6 h-6 flex items-center justify-center text-xs opacity-70 hover:opacity-100 transition bg-slate-700 hover:bg-slate-600 rounded">
                                        <span id="mode-icon-${i}">${modeIcon}</span>
                                    </button>
-                                   <div id="time-display-${i}" onclick="window.manualTimeEdit(${i})" class="w-16 sm:w-20 text-center text-[13px] sm:text-sm font-black tracking-wider cursor-pointer hover:text-blue-300 transition-colors ${timeColorClass} font-mono" title="클릭하여 시간 직접 설정">
+                                   <div id="time-display-${i}" onclick="event.stopPropagation(); window.manualTimeEdit(${i})" class="w-16 sm:w-20 text-center text-[13px] sm:text-sm font-black tracking-wider cursor-pointer hover:text-blue-300 transition-colors ${timeColorClass} font-mono" title="클릭하여 시간 직접 설정">
                                        ${window.formatTime(t.elapsed)}
                                    </div>
                                    <div class="flex items-center bg-slate-700 rounded gap-0.5 p-0.5">
-                                       <button onclick="window.toggleTimerPlay(${i})" id="btn-play-${i}" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] ${playColor}">
+                                       <button onclick="event.stopPropagation(); window.toggleTimerPlay(${i})" id="btn-play-${i}" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] ${playColor}">
                                            ${playIcon}
                                        </button>
-                                       <button onclick="window.resetTimer(${i})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] text-red-400 font-bold">
+                                       <button onclick="event.stopPropagation(); window.resetTimer(${i})" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition text-[10px] text-red-400 font-bold">
                                            ↻
                                        </button>
                                    </div>
@@ -2423,10 +2445,15 @@ card.innerHTML = `
                        </div>
                    </div>
                    
-                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 flex-1 min-h-[60px]">
                        ${members.map(m => {
                            const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
                            
+                           let cardStateClass = m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200';
+                           if (window.selectedGroupStudent === m.no) {
+                               cardStateClass = 'ring-4 ring-yellow-400 bg-yellow-100 border-yellow-400 transform scale-105 z-10 shadow-md';
+                           }
+
                            return `
                                <div draggable="true"
                                     oncontextmenu="return false;"
@@ -2434,7 +2461,8 @@ card.innerHTML = `
                                     ondragend="window.handleDragEnd(event)"
                                     ondragover="window.handleDragOver(event)"
                                     ondrop="window.handleDropOnStudent(event, ${m.no})"
-                                    class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200'} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
+                                    onclick="event.stopPropagation(); window.handleStudentCardClick(${m.no})"
+                                    class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${cardStateClass} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
                                    
                                    <div class="flex items-center justify-center gap-1 w-full mt-1">
                                        <span class="text-[10px] sm:text-[11px] font-mono font-bold ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
