@@ -11,15 +11,16 @@
 <script>
 window.isDraggingCard = false;
 document.addEventListener("DOMContentLoaded", function() {
-MobileDragDrop.polyfill({
-dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
-holdToDrag: 250
-});
-window.addEventListener('touchmove', function(e) {
-if (window.isDraggingCard) {
-e.preventDefault();
-}
-}, { passive: false });
+    MobileDragDrop.polyfill({
+        dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
+        holdToDrag: 250
+    });
+    // 모바일 터치 시 스크롤 등 기본 동작과의 충돌을 섬세하게 제어
+    window.addEventListener('touchmove', function(e) {
+        if (window.isDraggingCard) {
+            e.preventDefault();
+        }
+    }, { passive: false });
 });
 </script>
 
@@ -56,10 +57,15 @@ input[type=number] { -moz-appearance: textfield; }
 animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
+/* 모바일 터치 시 컨텍스트 메뉴, 텍스트 선택 등 기본 동작 완벽 차단 */
 .student-card {
--webkit-user-select: none;
-user-select: none;
--webkit-touch-callout: none;
+    -webkit-touch-callout: none; /* iOS 롱터치 팝업 금지 */
+    -webkit-user-select: none;   /* 텍스트 선택 금지 */
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: pan-y;         /* 가로 스와이프는 막고 세로 스크롤만 허용하여 드래그 앤 드롭 향상 */
 }
 
 .emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
@@ -171,26 +177,21 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 
 /* 스마트폰 세로 화면 최적화 (모바일 뷰) */
 @media screen and (max-width: 640px) {
-    /* 테이블 컨테이너 터치 스크롤 부드럽게 */
     .overflow-x-auto {
         -webkit-overflow-scrolling: touch;
     }
-    /* 폰트 및 여백 축소로 화면 내 정보량 확보 */
     table th, 
     table td {
         padding-left: 2px !important;
         padding-right: 2px !important;
         white-space: nowrap; 
     }
-    /* 버튼 터치 영역 확보 (스마트폰 조작 최적화) */
     .student-row button {
         min-height: 32px; 
     }
-    /* 이름 텍스트 줄바꿈 방지 */
     .student-row td:nth-child(2) button {
         white-space: nowrap;
     }
-    /* 기록 시간 터치 영역 확보 */
     [id^="st-time-display-"] {
         font-size: 11px !important;
         min-height: 24px;
