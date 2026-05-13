@@ -36,8 +36,25 @@ input[type=number] { -moz-appearance: textfield; }
 100% { transform: scale(1); opacity: 1; }
 }
 .animate-pop-in {
-animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
+/* 카드 섞기 애니메이션 */
+@keyframes shuffle-left {
+    0%, 100% { transform: translateX(0) rotate(0deg); z-index: 10; }
+    50% { transform: translateX(-50px) rotate(-15deg) translateY(-10px); z-index: 20; }
+}
+@keyframes shuffle-right {
+    0%, 100% { transform: translateX(0) rotate(0deg); z-index: 10; }
+    50% { transform: translateX(50px) rotate(15deg) translateY(10px); z-index: 20; }
+}
+@keyframes shuffle-center {
+    0%, 100% { transform: scale(1); z-index: 15; }
+    50% { transform: scale(1.15); z-index: 25; }
+}
+.card-shuffle-1 { animation: shuffle-left 0.5s infinite ease-in-out; }
+.card-shuffle-2 { animation: shuffle-right 0.5s infinite ease-in-out 0.2s; }
+.card-shuffle-3 { animation: shuffle-center 0.5s infinite ease-in-out 0.4s; }
 
 /* 터치 조작 시 텍스트 선택 등 방지 (스크롤은 자유롭게 허용) */
 .student-card {
@@ -186,6 +203,15 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 <div id="event-loading-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
 <div class="text-7xl sm:text-9xl animate-shake mb-8" style="filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));">🥁</div>
 <h2 id="event-loading-text" class="text-4xl sm:text-6xl font-black text-white font-jua tracking-widest text-shadow-lg animate-pulse">두구두구두구...</h2>
+</div>
+
+<div id="group-shuffle-overlay" class="fixed inset-0 bg-slate-900/85 z-[9998] hidden flex-col items-center justify-center backdrop-blur-md">
+    <div class="relative w-32 h-40 mb-10">
+        <div class="absolute inset-0 bg-white border-4 border-indigo-500 rounded-xl shadow-2xl flex items-center justify-center card-shuffle-1 text-4xl">👥</div>
+        <div class="absolute inset-0 bg-white border-4 border-indigo-500 rounded-xl shadow-2xl flex items-center justify-center card-shuffle-2 text-4xl">🎲</div>
+        <div class="absolute inset-0 bg-white border-4 border-indigo-500 rounded-xl shadow-2xl flex items-center justify-center card-shuffle-3 text-4xl">🃏</div>
+    </div>
+    <h2 class="text-3xl sm:text-5xl font-black text-white font-jua tracking-widest text-shadow-lg animate-pulse">카드를 섞는 중...</h2>
 </div>
 
 <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[9999] hidden"></canvas>
@@ -492,10 +518,16 @@ Google 계정으로 시작하기
 <div class="bg-green-50 rounded-2xl shadow-sm border-2 border-green-400 p-6 font-jua relative overflow-hidden flex flex-col items-center">
 <div class="text-center mb-6">
 <h2 class="text-3xl md:text-4xl text-green-600 mb-3">🏃‍♂️ 체육 수업 미션 도장판 🏃‍♀️</h2>
-<button onclick="window.openManageModal()" class="inline-flex items-center gap-2 text-xl text-gray-700 bg-white py-2 px-6 rounded-full border border-green-200 shadow-sm hover:bg-green-50 transition cursor-pointer">
-    <span id="stamp-class-title" class="font-black text-green-700">학급을 선택해주세요</span>
-    <span class="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">변경 🔄</span>
-</button>
+
+<div class="relative inline-flex flex-col items-center print-hide">
+    <button onclick="window.toggleStampDropdown(event)" class="inline-flex items-center justify-between gap-3 text-xl text-gray-700 bg-white py-2.5 px-6 rounded-full border-2 border-green-200 shadow-sm hover:bg-green-50 hover:border-green-300 transition cursor-pointer font-bold focus:outline-none min-w-[200px]">
+        <span id="stamp-class-title" class="font-black text-green-700 flex-1 text-center">학급을 선택해주세요</span>
+        <span class="text-sm text-green-600 bg-green-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0">▼</span>
+    </button>
+    <div id="stamp-dropdown-menu" class="hidden absolute top-[110%] w-full min-w-[200px] bg-white border-2 border-green-300 shadow-xl rounded-xl z-[100] flex-col overflow-hidden max-h-60 overflow-y-auto transform origin-top transition-all">
+        </div>
+</div>
+
 </div>
 
 <div class="w-full max-w-xl mb-6 bg-white/70 p-4 rounded-xl border border-green-100 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -507,7 +539,7 @@ Google 계정으로 시작하기
 <div id="stampBoard" class="grid grid-cols-5 gap-3 md:gap-4 mb-8"></div>
 
 <div id="missionBadgeContainer" class="absolute inset-0 flex items-center justify-center z-40 pointer-events-none hidden bg-white/60 backdrop-blur-sm rounded-2xl">
-    <img src="image_66ce79.jpg" class="w-full max-w-[350px] drop-shadow-2xl object-contain" alt="미션 완료">
+    <img src="image_66ce79.png" class="w-full max-w-[350px] drop-shadow-2xl object-contain" alt="미션 완료">
 </div>
 
 </div>
@@ -751,8 +783,30 @@ playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5);
 }
 
 // ------------------------------------------
-// 💎 새로운 특수 사운드 이펙트 추가 (룰렛 & 시상식)
+// 💎 새로운 특수 사운드 이펙트 추가 (룰렛, 시상식, 카드 셔플)
 // ------------------------------------------
+
+// 카드 섞이는 셔플 사운드
+window.playCardShuffleSound = function() {
+    try {
+        const ctx = initAudio();
+        let startTime = ctx.currentTime;
+        for (let i = 0; i < 18; i++) {
+            let tickTime = startTime + i * 0.08;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400 + Math.random() * 200, tickTime);
+            gain.gain.setValueAtTime(0, tickTime);
+            gain.gain.linearRampToValueAtTime(0.06, tickTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(tickTime);
+            osc.stop(tickTime + 0.08);
+        }
+    } catch(e) {}
+};
 
 // 1. 카지노 룰렛 돌아가는 화려한 기계음
 window.playCasinoRoulette = function() {
@@ -1454,6 +1508,48 @@ document.getElementById('progressCount').innerText = stampedCount;
 window.checkMissionComplete(false);
 };
 
+// 드롭다운 토글 함수 (도장판 탭)
+window.toggleStampDropdown = function(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('stamp-dropdown-menu');
+    if (menu.classList.contains('hidden')) {
+        menu.innerHTML = '';
+        const classes = Object.keys(classData).sort();
+        if(classes.length === 0) {
+            menu.innerHTML = '<div class="p-4 text-sm text-slate-500 text-center font-medium">등록된 학급이 없습니다.</div>';
+        } else {
+            classes.forEach(cls => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-center px-4 py-3 text-lg font-bold hover:bg-green-50 text-slate-700 border-b border-gray-100 last:border-0 transition";
+                btn.innerText = cls;
+                if (cls === currentClass) {
+                    btn.classList.add('bg-green-100', 'text-green-800');
+                }
+                btn.onclick = () => {
+                    window.selectClass(cls);
+                    menu.classList.add('hidden');
+                    menu.classList.remove('flex');
+                };
+                menu.appendChild(btn);
+            });
+        }
+        menu.classList.remove('hidden');
+        menu.classList.add('flex');
+    } else {
+        menu.classList.add('hidden');
+        menu.classList.remove('flex');
+    }
+};
+
+// 화면 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('stamp-dropdown-menu');
+    if (menu && !menu.classList.contains('hidden') && !e.target.closest('#stamp-dropdown-menu')) {
+        menu.classList.add('hidden');
+        menu.classList.remove('flex');
+    }
+});
+
 window.toggleStamp = (index, cellElement) => {
 if (!currentClass) return;
 const isStamped = !classStamps[currentClass][index]; classStamps[currentClass][index] = isStamped;
@@ -1751,7 +1847,7 @@ window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공�
 }
 
 window.deleteAllClasses = function() {
-window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 정으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
+window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
 classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -2291,6 +2387,9 @@ window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
 });
 }
 
+// ----------------------------------------------------
+// 모둠 편성 애니메이션이 결합된 생성 로직
+// ----------------------------------------------------
 window.generateCurrentGroup = function() {
 window.selectedGroupStudent = null;
 let title = "", callback = null;
@@ -2299,10 +2398,34 @@ else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-            window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점 삼화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, callback, "새로 편성하기");
+    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
+        // 1. 편성 오버레이 및 셔플 사운드 노출
+        document.getElementById('group-shuffle-overlay').classList.remove('hidden');
+        document.getElementById('group-shuffle-overlay').classList.add('flex');
+        window.playCardShuffleSound();
+
+        // 2. 일정 시간 뒤 실제 로직 처리 및 팡파르
+        setTimeout(() => {
+            document.getElementById('group-shuffle-overlay').classList.add('hidden');
+            document.getElementById('group-shuffle-overlay').classList.remove('flex');
+
+            callback(); // 실제 모둠 알고리즘 실행
+            
+            // 3. 잭팟/결과 팡파르 및 폭죽
+            window.playCasinoJackpot(); 
+            window.fireConfetti(); 
+            
+            // (결과 카드들이 튀어나오는 효과인 animate-pop-in은 renderGroups() 내에 추가됨)
+        }, 2200);
+
+    }, "새로 편성하기");
 }
 
 window.updateGroupScore = function(groupId, change) {
+// 모둠 점수 효과음 적용
+if (change > 0) window.playCoinSound();
+else window.playBumpSound();
+
 if (!groupScores[currentClass]) groupScores[currentClass] = {};
 if (!groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
 groupScores[currentClass][currentGroupMode][groupId] = (groupScores[currentClass][currentGroupMode][groupId] || 0) + change;
@@ -2438,10 +2561,12 @@ else if (themeIndex === 2) theme = { border: 'border-emerald-200', hover: 'hover
 else if (themeIndex === 3) theme = { border: 'border-amber-200', hover: 'hover:border-amber-400', text: 'text-amber-700', btn: 'text-amber-600 hover:bg-amber-50', bg: 'bg-amber-50/50' };
 
 const card = document.createElement('div');
-card.className = `bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px] cursor-pointer`;
+// 편성 즉시 모둠 카드가 통통 튀어나오는 연출(animate-pop-in) 부여
+card.className = `animate-pop-in bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px] cursor-pointer`;
 card.setAttribute('ondragover', 'window.handleDragOver(event)'); 
 card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
 card.setAttribute('onclick', `window.handleGroupAreaClick(${i})`);
+card.style.animationDelay = `${i * 0.05}s`; // 순차적으로 튀어나오게 딜레이 추가
 
 const presentMembers = members.filter(m => m.attendance);
 const maleCount = presentMembers.filter(m => m.gender === '남').length; const femaleCount = presentMembers.filter(m => m.gender === '여').length;
