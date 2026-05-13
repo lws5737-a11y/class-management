@@ -56,7 +56,7 @@ animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 .card-shuffle-2 { animation: shuffle-right 0.5s infinite ease-in-out 0.2s; }
 .card-shuffle-3 { animation: shuffle-center 0.5s infinite ease-in-out 0.4s; }
 
-/* 터치 조작 시 텍스트 선택 등 방지 */
+/* 터치 조작 시 텍스트 선택 등 방지 (스크롤은 자유롭게 허용) */
 .student-card {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -113,7 +113,7 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
-/* 가가볼 스코어보드 CSS */
+/* 가가볼 V44 스코어보드 전용 CSS */
 #gagaball-section { font-family: 'Jua', sans-serif; letter-spacing: 0.5px; }
 #gagaball-section .scoreboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 25px; }
 #gagaball-section .score-item { background: #fff; border: 4px solid #3498db; padding: 25px; border-radius: 16px; text-align: center; position: relative; transition: 0.2s; box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
@@ -173,7 +173,7 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
 }
 .animate-shake { animation: shake 0.3s infinite; }
 
-/* 스마트폰 세로 화면 최적화 */
+/* 스마트폰 세로 화면 최적화 (모바일 뷰) */
 @media screen and (max-width: 640px) {
     .overflow-x-auto {
         -webkit-overflow-scrolling: touch;
@@ -376,8 +376,8 @@ Google 계정으로 시작하기
 <h3 class="font-bold text-slate-700 text-lg flex items-center gap-2">
 <span class="text-blue-500">📋</span> 출석부 및 명단
 </h3>
-<button onclick="window.resetRunningRecords()" class="text-[10px] sm:text-xs bg-red-100 text-red-700 px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-red-200 transition font-bold whitespace-nowrap hidden sm:inline-block">
-🗑️ 달리기 기록 리셋
+<button onclick="window.evaluateAgilityByRecord()" class="text-[10px] sm:text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-emerald-200 transition font-bold whitespace-nowrap hidden sm:inline-block">
+⚡ 기록으로 순발력 자동평가
 </button>
 </div>
 <div id="student-summary" class="flex flex-col gap-1.5 items-end">
@@ -385,8 +385,8 @@ Google 계정으로 시작하기
 </div>
 
 <div class="mb-3 px-1 sm:hidden">
-<button onclick="window.resetRunningRecords()" class="w-full text-xs bg-red-100 text-red-700 px-3 py-2 rounded-lg shadow-sm hover:bg-red-200 transition font-bold">
-🗑️ 달리기 기록 전체 초기화
+<button onclick="window.evaluateAgilityByRecord()" class="w-full text-xs bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg shadow-sm hover:bg-emerald-200 transition font-bold">
+⚡ 개인 기록을 바탕으로 순발력 자동평가
 </button>
 </div>
 
@@ -401,7 +401,7 @@ Google 계정으로 시작하기
 이름<span id="sort-name-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
-스톱워치<span id="sort-recordMs-icon" class="sort-icon">↕</span>
+기록<span id="sort-recordMs-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('gender')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 성별<span id="sort-gender-icon" class="sort-icon">↕</span>
@@ -409,11 +409,12 @@ Google 계정으로 시작하기
 <th onclick="window.toggleSort('group')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[8px] sm:text-xs">
 모둠<span id="sort-group-icon" class="sort-icon">↕</span>
 </th>
+
 <th onclick="window.toggleSort('ballSense')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
 ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('running')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-10 sm:w-16 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="달리기 기록(초)">
-달리기<span id="sort-running-icon" class="sort-icon">↕</span>
+<th onclick="window.toggleSort('agility')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="순발력">
+⚡<span id="sort-agility-icon" class="sort-icon">↕</span>
 </th>
 <th class="bg-slate-50 border-b border-slate-200 px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
 </tr>
@@ -587,7 +588,10 @@ Google 계정으로 시작하기
 <span class="text-slate-400 text-xs">⚽(-)</span>
 </button>
 
-<input type="number" id="add-running" placeholder="초" step="0.01" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500" title="달리기 기록(초)">
+<input type="hidden" id="add-agility" value="-">
+<button type="button" id="btn-add-agility" onclick="window.cycleInputAbility('agility')" class="w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500" title="순발력">
+<span class="text-slate-400 text-xs">⚡(-)</span>
+</button>
 
 <input id="add-group" type="number" placeholder="모둠" min="1" max="20" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500" title="모둠 (1~20)">
 <button onclick="window.addSingleStudent()" class="w-full sm:w-auto bg-slate-800 text-white px-4 py-2 sm:py-2.5 rounded-lg hover:bg-slate-900 text-sm font-bold transition mt-1 sm:mt-0">개별 추가</button>
@@ -596,11 +600,11 @@ Google 계정으로 시작하기
 <div id="excel-import-section" class="p-4 sm:p-5 bg-blue-50 rounded-xl border border-blue-100">
 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
 <label class="text-sm font-bold text-blue-800">Excel 데이터 붙여넣기 일괄 추가</label>
-<span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 볼센스 달리기 모둠</span>
+<span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 볼센스 순발력 모둠</span>
 </div>
 <textarea id="excel-input" rows="3" 
 class="w-full p-3 sm:p-4 border-2 border-dashed border-blue-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 focus:outline-none text-sm transition placeholder:text-slate-400" 
-placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. (예: 1 홍길동 남 3 15.2 1)"></textarea>
+placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. (예: 1 홍길동 남 3 2 1)"></textarea>
 <button onclick="window.importFromExcel()" class="mt-3 w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-xl hover:bg-blue-700 font-bold shadow-md shadow-blue-100 transition text-sm sm:text-base">
 일괄 등록하기
 </button>
@@ -695,8 +699,8 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요. 
 </div>
 
 <script type="module">
-window.isDraggingCard = false; 
-window.selectedGroupStudent = null; 
+window.isDraggingCard = false; // 드래그 상태 초기화
+window.selectedGroupStudent = null; // 터치/클릭 이동을 위한 선택 학생 상태 초기화
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -778,6 +782,11 @@ playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5);
 } catch(e) {}
 }
 
+// ------------------------------------------
+// 💎 새로운 특수 사운드 이펙트 추가 (룰렛, 시상식, 카드 셔플)
+// ------------------------------------------
+
+// 카드 섞이는 셔플 사운드
 window.playCardShuffleSound = function() {
     try {
         const ctx = initAudio();
@@ -799,10 +808,12 @@ window.playCardShuffleSound = function() {
     } catch(e) {}
 };
 
+// 1. 카지노 룰렛 돌아가는 화려한 기계음
 window.playCasinoRoulette = function() {
     try {
         const ctx = initAudio();
         let startTime = ctx.currentTime;
+        // 아르페지오 형식의 기계적인 틱 사운드가 서서히 느려지는 효과
         for (let i = 0; i < 40; i++) {
             let tickTime = startTime + 2.5 * (1 - Math.pow(1 - (i/40), 2.5)); 
             const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -817,11 +828,12 @@ window.playCasinoRoulette = function() {
     } catch(e) {}
 };
 
+// 2. 카지노 잭팟 터지는 소리 (결과 발표용)
 window.playCasinoJackpot = function() {
     try {
         const ctx = initAudio();
         let now = ctx.currentTime;
-        const freqs = [523.25, 659.25, 783.99, 1046.50]; 
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C E G C
         for(let i=0; i<15; i++) {
             const osc = ctx.createOscillator(); const gain = ctx.createGain();
             osc.type = 'square';
@@ -835,6 +847,7 @@ window.playCasinoJackpot = function() {
     } catch(e) {}
 };
 
+// 3. 올림픽 시상식 웅장한 팡파르 (순위표 및 도장판 20개 완성용)
 window.playOlympicFanfare = function() {
     try {
         const ctx = initAudio();
@@ -848,11 +861,12 @@ window.playOlympicFanfare = function() {
             osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
         };
         
+        // C -> F -> G -> C 웅장한 화음 연속
         const chords = [
-            [261.63, 329.63, 392.00], 
-            [349.23, 440.00, 523.25], 
-            [392.00, 493.88, 587.33], 
-            [523.25, 659.25, 783.99, 1046.50] 
+            [261.63, 329.63, 392.00], // C
+            [349.23, 440.00, 523.25], // F
+            [392.00, 493.88, 587.33], // G
+            [523.25, 659.25, 783.99, 1046.50] // High C
         ];
         
         chords[0].forEach(f => playBrass(f, 0, 0.4));
@@ -861,6 +875,7 @@ window.playOlympicFanfare = function() {
         chords[3].forEach(f => playBrass(f, 1.2, 1.2));
     } catch(e) {}
 };
+
 
 window.fireConfetti = function() {
 const canvas = document.getElementById('confetti-canvas');
@@ -937,12 +952,14 @@ const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
 
 // --- 드래그 앤 드롭 및 터치 이동 ---
+
 window.handleStudentCardClick = function(studentNo) {
     if (window.selectedGroupStudent === null) {
         window.selectedGroupStudent = studentNo;
     } else if (window.selectedGroupStudent === studentNo) {
-        window.selectedGroupStudent = null; 
+        window.selectedGroupStudent = null; // 선택 해제
     } else {
+        // 학생끼리 자리 바꾸기
         const students = classData[currentClass];
         const studentA = students.find(s => s.no === window.selectedGroupStudent);
         const studentB = students.find(s => s.no === studentNo);
@@ -959,6 +976,7 @@ window.handleStudentCardClick = function(studentNo) {
 };
 
 window.handleGroupAreaClick = function(groupId) {
+    // 빈 모둠을 터치했을 때 해당 모둠으로 이동
     if (window.selectedGroupStudent !== null) {
         const students = classData[currentClass];
         const studentA = students.find(s => s.no === window.selectedGroupStudent);
@@ -973,8 +991,8 @@ window.handleGroupAreaClick = function(groupId) {
 
 window.handleDragStart = function(e, studentNo) {
 window.isDraggingCard = true; draggedStudentNo = studentNo;
-window.selectedGroupStudent = null; 
-renderGroups(); 
+window.selectedGroupStudent = null; // 드래그 시 기존 터치 선택 초기화
+renderGroups(); // 선택 하이라이트 해제
 e.dataTransfer.effectAllowed = 'move';
 setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
@@ -1329,11 +1347,7 @@ const totalParticipants = available.length; const baseSize = Math.floor(totalPar
 let targetSizes = new Array(numTeams).fill(baseSize); for(let i = 0; i < remainder; i++) targetSizes[i]++;
 
 const teams = Array.from({length: numTeams}, (_, i) => ({ id: i + 1, members: [], score: 0, targetSize: targetSizes[i] }));
-const sortByPower = (a, b) => {
-    let powerA = (a.score || 0)*10 + (parseInt(a.ballSense)||0)*2 - (a.running ? parseFloat(a.running) : 20);
-    let powerB = (b.score || 0)*10 + (parseInt(b.ballSense)||0)*2 - (b.running ? parseFloat(b.running) : 20);
-    return powerB - powerA;
-};
+const sortByPower = (a, b) => ((b.score || 0)*10 + (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0)) - ((a.score || 0)*10 + (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0));
 
 let boys = available.filter(s => s.gender === '남').sort(sortByPower); let girls = available.filter(s => s.gender === '여').sort(sortByPower);
 
@@ -1494,6 +1508,7 @@ document.getElementById('progressCount').innerText = stampedCount;
 window.checkMissionComplete(false);
 };
 
+// 드롭다운 토글 함수 (도장판 탭)
 window.toggleStampDropdown = function(e) {
     e.stopPropagation();
     const menu = document.getElementById('stamp-dropdown-menu');
@@ -1526,6 +1541,7 @@ window.toggleStampDropdown = function(e) {
     }
 };
 
+// 화면 외부 클릭 시 드롭다운 닫기
 document.addEventListener('click', (e) => {
     const menu = document.getElementById('stamp-dropdown-menu');
     if (menu && !menu.classList.contains('hidden') && !e.target.closest('#stamp-dropdown-menu')) {
@@ -1543,6 +1559,7 @@ document.getElementById('progressCount').innerText = classStamps[currentClass].f
 saveData(); window.checkMissionComplete(true);
 };
 
+// 미션 완료 시 올림픽 효과음으로 변경
 window.checkMissionComplete = (playEffect) => {
 const isComplete = classStamps[currentClass]?.every(s => s === true);
 const badge = document.getElementById('missionBadgeContainer');
@@ -1675,24 +1692,31 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.recordMs = elapsedMs; saveData(); }
 }
 
-window.updateRunningRecord = function(studentNo, val) {
-if (!classData[currentClass]) return;
-const student = classData[currentClass].find(s => s.no == studentNo);
-if(student) {
-student.running = val ? parseFloat(val) : null; 
-saveData();
+window.evaluateAgilityByRecord = function() {
+if(!currentClass || !classData[currentClass]) return;
+let students = classData[currentClass].filter(s => s.attendance && s.recordMs > 0);
+if(students.length === 0) {
+window.showModal("알림", "기록(시간)이 입력된 참석 학생이 없습니다.<br>개인 스톱워치로 기록을 먼저 측정해주세요.");
+return;
 }
-};
+window.showModal("순발력 자동 평가", `총 <b class="text-blue-500">${students.length}명</b>의 개인 기록을 바탕으로 순발력을 상/중/하로 자동 분류하시겠습니까?<br><br><span class='text-xs text-slate-500'>※ 기록이 짧을수록(시간이 적게 걸릴수록) '상'으로 평가됩니다.</span>`, true, () => {
+students.sort((a, b) => a.recordMs - b.recordMs);
+let total = students.length;
+let topCount = Math.ceil(total / 3);
+let midCount = Math.ceil((total - topCount) / 2);
 
-window.resetRunningRecords = function() {
-window.showModal("기록 초기화", "모든 학생의 달리기 기록을 정말로 지우시겠습니까?", true, function() {
-if (!classData[currentClass]) return;
-classData[currentClass].forEach(s => s.running = null);
+students.forEach((s, index) => {
+if (index < topCount) s.agility = '3';
+else if (index < topCount + midCount) s.agility = '2';
+else s.agility = '1';
+});
+
 saveData();
 renderStudentList();
-window.showModal("완료", "달리기 기록이 초기화되었습니다.");
-}, "초기화");
-};
+renderGroups();
+window.showModal("완료", "기록 기반 순발력 평가가 완료되었습니다.");
+}, "자동 평가 시작");
+}
 
 window.toggleTimerPlay = function(groupId) {
 let t = activeTimers[groupId]; if (!t) return;
@@ -1754,15 +1778,18 @@ if (s.handSense !== undefined || s.footSense !== undefined) {
 let h = parseInt(s.handSense) || 0; let f = parseInt(s.footSense) || 0; let maxSense = Math.max(h, f);
 s.ballSense = maxSense > 0 ? String(maxSense) : '-'; delete s.handSense; delete s.footSense;
 }
+if (s.agility !== undefined) {
+let num = s.agility; if (s.agility === '상') num = '3'; else if (s.agility === '중') num = '2'; else if (s.agility === '하') num = '1';
+s.agility = num;
+}
+if (!s.ballSense) s.ballSense = '-'; if (!s.agility) s.agility = '-';
 if (s.isCaptain === undefined) s.isCaptain = false;
 if (s.group !== undefined) { s.group_mixed4 = s.group; s.group_mixed3 = null; s.group_mixed2 = null; s.group_gender = null; delete s.group; }
 if (s.group_mixed2 === undefined) s.group_mixed2 = null;
 if (s.group_mixed3 === undefined) s.group_mixed3 = null;
 if (s.group_mixed4 === undefined) s.group_mixed4 = null;
 if (s.group_gender === undefined) s.group_gender = null;
-if (s.running === undefined) s.running = null; 
 delete s.group_partner;
-delete s.agility;
 });
 }
 }
@@ -1802,9 +1829,10 @@ saveData(); input.value = ""; window.renderClassSelect(); window.selectClass(new
 window.showModal("학급 추가 완료", `<b class="text-blue-600">${newClassName}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
 }
 
-function normalizeClassName(name) {
-    return name ? name.trim().replace(/\s+/g, '') : name;
-}
+        // 학급명 정규화 헬퍼 함수
+        function normalizeClassName(name) {
+            return name ? name.trim().replace(/\s+/g, '') : name;
+        }
 
 window.deleteCurrentClass = function() {
 if (!currentClass) return;
@@ -1830,10 +1858,10 @@ window.renderClassSelect(); window.showModal("삭제 완료", "모든 학급 데
 
 window.exportAllToExcel = function() {
 let csvContent = "\uFEFF"; 
-csvContent += "학급,번호,이름,성별,볼센스,달리기,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
+csvContent += "학급,번호,이름,성별,볼센스,순발력,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
 
 if (Object.keys(classData).length === 0) {
-csvContent += "=\"6-1\",1,홍길동,남,-,,참석,0,,,,,N,0\n";
+csvContent += "=\"6-1\",1,홍길동,남,-,-,참석,0,,,,,N,0\n";
 } else {
 const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -1852,13 +1880,13 @@ const safeClassName = `="${className}"`;
 
 students.forEach((s, idx) => {
 const attendance = s.attendance ? '참석' : '불참';
-const bs = s.ballSense || '-'; const runningStr = s.running !== null ? s.running : ''; const score = s.score || 0;
+const bs = s.ballSense || '-'; const ag = s.agility || '-'; const score = s.score || 0;
 const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
 const isCapt = s.isCaptain ? 'Y' : 'N';
 const recMs = s.recordMs || 0;
 const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
 const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${runningStr},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
+csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${ag},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
 });
 }
 }
@@ -1884,6 +1912,7 @@ result.push(current); return result;
 window.handleAllCSVUpload = function(event) {
     const file = event.target.files[0]; if (!file) return;
     
+    // 파일 처리 함수
     const processCSV = function(text) {
         text = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
         const lines = text.split('\n').filter(l => l.trim() !== '');
@@ -1896,7 +1925,7 @@ window.handleAllCSVUpload = function(event) {
             const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
             let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
             let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); let idxPersonalRec = header.indexOf('개인기록');
-            let idxBall = header.indexOf('볼센스'); let idxRunning = header.indexOf('달리기');
+            let idxBall = header.indexOf('볼센스'); let idxAgil = header.indexOf('순발력');
 
             for (let i = 1; i < lines.length; i++) {
                 const parts = parseCSVLine(lines[i]); if (parts.length < 5) continue;
@@ -1915,11 +1944,11 @@ window.handleAllCSVUpload = function(event) {
                 }
 
                 const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
-                let bs = '-', runningVal = null; let attendance = true, score = 0, isCaptain = false, recMs = 0;
+                let bs = '-', ag = '-'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
                 let g2 = null, g3 = null, g4 = null, gg = null;
 
                 if (idxBall > -1) bs = parts[idxBall].trim() === '-' ? '-' : parts[idxBall].trim();
-                if (idxRunning > -1 && parts[idxRunning]) runningVal = parseFloat(parts[idxRunning].trim()) || null;
+                if (idxAgil > -1) ag = parts[idxAgil].trim() === '-' ? '-' : parts[idxAgil].trim();
 
                 let attIdx = header.indexOf('참석상태');
                 if(attIdx > -1) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
@@ -1936,7 +1965,7 @@ window.handleAllCSVUpload = function(event) {
                 if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                 if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, running: runningVal, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, attendance: attendance, score: score, recordMs: recMs, drawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
             }
 
             if (Object.keys(newData).length > 0) {
@@ -1968,6 +1997,7 @@ window.handleAllCSVUpload = function(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         let text = e.target.result;
+        // 엑셀에서 파일 저장시 ANSI (EUC-KR) 방식으로 저장되어 한글이 깨지는 현상 방지 처리
         if (text.includes('')) {
             const eucReader = new FileReader();
             eucReader.onload = function(e2) {
@@ -1978,6 +2008,7 @@ window.handleAllCSVUpload = function(event) {
             processCSV(text);
         }
     };
+    // 기본적으로 utf-8로 읽기 시도
     reader.readAsText(file, "utf-8");
 }
 
@@ -2045,11 +2076,11 @@ if (parts.length >= 2) {
 const no = parts[0]; const name = parts[1];
 const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
 const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
-const runningVal = parts[4] ? parseFloat(parts[4]) || null : null;
+const ag = (parts[4] && ['1', '2', '3'].includes(parts[4])) ? parts[4] : '-';
 let group = null; if (parts[5]) { const g = parseInt(parts[5]); if (!isNaN(g) && g >= 1) group = g; }
 
 const newStudent = { 
-no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, running: runningVal, 
+no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, agility: ag, 
 attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
 };
 newStudent[`group_${currentGroupMode}`] = group;
@@ -2062,7 +2093,7 @@ document.getElementById('excel-input').value = "";
 renderStudentList(); window.renderGagaball(); saveData(); 
 window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
 } else { 
-window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 달리기 모둠] 순으로 엑셀에서 복사해 주세요."); 
+window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 엑셀에서 복사해 주세요."); 
 }
 }
 
@@ -2089,7 +2120,7 @@ window.addSingleStudent = function() {
 if (!currentClass) { window.showModal("알림", "먼저 상단에서 학급을 선택하거나 추가해주세요."); return; }
 const noInput = document.getElementById('add-no'); const nameInput = document.getElementById('add-name');
 const genderInput = document.getElementById('add-gender'); 
-const bsInput = document.getElementById('add-ballSense'); const runningInput = document.getElementById('add-running'); 
+const bsInput = document.getElementById('add-ballSense'); const agInput = document.getElementById('add-agility'); 
 const groupInput = document.getElementById('add-group');
 
 if(!noInput.value || !nameInput.value) return;
@@ -2097,15 +2128,17 @@ if(!noInput.value || !nameInput.value) return;
 let groupVal = null; if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
 if (!classData[currentClass]) classData[currentClass] = [];
 
-const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, running: runningInput.value ? parseFloat(runningInput.value) : null, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, agility: agInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
 newStudent[`group_${currentGroupMode}`] = groupVal; classData[currentClass].push(newStudent);
 
-noInput.value = ""; nameInput.value = ""; groupInput.value = ""; runningInput.value = "";
-document.getElementById(`add-ballSense`).value = "-";
-const btn = document.getElementById(`btn-add-ballSense`);
-btn.innerHTML = `<span class="text-slate-400 text-xs">⚽(-)</span>`;
+noInput.value = ""; nameInput.value = ""; groupInput.value = "";
+['ballSense', 'agility'].forEach(type => {
+document.getElementById(`add-${type}`).value = "-";
+const btn = document.getElementById(`btn-add-${type}`);
+let emoji = type === 'ballSense' ? '⚽' : '⚡';
+btn.innerHTML = `<span class="text-slate-400 text-xs">${emoji}(-)</span>`;
 btn.className = "w-[42px] sm:w-[60px] h-[36px] border rounded-lg bg-white shadow-sm transition flex items-center justify-center focus:outline-blue-500";
-
+});
 saveData(); renderStudentList(); window.renderGagaball();
 }
 
@@ -2123,16 +2156,21 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.attendance = !student.attendance; saveData(); renderStudentList(); renderGroups(); window.renderGagaball(); }
 }
 
+// 전체 참석 / 전체 불참 일괄 처리 함수
 window.setAllAttendance = function(isAbsent) {
     if (!currentClass || !classData[currentClass]) return;
+    
     if (window.triggerVibration) window.triggerVibration(30);
+    
     const actionText = isAbsent ? "불참(결석)" : "참석";
     
     if (confirm(`현재 학급의 모든 학생을 '${actionText}' 처리하시겠습니까?`)) {
         classData[currentClass].forEach(student => {
             student.attendance = !isAbsent; 
         });
+        
         saveData(false); 
+        
         if (typeof renderStudentList === 'function') renderStudentList();
         if (typeof renderGroups === 'function') renderGroups();
         if (typeof window.renderGagaball === 'function') window.renderGagaball();
@@ -2144,6 +2182,7 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student && student.attendance) { student.isCaptain = !student.isCaptain; saveData(); renderStudentList(); renderGroups(); }
 }
 
+// 출석부 화면 하이라이트 토글 기능
 window.toggleSelection = function(studentNo) {
 if (!currentClass || !classData[currentClass]) return;
 const student = classData[currentClass].find(s => s.no == studentNo);
@@ -2180,7 +2219,7 @@ renderStudentList();
 }
 
 function updateSortIcons() {
-['no', 'name', 'recordMs', 'gender', 'ballSense', 'running', 'group'].forEach(f => {
+['no', 'name', 'recordMs', 'gender', 'ballSense', 'agility', 'group'].forEach(f => {
 const icon = document.getElementById(`sort-${f}-icon`);
 if (icon) {
 if (sortState.field === f) { icon.innerText = sortState.direction === 'asc' ? '▲' : '▼'; icon.classList.add('text-blue-500'); } 
@@ -2222,11 +2261,6 @@ if (sortState.field === 'recordMs') {
 valA = a.recordMs || 0; valB = b.recordMs || 0;
 if (sortState.direction === 'asc') { if (valA === 0) valA = Infinity; if (valB === 0) valB = Infinity; }
 }
-if (sortState.field === 'running') {
-valA = a.running !== null ? parseFloat(a.running) : Infinity;
-valB = b.running !== null ? parseFloat(b.running) : Infinity;
-}
-
 if (valA < valB) return sortState.direction === 'asc' ? -1 : 1; if (valA > valB) return sortState.direction === 'asc' ? 1 : -1; return 0;
 });
 
@@ -2237,7 +2271,7 @@ let rowBgClass = "hover:bg-slate-50"; const sGroup = s[`group_${currentGroupMode
 
 if (s.attendance) {
 if (sortState.field === 'gender') rowBgClass = s.gender === '남' ? 'bg-blue-50/60 hover:bg-blue-100/60' : 'bg-pink-50/60 hover:bg-pink-100/60';
-else if (sortState.field === 'ballSense') {
+else if (sortState.field === 'ballSense' || sortState.field === 'agility') {
 const val = s[sortState.field];
 if (val === '3') rowBgClass = 'bg-orange-50/60 hover:bg-orange-100/60'; else if (val === '2') rowBgClass = 'bg-emerald-50/60 hover:bg-emerald-100/60'; else if (val === '1') rowBgClass = 'bg-stone-50/60 hover:bg-stone-100/60';
 } else if (sortState.field === 'group' && sGroup) {
@@ -2246,6 +2280,7 @@ else if (sGroup % 4 === 3) rowBgClass = 'bg-cyan-50/60 hover:bg-cyan-100/60'; el
 }
 } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
 
+// 학생 하이라이트 오버라이드
 if (s.selected) {
 rowBgClass = "bg-yellow-100 hover:bg-yellow-200 shadow-[inset_0_0_0_2px_#fde047] z-10 relative";
 }
@@ -2258,7 +2293,7 @@ if (val === '3') return 'bg-orange-50 border-orange-200 hover:bg-orange-100 shad
 if (val === '1') return 'bg-stone-50 border-stone-200 hover:bg-stone-100 shadow-sm'; return 'bg-white hover:bg-slate-100 border border-slate-200 shadow-sm';
 };
 
-const bsColor = getAbilityColorClass(s.ballSense);
+const bsColor = getAbilityColorClass(s.ballSense); const agColor = getAbilityColorClass(s.agility);
 
 let groupColorClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200';
 if (!s.attendance) groupColorClass = 'bg-slate-200 text-slate-400 cursor-not-allowed';
@@ -2307,11 +2342,10 @@ tr.innerHTML = `
                            ${window.getAbilityHTML('ballSense', s.ballSense)}
                        </button>
                    </td>
-                   <td class="px-0 py-1 sm:p-2 text-center w-[40px] sm:w-16">
-                       <input type="number" step="0.01" class="w-12 sm:w-16 text-center border rounded p-1 text-[10px] sm:text-xs bg-gray-50 focus:bg-white transition ${!s.attendance ? 'opacity-50 pointer-events-none' : ''}" 
-                              value="${s.running || ''}" 
-                              onchange="window.updateRunningRecord(${s.no}, this.value)" 
-                              placeholder="기록">
+                   <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
+                       <button onclick="window.cycleStudentAbility(${s.no}, 'agility')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${agColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
+                           ${window.getAbilityHTML('agility', s.agility)}
+                       </button>
                    </td>
 
                    <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8"><button onclick="window.deleteStudent(${s.no})" class="delete-btn text-slate-300 hover:text-red-500 transition p-0.5 sm:p-1"><svg class="h-3.5 w-3.5 sm:h-5 sm:w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
@@ -2319,6 +2353,7 @@ tr.innerHTML = `
 tbody.appendChild(tr);
 });
 
+// 뽑기 현황 UI 업데이트 추가
 if(window.updateDrawStatus) window.updateDrawStatus();
 }
 
@@ -2353,7 +2388,7 @@ window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
 }
 
 // ----------------------------------------------------
-// 모둠 편성 알고리즘 (스네이크 드래프트 적용)
+// 모둠 편성 애니메이션이 결합된 생성 로직
 // ----------------------------------------------------
 window.generateCurrentGroup = function() {
 window.selectedGroupStudent = null;
@@ -2364,24 +2399,30 @@ else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
     window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
+        // 1. 편성 오버레이 및 셔플 사운드 노출
         document.getElementById('group-shuffle-overlay').classList.remove('hidden');
         document.getElementById('group-shuffle-overlay').classList.add('flex');
         window.playCardShuffleSound();
 
+        // 2. 일정 시간 뒤 실제 로직 처리 및 팡파르
         setTimeout(() => {
             document.getElementById('group-shuffle-overlay').classList.add('hidden');
             document.getElementById('group-shuffle-overlay').classList.remove('flex');
 
-            callback(); 
+            callback(); // 실제 모둠 알고리즘 실행
             
+            // 3. 잭팟/결과 팡파르 및 폭죽
             window.playCasinoJackpot(); 
             window.fireConfetti(); 
+            
+            // (결과 카드들이 튀어나오는 효과인 animate-pop-in은 renderGroups() 내에 추가됨)
         }, 2200);
 
     }, "새로 편성하기");
 }
 
 window.updateGroupScore = function(groupId, change) {
+// 모둠 점수 효과음 적용
 if (change > 0) window.playCoinSound();
 else window.playBumpSound();
 
@@ -2402,49 +2443,44 @@ window.generateMixedGroups = function(numGroups) {
 const students = classData[currentClass];
 if (!students || students.length < numGroups) { window.showModal("인원 부족", `학생 정보가 부족합니다. 최소 ${numGroups}명 이상 등록되어야 합니다.`); return; }
 
-const presentStudents = students.filter(s => s.attendance);
+const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
+const presentStudents = students.filter(s => s.attendance); shuffle(presentStudents);
 students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
-let males = presentStudents.filter(s => s.gender === '남');
-let females = presentStudents.filter(s => s.gender === '여');
+const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
 
-function sortAbility(a, b) {
-    const getBs = (val) => (val === '상' || val === '3') ? 3 : ((val === '중' || val === '2') ? 2 : ((val === '하' || val === '1') ? 1 : 0));
-    let bsA = getBs(a.ballSense);
-    let bsB = getBs(b.ballSense);
-    if (bsA !== bsB) return bsB - bsA; 
-    
-    let runA = a.running !== null ? parseFloat(a.running) : 999;
-    let runB = b.running !== null ? parseFloat(b.running) : 999;
-    return runA - runB; // 달리기 기록이 짧은(낮은) 순이 우선
-}
+const assignToOptimalGroup = (student) => {
+let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
+const isMale = student.gender === '남';
 
-males.sort(sortAbility);
-females.sort(sortAbility);
+// 1. 최소 인원 그룹 찾기 (인원수 밸런스 최우선)
+let minTotal = Math.min(...groups.map(g => g.total));
+let candidates = groups.filter(g => g.total === minTotal);
 
-let groups = Array.from({ length: numGroups }, () => []);
-let groupIdx = 0;
-let direction = 1;
+// 2. 성별 밸런스
+let minGender = Math.min(...candidates.map(g => isMale ? g.male : g.female));
+let genderCandidates = candidates.filter(g => (isMale ? g.male : g.female) === minGender);
+if (genderCandidates.length > 0) candidates = genderCandidates;
 
-males.forEach(student => {
-    groups[groupIdx].push(student);
-    groupIdx += direction;
-    if (groupIdx >= numGroups) { groupIdx = numGroups - 1; direction = -1; }
-    else if (groupIdx < 0) { groupIdx = 0; direction = 1; }
+// 3. 점수 밸런스
+let minTotalScore = Math.min(...candidates.map(g => g.totalScore));
+let scoreCandidates = candidates.filter(g => g.totalScore === minTotalScore);
+if (scoreCandidates.length > 0) candidates = scoreCandidates;
+
+const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
+student[`group_${currentGroupMode}`] = targetGroup.id;
+
+targetGroup.totalScore += stScore; targetGroup.total++;
+if (isMale) targetGroup.male++; else targetGroup.female++;
+};
+
+// 실력이 높은 학생부터 순차적으로 분배
+presentStudents.sort((a, b) => {
+let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
+return scoreB - scoreA;
 });
-
-females.forEach(student => {
-    groups[groupIdx].push(student);
-    groupIdx += direction;
-    if (groupIdx >= numGroups) { groupIdx = numGroups - 1; direction = -1; }
-    else if (groupIdx < 0) { groupIdx = 0; direction = 1; }
-});
-
-groups.forEach((group, i) => {
-    group.forEach(student => {
-        student[`group_${currentGroupMode}`] = i + 1;
-    });
-});
+presentStudents.forEach(s => assignToOptimalGroup(s));
 
 if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {};
 for(let i=1; i<=numGroups; i++) groupScores[currentClass][currentGroupMode][i] = 0;
@@ -2458,38 +2494,43 @@ window.generateGenderGroups = function() {
 const students = classData[currentClass];
 if (!students || students.length < 4) { window.showModal("인원 부족", "학생 정보가 부족합니다. 최소 4명 이상 등록되어야 합니다."); return; }
 
-const presentStudents = students.filter(s => s.attendance);
+const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
 students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
-function sortAbility(a, b) {
-    const getBs = (val) => (val === '상' || val === '3') ? 3 : ((val === '중' || val === '2') ? 2 : ((val === '하' || val === '1') ? 1 : 0));
-    let bsA = getBs(a.ballSense);
-    let bsB = getBs(b.ballSense);
-    if (bsA !== bsB) return bsB - bsA; 
-    
-    let runA = a.running !== null ? parseFloat(a.running) : 999;
-    let runB = b.running !== null ? parseFloat(b.running) : 999;
-    return runA - runB;
-}
-
-const boys = presentStudents.filter(s => s.gender === '남').sort(sortAbility);
-const girls = presentStudents.filter(s => s.gender === '여').sort(sortAbility);
-
-let bIdx = 0, bDir = 1;
-boys.forEach(student => {
-    student[`group_${currentGroupMode}`] = [1, 2][bIdx];
-    bIdx += bDir;
-    if (bIdx >= 2) { bIdx = 1; bDir = -1; }
-    else if (bIdx < 0) { bIdx = 0; bDir = 1; }
+const distribute = (targetStudents, groupIds) => {
+shuffle(targetStudents);
+targetStudents.sort((a, b) => {
+let scoreA = (parseInt(a.ballSense)||0) + (parseInt(a.agility)||0);
+let scoreB = (parseInt(b.ballSense)||0) + (parseInt(b.agility)||0);
+return scoreB - scoreA;
 });
 
-let gIdx = 0, gDir = 1;
-girls.forEach(student => {
-    student[`group_${currentGroupMode}`] = [3, 4][gIdx];
-    gIdx += gDir;
-    if (gIdx >= 2) { gIdx = 1; gDir = -1; }
-    else if (gIdx < 0) { gIdx = 0; gDir = 1; }
-});
+const groups = groupIds.map(id => ({ id: id, total: 0, totalScore: 0 }));
+
+const assignToOptimalGroup = (student) => {
+let stScore = (parseInt(student.ballSense)||0) + (parseInt(student.agility)||0);
+
+// 1. 최소 인원
+let minTotal = Math.min(...groups.map(g => g.total));
+let candidates = groups.filter(g => g.total === minTotal);
+
+// 2. 점수 밸런스
+let minTotalScore = Math.min(...candidates.map(g => g.totalScore));
+let scoreCandidates = candidates.filter(g => g.totalScore === minTotalScore);
+if (scoreCandidates.length > 0) candidates = scoreCandidates;
+
+const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
+student[`group_${currentGroupMode}`] = targetGroup.id;
+targetGroup.totalScore += stScore; targetGroup.total++;
+};
+
+targetStudents.forEach(s => assignToOptimalGroup(s));
+};
+
+const boys = students.filter(s => s.gender === '남' && s.attendance);
+const girls = students.filter(s => s.gender === '여' && s.attendance);
+
+if(boys.length > 0) distribute(boys, [1, 2]); if(girls.length > 0) distribute(girls, [3, 4]);
 
 if (!groupScores[currentClass]) groupScores[currentClass] = {}; groupScores[currentClass][currentGroupMode] = {1:0, 2:0, 3:0, 4:0};
 if (!groupRecords[currentClass]) groupRecords[currentClass] = {}; groupRecords[currentClass][currentGroupMode] = {};
@@ -2507,13 +2548,6 @@ container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-1';
 
 let hasAnyGroup = false;
 
-// 모둠들 중 가장 많은 인원수를 계산 (릴레이 팀 기록 산출 페널티용)
-let maxMembersInAnyGroup = 0;
-for (let i = 1; i <= maxGroup; i++) {
-    let cnt = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance).length;
-    if (cnt > maxMembersInAnyGroup) maxMembersInAnyGroup = cnt;
-}
-
 for (let i = 1; i <= maxGroup; i++) {
 const members = students.filter(s => s[`group_${currentGroupMode}`] === i);
 if (members.length === 0) continue;
@@ -2527,11 +2561,12 @@ else if (themeIndex === 2) theme = { border: 'border-emerald-200', hover: 'hover
 else if (themeIndex === 3) theme = { border: 'border-amber-200', hover: 'hover:border-amber-400', text: 'text-amber-700', btn: 'text-amber-600 hover:bg-amber-50', bg: 'bg-amber-50/50' };
 
 const card = document.createElement('div');
+// 편성 즉시 모둠 카드가 통통 튀어나오는 연출(animate-pop-in) 부여
 card.className = `animate-pop-in bg-white border-2 ${theme.border} ${theme.hover} p-3 sm:p-5 rounded-2xl shadow-sm transition min-h-[150px] cursor-pointer`;
 card.setAttribute('ondragover', 'window.handleDragOver(event)'); 
 card.setAttribute('ondrop', `window.handleDropOnGroup(event, ${i})`);
 card.setAttribute('onclick', `window.handleGroupAreaClick(${i})`);
-card.style.animationDelay = `${i * 0.05}s`; 
+card.style.animationDelay = `${i * 0.05}s`; // 순차적으로 튀어나오게 딜레이 추가
 
 const presentMembers = members.filter(m => m.attendance);
 const maleCount = presentMembers.filter(m => m.gender === '남').length; const femaleCount = presentMembers.filter(m => m.gender === '여').length;
@@ -2539,25 +2574,11 @@ const maleCount = presentMembers.filter(m => m.gender === '남').length; const f
 let score = 0; if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) score = groupScores[currentClass][currentGroupMode][i] || 0;
 
 let groupTotalAbility = 0;
-let validRunners = [];
-presentMembers.forEach(m => { 
-    groupTotalAbility += (parseInt(m.ballSense)||0); 
-    if (m.running) validRunners.push(parseFloat(m.running));
-});
-
-let groupTotalTime = validRunners.reduce((a, b) => a + b, 0);
-
-// 결원이 있어 가장 빠른 학생이 여러 번 뛰어야 할 경우, 1회당 2초의 피로도 페널티를 부여하여 팀 예상 기록 산출
-if (presentMembers.length > 0 && presentMembers.length < maxMembersInAnyGroup && validRunners.length > 0) {
-    let missingCount = maxMembersInAnyGroup - presentMembers.length;
-    let fastest = Math.min(...validRunners);
-    groupTotalTime += (fastest + 2) * missingCount;
-}
+presentMembers.forEach(m => { groupTotalAbility += (parseInt(m.ballSense)||0) + (parseInt(m.agility)||0); });
 
 const headerExtra = `
                    <div class="flex flex-wrap justify-start xl:justify-end gap-1 mt-1 xl:mt-0 w-full items-center">
-                       <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-slate-500">볼센스: ${groupTotalAbility}점</span>
-                       <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-blue-500">예상 릴레이: ${groupTotalTime > 0 ? groupTotalTime.toFixed(2) + '초' : '-'}</span>
+                       <span class="text-[9px] sm:text-[10px] font-bold bg-white border border-slate-200 px-1.5 py-0.5 rounded-md whitespace-nowrap shadow-sm text-slate-500">종합 전력: ${groupTotalAbility}점</span>
                    </div>
                `;
 
@@ -2628,7 +2649,7 @@ card.innerHTML = `
                                     class="cursor-pointer relative flex flex-col items-center justify-center gap-1.5 ${cardStateClass} py-2 px-1 rounded-xl border-2 shadow-sm hover:shadow-md active:scale-95 transition-all student-card overflow-hidden">
                                    
                                    <div class="flex items-center justify-center gap-1 w-full mt-1">
-                                       <span class="text-[10px] sm:text-[11px] font-mono font-bold ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}번</span>
+                                       <span class="text-[10px] sm:text-[11px] font-mono font-bold ${m.attendance ? 'text-slate-400' : 'text-red-300'} shrink-0">${m.no}</span>
                                        <button onclick="event.stopPropagation(); window.toggleCaptain(${m.no})" class="flex items-center justify-center text-[12px] sm:text-[13px] font-black ${m.attendance ? 'text-slate-700' : 'text-slate-400 line-through'} break-words whitespace-normal text-center leading-tight hover:bg-slate-200/50 px-1 py-0.5 rounded transition" title="이름 터치시 체육부장 토글">
                                            ${m.name}${captainBadgeHTML}
                                        </button>
@@ -2637,7 +2658,7 @@ card.innerHTML = `
                                    
                                    <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
-                                       <div class="w-auto px-1 h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100 text-[10px] sm:text-[11px] font-bold text-slate-600">${m.running ? m.running + '초' : '-'}</div>
+                                       <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
                                    </div>
                                </div>
                            `;
@@ -2663,6 +2684,7 @@ if (statusText) {
 }
 }
 
+// 팝업 모달 닫기
 window.closeDrawResultModal = function() {
     document.getElementById('drawResultModal').classList.add('hidden');
     document.getElementById('drawResultModal').classList.remove('flex');
@@ -2687,4 +2709,129 @@ window.showModal("알림", `${targetName} 뽑혀 기록이 초기화되었습니
 }
 
 const countSelect = document.getElementById('draw-count'); let drawCount = parseInt(countSelect.value, 10);
-if (drawCount > availableStudents.length
+if (drawCount > availableStudents.length) drawCount = availableStudents.length;
+
+const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
+shuffle(availableStudents);
+
+let selectedStudents = [];
+
+if (drawCount > 0) {
+selectedStudents.push(availableStudents[0]);
+availableStudents.splice(0, 1);
+}
+
+// 우수한 학생 분산 배치 (기존 멤버들의 평균 능력치와 거리가 가장 먼 학생을 순차적으로 선택)
+while(selectedStudents.length < drawCount && availableStudents.length > 0) {
+let avgBs = selectedStudents.reduce((sum, s) => sum + (parseInt(s.ballSense)||2), 0) / selectedStudents.length;
+let avgAg = selectedStudents.reduce((sum, s) => sum + (parseInt(s.agility)||2), 0) / selectedStudents.length;
+
+let maxDist = -1;
+let bestCandidateIdx = -1;
+
+for(let i=0; i<availableStudents.length; i++) {
+let s = availableStudents[i];
+let bs = parseInt(s.ballSense)||2;
+let ag = parseInt(s.agility)||2;
+let dist = Math.abs(bs - avgBs) + Math.abs(ag - avgAg);
+
+dist += Math.random() * 0.5; // 동일 능력치일 경우 무작위성 부여
+
+if (dist > maxDist) {
+maxDist = dist;
+bestCandidateIdx = i;
+}
+}
+
+selectedStudents.push(availableStudents[bestCandidateIdx]);
+availableStudents.splice(bestCandidateIdx, 1);
+}
+
+selectedStudents.forEach(s => s.drawn = true); saveData(); renderStudentList();
+
+// 플로팅 모달에 결과 그리기
+const modalGrid = document.getElementById('drawResultGrid');
+modalGrid.innerHTML = "";
+selectedStudents.forEach((s, index) => {
+    const card = document.createElement('div');
+    card.className = "bg-purple-50 border-4 border-purple-300 p-4 rounded-2xl shadow-md text-center flex flex-col items-center justify-center animate-pop-in w-28 h-28 sm:w-36 sm:h-36";
+    card.style.animationDelay = `${index * 0.1}s`;
+    card.innerHTML = `
+        <span class="text-base sm:text-lg font-mono font-bold text-purple-400 mb-1 sm:mb-2">${s.no}번</span>
+        <span class="text-xl sm:text-3xl font-black text-purple-700 break-keep">${s.name}</span>
+    `;
+    modalGrid.appendChild(card);
+});
+
+// 모달 표시 및 이펙트 발생
+document.getElementById('drawResultModal').classList.remove('hidden');
+document.getElementById('drawResultModal').classList.add('flex');
+window.fireConfetti();
+window.playGrandFanfare();
+
+// 기존 인라인 리스트에도 추가 (기록 확인용)
+const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
+selectedStudents.forEach((s, index) => {
+    const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 transition";
+    card.dataset.studentNo = s.no;
+    card.innerHTML = `
+        <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
+            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
+        </div>
+        <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
+    `;
+    container.appendChild(card);
+});
+}
+
+window.resetDrawPool = function() {
+if (!classData[currentClass]) return;
+window.showModal("뽑기 초기화", "뽑기 기록을 초기화하시겠습니까?<br>모든 학생이 다시 뽑힐 수 있는 상태로 되돌아갑니다.", true, () => {
+classData[currentClass].forEach(s => s.drawn = false); saveData(); renderStudentList(); window.renderGagaball();
+const container = document.getElementById('draw-result'); if (container) { container.innerHTML = ""; container.classList.add('hidden'); }
+window.showModal("초기화 완료", "모든 뽑기 기록이 초기화되었습니다.");
+});
+}
+
+window.resetAllScoresDB = function() {
+if (!classData[currentClass]) return;
+window.showModal("점수 초기화", "전체 학생의 <b>개인 점수</b>를 모두 0점으로 초기화하시겠습니까?", true, () => {
+classData[currentClass].forEach(s => s.score = 0); 
+saveData(); 
+renderStudentList(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
+window.showModal("초기화 완료", "모든 학생의 점수가 0점으로 초기화되었습니다.");
+});
+}
+
+let currentEditingStudentNo = null;
+window.openScoreModal = function(studentNo) {
+const student = classData[currentClass].find(s => s.no === studentNo); if(!student) return;
+currentEditingStudentNo = studentNo;
+document.getElementById('score-modal-name').innerText = `${student.no}번 ${student.name}`;
+document.getElementById('score-modal-input').value = student.score || 0;
+const modal = document.getElementById('score-modal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+
+window.closeScoreModal = function() {
+const modal = document.getElementById('score-modal'); modal.classList.add('hidden'); modal.classList.remove('flex');
+currentEditingStudentNo = null;
+}
+
+window.adjustScore = function(delta) {
+const input = document.getElementById('score-modal-input');
+let currentVal = parseInt(input.value) || 0; input.value = Math.max(0, currentVal + delta);
+}
+
+window.saveScore = function() {
+if(currentEditingStudentNo === null) return;
+const student = classData[currentClass].find(s => s.no === currentEditingStudentNo);
+if(student) {
+const input = document.getElementById('score-modal-input');
+student.score = parseInt(input.value) || 0; 
+saveData(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
+}
+window.closeScoreModal();
+}
+</script>
+</body>
+</html>
