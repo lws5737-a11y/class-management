@@ -492,9 +492,10 @@ Google 계정으로 시작하기
 <div class="bg-green-50 rounded-2xl shadow-sm border-2 border-green-400 p-6 font-jua relative overflow-hidden flex flex-col items-center">
 <div class="text-center mb-6">
 <h2 class="text-3xl md:text-4xl text-green-600 mb-3">🏃‍♂️ 체육 수업 미션 도장판 🏃‍♀️</h2>
-<div class="inline-flex items-center gap-2 text-xl text-gray-700 bg-white py-2 px-6 rounded-full border border-green-200 shadow-sm">
-<span id="stamp-class-title" class="font-black text-green-700">학급을 선택해주세요</span>
-</div>
+<button onclick="window.openManageModal()" class="inline-flex items-center gap-2 text-xl text-gray-700 bg-white py-2 px-6 rounded-full border border-green-200 shadow-sm hover:bg-green-50 transition cursor-pointer">
+    <span id="stamp-class-title" class="font-black text-green-700">학급을 선택해주세요</span>
+    <span class="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">변경 🔄</span>
+</button>
 </div>
 
 <div class="w-full max-w-xl mb-6 bg-white/70 p-4 rounded-xl border border-green-100 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -506,23 +507,9 @@ Google 계정으로 시작하기
 <div id="stampBoard" class="grid grid-cols-5 gap-3 md:gap-4 mb-8"></div>
 
 <div id="missionBadgeContainer" class="absolute inset-0 flex items-center justify-center z-40 pointer-events-none hidden bg-white/60 backdrop-blur-sm rounded-2xl">
-<svg viewBox="0 0 400 400" class="w-full max-w-[350px] drop-shadow-2xl">
-<defs>
-<radialGradient id="bgGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff8dc" /><stop offset="60%" stop-color="#ffb74d" /><stop offset="100%" stop-color="#29b6f6" /></radialGradient>
-<filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.5" /></filter>
-</defs>
-<circle cx="200" cy="200" r="180" fill="#0d2b5e" /><circle cx="200" cy="200" r="176" fill="none" stroke="#d4af37" stroke-width="4" />
-<circle cx="200" cy="200" r="150" fill="url(#bgGrad)" /><circle cx="200" cy="200" r="145" fill="none" stroke="#d4af37" stroke-width="4" stroke-dasharray="8 6" />
-<path id="arcTop" d="M 80,200 A 120,120 0 0,1 320,200" fill="none" />
-<text fill="#ffffff" font-size="28" font-weight="bold" font-family="'Jua', sans-serif" letter-spacing="2"><textPath href="#arcTop" startOffset="50%" text-anchor="middle">체육 수업 미션 완료</textPath></text>
-<g filter="url(#shadow)" transform="rotate(-5, 200, 200)">
-<text x="200" y="215" font-size="52" font-weight="900" fill="#ffffff" stroke="#0d2b5e" stroke-width="12" stroke-linejoin="round" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">MISSION</text>
-<text x="200" y="215" font-size="52" font-weight="900" fill="#ffffff" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">MISSION</text>
-<text x="200" y="265" font-size="46" font-weight="900" fill="#ffffff" stroke="#0d2b5e" stroke-width="12" stroke-linejoin="round" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">COMPLETE!!</text>
-<text x="200" y="265" font-size="46" font-weight="900" fill="#ffeb3b" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic">COMPLETE!!</text>
-</g>
-</svg>
+    <img src="image_66ce79.png" class="w-full max-w-[350px] drop-shadow-2xl object-contain" alt="미션 완료">
 </div>
+
 </div>
 
 <div class="flex flex-col sm:flex-row justify-between items-center w-full max-w-2xl mt-4 gap-4">
@@ -806,7 +793,7 @@ window.playCasinoJackpot = function() {
     } catch(e) {}
 };
 
-// 3. 올림픽 시상식 웅장한 팡파르 (순위표용)
+// 3. 올림픽 시상식 웅장한 팡파르 (순위표 및 도장판 20개 완성용)
 window.playOlympicFanfare = function() {
     try {
         const ctx = initAudio();
@@ -1155,7 +1142,6 @@ document.getElementById(`gaga-btn-${tab}`).classList.remove('bg-slate-100', 'tex
 if(tab === 'score') renderGagaball();
 if(tab === 'rank') {
     renderGagaRanking();
-    // 순위표 입장 시 올림픽 시상식 팡파르 연주
     window.playOlympicFanfare(); 
 }
 if(tab === 'team') renderGagaTeamView();
@@ -1241,7 +1227,7 @@ let available = classData[currentClass].filter(s => s.attendance && !s.drawn && 
 if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
 
 document.getElementById('event-loading-overlay').classList.remove('hidden'); document.getElementById('event-loading-overlay').classList.add('flex');
-window.playCasinoRoulette(); // 카지노 룰렛 기계 돌아가는 소리
+window.playCasinoRoulette(); 
 
 setTimeout(() => {
 document.getElementById('event-loading-overlay').classList.add('hidden'); document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -1273,7 +1259,7 @@ pickedHTML.push(`
 });
 saveData(); renderGagaball(); renderStudentList();
 document.getElementById('gagaDrawResultGrid').innerHTML = pickedHTML.join(''); document.getElementById('gagaDrawModal').style.display = 'flex';
-window.playCasinoJackpot(); // 카지노 잭팟 터지는 소리 적용
+window.playCasinoJackpot(); 
 window.fireConfetti();
 }
 
@@ -1294,7 +1280,7 @@ if(available.length < numTeams) return window.showModal("인원 부족", `참가
 
 document.getElementById('event-loading-overlay').classList.remove('hidden'); document.getElementById('event-loading-overlay').classList.add('flex');
 document.getElementById('event-loading-text').innerText = "팀 밸런스 조정중..."; 
-window.playCasinoRoulette(); // 팀 편성 시 룰렛 소리
+window.playCasinoRoulette(); 
 
 setTimeout(() => {
 document.getElementById('event-loading-overlay').classList.add('hidden'); document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -1321,7 +1307,7 @@ eligibleTeams[0].members.push(student); eligibleTeams[0].score += (student.score
 });
 }
 distribute(boys); distribute(girls); currentGagaTeams = teams; renderGagaTeamView(); 
-window.playCasinoJackpot(); // 잭팟 소리!
+window.playCasinoJackpot(); 
 window.fireConfetti();
 }
 
@@ -1477,10 +1463,15 @@ document.getElementById('progressCount').innerText = classStamps[currentClass].f
 saveData(); window.checkMissionComplete(true);
 };
 
+// 미션 완료 시 올림픽 효과음으로 변경
 window.checkMissionComplete = (playEffect) => {
 const isComplete = classStamps[currentClass]?.every(s => s === true);
 const badge = document.getElementById('missionBadgeContainer');
-if (isComplete) { badge.classList.remove('hidden'); badge.classList.add('badge-animate'); if (playEffect) window.playFanfareSound(); } 
+if (isComplete) { 
+    badge.classList.remove('hidden'); 
+    badge.classList.add('badge-animate'); 
+    if (playEffect) window.playOlympicFanfare(); 
+} 
 else { badge.classList.add('hidden'); }
 };
 
