@@ -763,6 +763,79 @@ playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5);
 } catch(e) {}
 }
 
+// ------------------------------------------
+// 💎 새로운 특수 사운드 이펙트 추가 (룰렛 & 시상식)
+// ------------------------------------------
+
+// 1. 카지노 룰렛 돌아가는 화려한 기계음
+window.playCasinoRoulette = function() {
+    try {
+        const ctx = initAudio();
+        let startTime = ctx.currentTime;
+        // 아르페지오 형식의 기계적인 틱 사운드가 서서히 느려지는 효과
+        for (let i = 0; i < 40; i++) {
+            let tickTime = startTime + 2.5 * (1 - Math.pow(1 - (i/40), 2.5)); 
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800 + (i % 3) * 200, tickTime); 
+            gain.gain.setValueAtTime(0, tickTime);
+            gain.gain.linearRampToValueAtTime(0.1, tickTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.05);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(tickTime); osc.stop(tickTime + 0.05);
+        }
+    } catch(e) {}
+};
+
+// 2. 카지노 잭팟 터지는 소리 (결과 발표용)
+window.playCasinoJackpot = function() {
+    try {
+        const ctx = initAudio();
+        let now = ctx.currentTime;
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+        for(let i=0; i<15; i++) {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freqs[i % freqs.length] + (Math.random() * 10 - 5);
+            gain.gain.setValueAtTime(0, now + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.15, now + i * 0.1 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.08);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.08);
+        }
+    } catch(e) {}
+};
+
+// 3. 올림픽 시상식 웅장한 팡파르 (순위표용)
+window.playOlympicFanfare = function() {
+    try {
+        const ctx = initAudio();
+        const playBrass = (f, t, d) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.value = f;
+            gain.gain.setValueAtTime(0, ctx.currentTime + t);
+            gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + d);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
+        };
+        
+        // C -> F -> G -> C 웅장한 화음 연속
+        const chords = [
+            [261.63, 329.63, 392.00], // C
+            [349.23, 440.00, 523.25], // F
+            [392.00, 493.88, 587.33], // G
+            [523.25, 659.25, 783.99, 1046.50] // High C
+        ];
+        
+        chords[0].forEach(f => playBrass(f, 0, 0.4));
+        chords[1].forEach(f => playBrass(f, 0.4, 0.4));
+        chords[2].forEach(f => playBrass(f, 0.8, 0.4));
+        chords[3].forEach(f => playBrass(f, 1.2, 1.2));
+    } catch(e) {}
+};
+
+
 window.fireConfetti = function() {
 const canvas = document.getElementById('confetti-canvas');
 canvas.classList.remove('hidden');
@@ -1080,7 +1153,11 @@ document.getElementById(`gaga-btn-${tab}`).classList.add('bg-slate-800', 'text-w
 document.getElementById(`gaga-btn-${tab}`).classList.remove('bg-slate-100', 'text-slate-600');
 
 if(tab === 'score') renderGagaball();
-if(tab === 'rank') renderGagaRanking();
+if(tab === 'rank') {
+    renderGagaRanking();
+    // 순위표 입장 시 올림픽 시상식 팡파르 연주
+    window.playOlympicFanfare(); 
+}
 if(tab === 'team') renderGagaTeamView();
 }
 
@@ -1164,7 +1241,7 @@ let available = classData[currentClass].filter(s => s.attendance && !s.drawn && 
 if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
 
 document.getElementById('event-loading-overlay').classList.remove('hidden'); document.getElementById('event-loading-overlay').classList.add('flex');
-window.playDrumRoll();
+window.playCasinoRoulette(); // 카지노 룰렛 기계 돌아가는 소리
 
 setTimeout(() => {
 document.getElementById('event-loading-overlay').classList.add('hidden'); document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -1196,7 +1273,8 @@ pickedHTML.push(`
 });
 saveData(); renderGagaball(); renderStudentList();
 document.getElementById('gagaDrawResultGrid').innerHTML = pickedHTML.join(''); document.getElementById('gagaDrawModal').style.display = 'flex';
-window.playGrandFanfare(); window.fireConfetti();
+window.playCasinoJackpot(); // 카지노 잭팟 터지는 소리 적용
+window.fireConfetti();
 }
 
 window.resetGagaDraw = function() {
@@ -1215,7 +1293,8 @@ let available = classData[currentClass].filter(s => s.attendance);
 if(available.length < numTeams) return window.showModal("인원 부족", `참가 학생이 너무 적습니다.`);
 
 document.getElementById('event-loading-overlay').classList.remove('hidden'); document.getElementById('event-loading-overlay').classList.add('flex');
-document.getElementById('event-loading-text').innerText = "팀 밸런스 조정중..."; window.playDrumRoll();
+document.getElementById('event-loading-text').innerText = "팀 밸런스 조정중..."; 
+window.playCasinoRoulette(); // 팀 편성 시 룰렛 소리
 
 setTimeout(() => {
 document.getElementById('event-loading-overlay').classList.add('hidden'); document.getElementById('event-loading-overlay').classList.remove('flex');
@@ -1241,7 +1320,9 @@ eligibleTeams.sort(() => Math.random() - 0.5); eligibleTeams.sort((a, b) => a.sc
 eligibleTeams[0].members.push(student); eligibleTeams[0].score += (student.score || 0);
 });
 }
-distribute(boys); distribute(girls); currentGagaTeams = teams; renderGagaTeamView(); window.playGrandFanfare(); window.fireConfetti();
+distribute(boys); distribute(girls); currentGagaTeams = teams; renderGagaTeamView(); 
+window.playCasinoJackpot(); // 잭팟 소리!
+window.fireConfetti();
 }
 
 window.renderGagaTeamView = function() {
@@ -1258,9 +1339,9 @@ const createPanel = (team) => `
                        <div class="team-title">${team.id}팀</div>
                        <div class="mt-auto">
                            <div class="stepper-ctrl">
-                               <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepDown()">-</button>
+                               <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepDown(); window.playBumpSound();">-</button>
                                <input type="number" id="ts-${team.id}" class="team-score-input" value="1" min="1">
-                               <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepUp()">+</button>
+                               <button class="stepper-btn" onclick="document.getElementById('ts-${team.id}').stepUp(); window.playCoinSound();">+</button>
                            </div>
                            <button class="btn-team-add" onclick="window.addGagaTeamScore(${team.id})">포인트 획득</button>
                        </div>
