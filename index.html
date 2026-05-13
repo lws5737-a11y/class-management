@@ -919,13 +919,12 @@ window.generateCuteAvatar = function(student) {
     let index = sameGenderStudents.findIndex(s => s.no === student.no);
     if (index === -1) index = 0; // 예외 처리
 
-    // 파일 이름 계산 (1-1 부터 7-4 까지 총 28개)
-    // 인덱스를 28로 나눈 나머지를 사용하여 28명이 넘어도 순환하도록 처리
-    let avatarIndex = index % 28; 
-    let row = Math.floor(avatarIndex / 4) + 1; // 1 ~ 7
-    let col = (avatarIndex % 4) + 1;           // 1 ~ 4
+    // 총 50개의 아바타 (가로 10개, 세로 5줄)
+    let avatarIndex = index % 50; 
+    let row = Math.floor(avatarIndex / 10) + 1; // 1 ~ 5
+    let col = (avatarIndex % 10) + 1;           // 1 ~ 10
 
-    let prefix = student.gender === '남' ? 'xy' : 'xx';
+    let prefix = student.gender === '남' ? 'boy' : 'girl';
     
     // 깃헙 상대 경로로 반환
     return `images/avatars/${prefix}_${row}-${col}.png`;
