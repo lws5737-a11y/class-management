@@ -377,7 +377,7 @@ Google 계정으로 시작하기
 <span class="text-blue-500">📋</span> 출석부 및 명단
 </h3>
 <button onclick="window.resetRunningRecords()" class="text-[10px] sm:text-xs bg-red-100 text-red-700 px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-red-200 transition font-bold whitespace-nowrap hidden sm:inline-block">
-🗑️ 달리기 기록 리셋
+🗑️ 순발력 기록 리셋
 </button>
 </div>
 <div id="student-summary" class="flex flex-col gap-1.5 items-end">
@@ -386,7 +386,7 @@ Google 계정으로 시작하기
 
 <div class="mb-3 px-1 sm:hidden">
 <button onclick="window.resetRunningRecords()" class="w-full text-xs bg-red-100 text-red-700 px-3 py-2 rounded-lg shadow-sm hover:bg-red-200 transition font-bold">
-🗑️ 달리기 기록 전체 초기화
+🗑️ 순발력 기록 전체 초기화
 </button>
 </div>
 
@@ -409,8 +409,8 @@ Google 계정으로 시작하기
 <th onclick="window.toggleSort('ballSense')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
 볼센스 ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs" title="달리기 기록(초)">
-달리기 기록 ⚡<span id="sort-recordMs-icon" class="sort-icon">↕</span>
+<th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs" title="순발력(초)">
+순발력 ⚡<span id="sort-recordMs-icon" class="sort-icon">↕</span>
 </th>
 <th class="bg-slate-50 border-b border-slate-200 px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
 </tr>
@@ -535,7 +535,7 @@ Google 계정으로 시작하기
 <div id="stampBoard" class="grid grid-cols-5 gap-3 md:gap-4 mb-8"></div>
 
 <div id="missionBadgeContainer" class="absolute inset-0 flex items-center justify-center z-40 pointer-events-none hidden bg-white/60 backdrop-blur-sm rounded-2xl">
-    <img src="image_66ce79.png" class="w-full max-w-[350px] drop-shadow-2xl object-contain" alt="미션 완료">
+    <img src="image_66ce79.jpg" class="w-full max-w-[350px] drop-shadow-2xl object-contain" alt="미션 완료">
 </div>
 
 </div>
@@ -584,7 +584,7 @@ Google 계정으로 시작하기
 <span class="text-slate-400 text-xs">⚽(-)</span>
 </button>
 
-<input type="number" id="add-running" placeholder="초" step="0.01" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500" title="달리기 기록(초)">
+<input type="number" id="add-running" placeholder="초" step="0.01" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500" title="순발력(초)">
 
 <input id="add-group" type="number" placeholder="모둠" min="1" max="20" class="w-12 sm:w-16 border p-2 sm:p-2.5 rounded-lg text-sm focus:outline-blue-500" title="모둠 (1~20)">
 <button onclick="window.addSingleStudent()" class="w-full sm:w-auto bg-slate-800 text-white px-4 py-2 sm:py-2.5 rounded-lg hover:bg-slate-900 text-sm font-bold transition mt-1 sm:mt-0">개별 추가</button>
@@ -593,7 +593,7 @@ Google 계정으로 시작하기
 <div id="excel-import-section" class="p-4 sm:p-5 bg-blue-50 rounded-xl border border-blue-100">
 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
 <label class="text-sm font-bold text-blue-800">Excel 데이터 붙여넣기 일괄 추가</label>
-<span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 볼센스 달리기 모둠</span>
+<span class="text-[10px] sm:text-[11px] text-blue-600 font-medium bg-white px-2 py-0.5 rounded border border-blue-200 w-fit">형식: 번호 이름 성별 볼센스 순발력 모둠</span>
 </div>
 <textarea id="excel-input" rows="3" 
 class="w-full p-3 sm:p-4 border-2 border-dashed border-blue-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 focus:outline-none text-sm transition placeholder:text-slate-400" 
@@ -1730,13 +1730,22 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.recordMs = elapsedMs; saveData(); renderGroups(); }
 }
 
+window.updateRunningRecord = function(studentNo, val) {
+if (!classData[currentClass]) return;
+const student = classData[currentClass].find(s => s.no == studentNo);
+if(student) {
+student.running = val ? parseFloat(val) : null; 
+saveData();
+}
+};
+
 window.resetRunningRecords = function() {
-window.showModal("기록 초기화", "모든 학생의 달리기 기록을 정말로 지우시겠습니까?", true, function() {
+window.showModal("기록 초기화", "모든 학생의 순발력 기록을 정말로 지우시겠습니까?", true, function() {
 if (!classData[currentClass]) return;
 classData[currentClass].forEach(s => s.recordMs = 0);
 saveData();
 renderStudentList();
-window.showModal("완료", "달리기 기록이 초기화되었습니다.");
+window.showModal("완료", "순발력 기록이 초기화되었습니다.");
 }, "초기화");
 };
 
@@ -1876,7 +1885,7 @@ window.renderClassSelect(); window.showModal("삭제 완료", "모든 학급 데
 
 window.exportAllToExcel = function() {
 let csvContent = "\uFEFF"; 
-csvContent += "학급,번호,이름,성별,볼센스,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,달리기(초)\n";
+csvContent += "학급,번호,이름,성별,볼센스,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,순발력(초)\n";
 
 if (Object.keys(classData).length === 0) {
 csvContent += "=\"6-1\",1,홍길동,남,-,참석,0,,,,,{},{},N,0\n";
@@ -1944,7 +1953,8 @@ window.handleAllCSVUpload = function(event) {
             let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
             let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); 
             
-            let idxPersonalRec = header.indexOf('달리기(초)');
+            let idxPersonalRec = header.indexOf('순발력(초)');
+            if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('달리기(초)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('순발력(개인기록)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('개인기록');
             
@@ -2083,6 +2093,52 @@ document.getElementById('stamp-section').classList.remove('hidden');
 document.getElementById('tab-stamp').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
 renderStampBoard();
 }
+}
+}
+
+window.importFromExcel = async function() {
+if (!currentClass) { window.showModal("알림", "먼저 상단에서 학급을 선택해주세요."); return; }
+const input = document.getElementById('excel-input').value.trim();
+if (!input) { window.showModal("입력 오류", "내용을 입력해주세요."); return; }
+
+const lines = input.split('\n');
+if (!classData[currentClass]) classData[currentClass] = [];
+let addedCount = 0; window.selectedGroupStudent = null;
+
+lines.forEach(line => {
+    const parts = line.split('\t').map(p => p.trim());
+    if (parts.length >= 2) {
+        const no = parts[0]; const name = parts[1];
+        const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
+        const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
+        
+        let recMs = 0;
+        if (parts[4]) {
+            const r = parseFloat(parts[4]);
+            if (!isNaN(r)) recMs = Math.floor(r * 1000);
+        }
+
+        let group = null; 
+        if (parts[5]) { 
+            const g = parseInt(parts[5]); 
+            if (!isNaN(g) && g >= 1) group = g; 
+        }
+
+        const newStudent = { 
+            no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, 
+            attendance: true, score: 0, recordMs: recMs, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
+        };
+        newStudent[`group_${currentGroupMode}`] = group;
+        classData[currentClass].push(newStudent); addedCount++;
+    }
+});
+
+if(addedCount > 0) {
+    document.getElementById('excel-input').value = ""; 
+    renderStudentList(); window.renderGagaball(); saveData(); 
+    window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
+} else { 
+    window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 엑셀에서 복사해 주세요."); 
 }
 }
 
@@ -2313,17 +2369,7 @@ tr.innerHTML = `
                        </button>
                    </td>
                    
-                   <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span></td>
-                   
-                   <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass}" ${!s.attendance ? 'disabled' : ''}>${sGroup ? sGroup : '-'}</button></td>
-                   
-                   <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
-                       <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
-                           ${window.getAbilityHTML('ballSense', s.ballSense)}
-                       </button>
-                   </td>
-
-                   <td class="px-0 py-1 sm:p-2 text-center w-[64px] sm:w-auto">
+                   <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
                        <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
                            <div id="st-time-display-${s.no}" onclick="window.manualStudentTimeEdit(${s.no})" class="w-8 sm:w-12 text-center text-[8px] sm:text-[11px] font-bold tracking-tighter cursor-pointer hover:text-blue-500 transition-colors font-mono" title="터치하여 직접 입력">
                                ${window.formatTime(st.elapsed)}
@@ -2333,6 +2379,16 @@ tr.innerHTML = `
                            </button>
                            <button onclick="window.resetStudentTimer(${s.no})" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] text-red-400 font-bold">↻</button>
                        </div>
+                   </td>
+
+                   <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span></td>
+                   
+                   <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass}" ${!s.attendance ? 'disabled' : ''}>${sGroup ? sGroup : '-'}</button></td>
+                   
+                   <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
+                       <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
+                           ${window.getAbilityHTML('ballSense', s.ballSense)}
+                       </button>
                    </td>
 
                    <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8"><button onclick="window.deleteStudent(${s.no})" class="delete-btn text-slate-300 hover:text-red-500 transition p-0.5 sm:p-1"><svg class="h-3.5 w-3.5 sm:h-5 sm:w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
