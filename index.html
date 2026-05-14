@@ -1683,7 +1683,7 @@ if(!timerLoopStarted) { timerLoopStarted = true; requestAnimationFrame(updateTim
 window.manualStudentTimeEdit = function(studentNo) {
 const student = classData[currentClass].find(s => s.no == studentNo);
 if (!student) return;
-let input = prompt("순발력(달리기) 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.", student.recordMs > 0 ? window.formatTime(student.recordMs) : "");
+let input = prompt("순발력 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.", student.recordMs > 0 ? window.formatTime(student.recordMs) : "");
 if (input !== null && input.trim() !== '') {
     student.recordMs = window.parseTime(input);
     saveData(); renderStudentList(); renderGroups();
@@ -1861,10 +1861,10 @@ const attendance = s.attendance ? '참석' : '불참';
 const bs = s.ballSense || '-'; const score = s.score || 0;
 const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
 const isCapt = s.isCaptain ? 'Y' : 'N';
-const recMs = s.recordMs || 0;
+const recSec = s.recordMs ? (s.recordMs / 1000).toFixed(2) : '';
 const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
 const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
+csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recSec}\n`;
 });
 }
 }
@@ -1943,7 +1943,11 @@ window.handleAllCSVUpload = function(event) {
                 if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
                 if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
                 if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
-                if (idxPersonalRec > -1 && parts[idxPersonalRec]) recMs = parseInt(parts[idxPersonalRec].trim()) || 0;
+
+                if (idxPersonalRec > -1 && parts[idxPersonalRec]) {
+                    const parsed = parseFloat(parts[idxPersonalRec].trim());
+                    if(!isNaN(parsed)) recMs = Math.floor(parsed * 1000);
+                }
 
                 if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                 if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
@@ -1953,7 +1957,7 @@ window.handleAllCSVUpload = function(event) {
 
             if (Object.keys(newData).length > 0) {
                 classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
-                activeTimers = {}; activeStudentTimers = {}; window.selectedGroupStudent = null;
+                activeTimers = {}; window.selectedGroupStudent = null;
                 window.renderClassSelect();
                 if (currentClass && !classData[currentClass]) {
                     currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
@@ -1999,7 +2003,7 @@ window.handleAllCSVUpload = function(event) {
 }
 
 window.selectClass = function(className) {
-currentClass = className; activeTimers = {}; activeStudentTimers = {}; window.selectedGroupStudent = null;
+currentClass = className; activeTimers = {}; window.selectedGroupStudent = null;
 const displayBtn = document.getElementById('current-class-display');
 if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
