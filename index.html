@@ -190,11 +190,6 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
     .student-row td:nth-child(2) button {
         white-space: nowrap;
     }
-    [id^="st-time-display-"] {
-        font-size: 11px !important;
-        min-height: 24px;
-        line-height: 24px;
-    }
 }
 </style>
 </head>
@@ -957,7 +952,6 @@ let currentGroupMode = 'mixed4';
 let currentTab = 'student'; 
 
 let activeTimers = {}; 
-let activeStudentTimers = {}; 
 let timerLoopStarted = false; 
 let draggedStudentNo = null;
 
@@ -1151,7 +1145,7 @@ userId = null;
 if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
 document.getElementById('login-screen').classList.remove('hidden');
 document.getElementById('app-container').classList.add('hidden');
-classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; activeStudentTimers = {};
+classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {};
 currentClass = ""; window.renderClassSelect();
 }
 });
@@ -1681,63 +1675,20 @@ else display.classList.remove('text-red-400', 'text-red-500');
 }
 }
 }
-for (let i in activeStudentTimers) {
-let t = activeStudentTimers[i];
-if (t.isRunning) {
-anyRunning = true;
-t.elapsed = now - t.startTime;
-const display = document.getElementById(`st-time-display-${i}`);
-if (display) display.innerText = window.formatTime(t.elapsed);
-}
-}
 
 requestAnimationFrame(updateTimersLoop);
 }
 if(!timerLoopStarted) { timerLoopStarted = true; requestAnimationFrame(updateTimersLoop); }
 
-window.toggleStudentTimerPlay = function(studentNo) {
-let t = activeStudentTimers[studentNo]; if (!t) return;
-let now = Date.now();
-if (t.isRunning) {
-t.isRunning = false; window.updateStudentRecord(studentNo, t.elapsed);
-const btn = document.getElementById(`btn-st-play-${studentNo}`);
-if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-500'); btn.classList.add('text-slate-400'); }
-} else {
-t.isRunning = true; t.startTime = now - t.elapsed;
-const btn = document.getElementById(`btn-st-play-${studentNo}`);
-if (btn) { btn.innerText = '⏸'; btn.classList.remove('text-slate-400'); btn.classList.add('text-amber-500'); }
-}
-}
-window.resetStudentTimer = function(studentNo) {
-let t = activeStudentTimers[studentNo]; if (!t) return;
-t.isRunning = false; t.elapsed = 0;
-const display = document.getElementById(`st-time-display-${studentNo}`); if (display) display.innerText = window.formatTime(t.elapsed);
-const btn = document.getElementById(`btn-st-play-${studentNo}`); if (btn) { btn.innerText = '▶'; btn.classList.remove('text-amber-500'); btn.classList.add('text-slate-400'); }
-window.updateStudentRecord(studentNo, t.elapsed);
-}
 window.manualStudentTimeEdit = function(studentNo) {
-let t = activeStudentTimers[studentNo]; if (!t || t.isRunning) return;
-let input = prompt("개인 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.", window.formatTime(t.elapsed));
+const student = classData[currentClass].find(s => s.no == studentNo);
+if (!student) return;
+let input = prompt("순발력(달리기) 기록을 초 단위 또는 분:초(예: 12.5 또는 1:23.45)로 입력하세요.", student.recordMs > 0 ? window.formatTime(student.recordMs) : "");
 if (input !== null && input.trim() !== '') {
-t.elapsed = window.parseTime(input);
-const display = document.getElementById(`st-time-display-${studentNo}`); if (display) display.innerText = window.formatTime(t.elapsed);
-window.updateStudentRecord(studentNo, t.elapsed);
+    student.recordMs = window.parseTime(input);
+    saveData(); renderStudentList(); renderGroups();
 }
 }
-window.updateStudentRecord = function(studentNo, elapsedMs) {
-if (!currentClass || !classData[currentClass]) return;
-const student = classData[currentClass].find(s => s.no == studentNo);
-if (student) { student.recordMs = elapsedMs; saveData(); renderGroups(); }
-}
-
-window.updateRunningRecord = function(studentNo, val) {
-if (!classData[currentClass]) return;
-const student = classData[currentClass].find(s => s.no == studentNo);
-if(student) {
-student.running = val ? parseFloat(val) : null; 
-saveData();
-}
-};
 
 window.resetRunningRecords = function() {
 window.showModal("기록 초기화", "모든 학생의 순발력 기록을 정말로 지우시겠습니까?", true, function() {
@@ -2096,52 +2047,6 @@ renderStampBoard();
 }
 }
 
-window.importFromExcel = async function() {
-if (!currentClass) { window.showModal("알림", "먼저 상단에서 학급을 선택해주세요."); return; }
-const input = document.getElementById('excel-input').value.trim();
-if (!input) { window.showModal("입력 오류", "내용을 입력해주세요."); return; }
-
-const lines = input.split('\n');
-if (!classData[currentClass]) classData[currentClass] = [];
-let addedCount = 0; window.selectedGroupStudent = null;
-
-lines.forEach(line => {
-    const parts = line.split('\t').map(p => p.trim());
-    if (parts.length >= 2) {
-        const no = parts[0]; const name = parts[1];
-        const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-        const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
-        
-        let recMs = 0;
-        if (parts[4]) {
-            const r = parseFloat(parts[4]);
-            if (!isNaN(r)) recMs = Math.floor(r * 1000);
-        }
-
-        let group = null; 
-        if (parts[5]) { 
-            const g = parseInt(parts[5]); 
-            if (!isNaN(g) && g >= 1) group = g; 
-        }
-
-        const newStudent = { 
-            no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, 
-            attendance: true, score: 0, recordMs: recMs, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
-        };
-        newStudent[`group_${currentGroupMode}`] = group;
-        classData[currentClass].push(newStudent); addedCount++;
-    }
-});
-
-if(addedCount > 0) {
-    document.getElementById('excel-input').value = ""; 
-    renderStudentList(); window.renderGagaball(); saveData(); 
-    window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
-} else { 
-    window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 순발력 모둠] 순으로 엑셀에서 복사해 주세요."); 
-}
-}
-
 window.cycleInputAbility = function(type) {
 const hiddenInput = document.getElementById(`add-${type}`); 
 const btn = document.getElementById(`btn-add-${type}`);
@@ -2353,9 +2258,6 @@ else if (sGroup % 4 === 3) groupColorClass = 'bg-cyan-500 text-white hover:bg-cy
 const captainBadge = s.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5">C</span>' : '';
 const drawnBadge = s.drawn ? '<span class="text-[9px] bg-purple-500 text-white px-1 py-0.5 rounded ml-1 font-bold align-middle">뽑힘</span>' : '';
 
-if (!activeStudentTimers[s.no]) activeStudentTimers[s.no] = { isRunning: false, elapsed: s.recordMs || 0, startTime: 0 };
-let st = activeStudentTimers[s.no]; let stPlayIcon = st.isRunning ? '⏸' : '▶'; let stPlayColor = st.isRunning ? 'text-amber-500' : 'text-slate-400';
-
 tr.innerHTML = `
                    <td class="px-0 py-1 sm:p-2 text-center w-12 sm:w-16">
                        <button onclick="window.toggleAttendance(${s.no})" class="w-full h-full font-mono font-bold text-[12px] sm:text-[14px] ${s.attendance ? 'text-slate-600 hover:text-blue-500' : 'text-slate-400 hover:text-red-500'} transition" title="번호 터치: 참석/불참 토글">
@@ -2369,18 +2271,6 @@ tr.innerHTML = `
                        </button>
                    </td>
                    
-                   <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
-                       <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
-                           <div id="st-time-display-${s.no}" onclick="window.manualStudentTimeEdit(${s.no})" class="w-8 sm:w-12 text-center text-[8px] sm:text-[11px] font-bold tracking-tighter cursor-pointer hover:text-blue-500 transition-colors font-mono" title="터치하여 직접 입력">
-                               ${window.formatTime(st.elapsed)}
-                           </div>
-                           <button onclick="window.toggleStudentTimerPlay(${s.no})" id="btn-st-play-${s.no}" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] ${stPlayColor}">
-                               ${stPlayIcon}
-                           </button>
-                           <button onclick="window.resetStudentTimer(${s.no})" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] text-red-400 font-bold">↻</button>
-                       </div>
-                   </td>
-
                    <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span></td>
                    
                    <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass}" ${!s.attendance ? 'disabled' : ''}>${sGroup ? sGroup : '-'}</button></td>
@@ -2388,6 +2278,12 @@ tr.innerHTML = `
                    <td class="px-0 py-1 sm:p-2 text-center w-[26px] sm:w-10">
                        <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
                            ${window.getAbilityHTML('ballSense', s.ballSense)}
+                       </button>
+                   </td>
+
+                   <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
+                       <button onclick="window.manualStudentTimeEdit(${s.no})" class="bg-white border border-slate-200 rounded px-2 py-1 shadow-sm text-[10px] sm:text-[12px] font-mono font-bold hover:bg-blue-50 hover:text-blue-600 transition outline-none ${s.recordMs > 0 ? 'text-slate-700' : 'text-slate-400'}">
+                           ${s.recordMs > 0 ? window.formatTime(s.recordMs) : '기록없음'}
                        </button>
                    </td>
 
@@ -2590,6 +2486,18 @@ let hasAnyGroup = false;
 // 모둠 전체 종합 전력을 표시하기 위한 계산 기반 세팅
 let validRecords = students.filter(s => s.attendance && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
 
+// --- 남/여 개별 순위 미리 계산 로직 ---
+let maleRanks = [...students].filter(s => s.gender === '남' && s.recordMs > 0).sort((a,b) => a.recordMs - b.recordMs);
+let femaleRanks = [...students].filter(s => s.gender === '여' && s.recordMs > 0).sort((a,b) => a.recordMs - b.recordMs);
+
+const getRankText = (s) => {
+    if(!s.recordMs) return '';
+    if(s.gender === '남') return `(남${maleRanks.findIndex(x => x.no === s.no) + 1}위)`;
+    if(s.gender === '여') return `(여${femaleRanks.findIndex(x => x.no === s.no) + 1}위)`;
+    return '';
+};
+// ----------------------------------------
+
 for (let i = 1; i <= maxGroup; i++) {
 const members = students.filter(s => s[`group_${currentGroupMode}`] === i);
 if (members.length === 0) continue;
@@ -2675,10 +2583,13 @@ card.innerHTML = `
                        ${members.map(m => {
                            const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
                            
-                           let cardStateClass = m.attendance ? `${theme.bg} border-${theme.border.split('-')[1]}-200` : 'bg-red-50 border-red-200';
+                           // 성별에 따른 학생 카드 배경색 지정 (남:파란색, 여:분홍색)
+                           let cardStateClass = m.attendance ? (m.gender === '남' ? 'bg-blue-50 border-blue-200' : 'bg-pink-50 border-pink-200') : 'bg-red-50 border-red-200 opacity-60';
                            if (window.selectedGroupStudent === m.no) {
                                cardStateClass = 'ring-4 ring-yellow-400 bg-yellow-100 border-yellow-400 transform scale-105 z-10 shadow-md';
                            }
+
+                           let rankText = getRankText(m);
 
                            return `
                                <div draggable="true"
@@ -2699,8 +2610,8 @@ card.innerHTML = `
                                    </div>
                                    
                                    <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
-                                       <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
-                                       <div class="px-1.5 h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100 text-[9px] font-mono font-bold text-slate-600">${m.recordMs > 0 ? window.formatTime(m.recordMs) : '-'}</div>
+                                       <div class="w-[26px] h-[24px] bg-white/80 rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
+                                       <div class="px-1.5 h-[24px] bg-white/80 rounded flex items-center justify-center shadow-sm border border-slate-100 text-[9px] sm:text-[10px] font-mono font-bold text-slate-700">⚡ ${m.recordMs > 0 ? window.formatTime(m.recordMs) + ' ' + rankText : '-'}</div>
                                    </div>
                                </div>
                            `;
