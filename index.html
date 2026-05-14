@@ -400,9 +400,6 @@ Google 계정으로 시작하기
 <th onclick="window.toggleSort('name')" class="bg-slate-50 border-b border-slate-200 sort-header px-0.5 py-1.5 sm:p-2 text-center sm:text-left text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-auto">
 이름<span id="sort-name-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
-스톱워치<span id="sort-recordMs-icon" class="sort-icon">↕</span>
-</th>
 <th onclick="window.toggleSort('gender')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-5 sm:w-8 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs">
 성별<span id="sort-gender-icon" class="sort-icon">↕</span>
 </th>
@@ -412,8 +409,8 @@ Google 계정으로 시작하기
 <th onclick="window.toggleSort('ballSense')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
 볼센스 ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
 </th>
-<th onclick="window.toggleSort('running')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-10 sm:w-16 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="달리기 기록(초)">
-순발력 ⚡<span id="sort-running-icon" class="sort-icon">↕</span>
+<th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs" title="달리기 기록(초)">
+달리기 기록 ⚡<span id="sort-recordMs-icon" class="sort-icon">↕</span>
 </th>
 <th class="bg-slate-50 border-b border-slate-200 px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
 </tr>
@@ -700,7 +697,7 @@ window.selectedGroupStudent = null;
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // ==========================================
 // 1. 오디오 통합 관리
@@ -1119,6 +1116,16 @@ measurementId: "G-LVB2WTXNGV"
 try {
 const app = initializeApp(firebaseConfig);
 auth = getAuth(app); db = getFirestore(app);
+
+// 오프라인 캐시 활성화 (네트워크 단절 대비)
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+        console.warn("여러 탭이 열려 있어 오프라인 캐시를 사용할 수 없습니다.");
+    } else if (err.code == 'unimplemented') {
+        console.warn("현재 브라우저가 오프라인 캐시를 지원하지 않습니다.");
+    }
+});
+
 const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
 
 window.signInWithGoogle = function() {
@@ -1194,9 +1201,16 @@ const syncIcon = document.getElementById('sync-status');
 if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
 
 const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage })
+// 다중 접속 시 덮어쓰기 방지를 위한 merge 옵션 추가
+setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage }, { merge: true })
 .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
-.catch((error) => { console.error("클라우드 자동 저장 실패:", error); isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } });
+.catch((error) => { 
+    console.error("클라우드 자동 저장 실패:", error); 
+    isDebouncing = false; 
+    if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } 
+    // 데이터 저장 실패 시 사용자에게 알림 (도장판 용량 초과 등)
+    window.showModal("저장 실패", "네트워크 문제 또는 도장 이미지 용량이 너무 커서 저장에 실패했습니다. (새로고침 시 데이터가 유실될 수 있습니다.)");
+});
 }
 }
 
@@ -1716,19 +1730,10 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (student) { student.recordMs = elapsedMs; saveData(); renderGroups(); }
 }
 
-window.updateRunningRecord = function(studentNo, val) {
-if (!classData[currentClass]) return;
-const student = classData[currentClass].find(s => s.no == studentNo);
-if(student) {
-student.running = val ? parseFloat(val) : null; 
-saveData();
-}
-};
-
 window.resetRunningRecords = function() {
 window.showModal("기록 초기화", "모든 학생의 달리기 기록을 정말로 지우시겠습니까?", true, function() {
 if (!classData[currentClass]) return;
-classData[currentClass].forEach(s => s.running = null);
+classData[currentClass].forEach(s => s.recordMs = 0);
 saveData();
 renderStudentList();
 window.showModal("완료", "달리기 기록이 초기화되었습니다.");
@@ -1801,7 +1806,7 @@ if (s.group_mixed2 === undefined) s.group_mixed2 = null;
 if (s.group_mixed3 === undefined) s.group_mixed3 = null;
 if (s.group_mixed4 === undefined) s.group_mixed4 = null;
 if (s.group_gender === undefined) s.group_gender = null;
-if (s.running === undefined) s.running = null; 
+if (s.running !== undefined) { delete s.running; } 
 delete s.group_partner;
 delete s.agility;
 });
@@ -1871,10 +1876,10 @@ window.renderClassSelect(); window.showModal("삭제 완료", "모든 학급 데
 
 window.exportAllToExcel = function() {
 let csvContent = "\uFEFF"; 
-csvContent += "학급,번호,이름,성별,볼센스,달리기,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,개인기록\n";
+csvContent += "학급,번호,이름,성별,볼센스,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,달리기(초)\n";
 
 if (Object.keys(classData).length === 0) {
-csvContent += "=\"6-1\",1,홍길동,남,-,,참석,0,,,,,{},{},N,0\n";
+csvContent += "=\"6-1\",1,홍길동,남,-,참석,0,,,,,{},{},N,0\n";
 } else {
 const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -1893,13 +1898,13 @@ const safeClassName = `="${className}"`;
 
 students.forEach((s, idx) => {
 const attendance = s.attendance ? '참석' : '불참';
-const bs = s.ballSense || '-'; const runningStr = s.running !== null ? s.running : ''; const score = s.score || 0;
+const bs = s.ballSense || '-'; const score = s.score || 0;
 const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
 const isCapt = s.isCaptain ? 'Y' : 'N';
 const recMs = s.recordMs || 0;
 const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
 const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${runningStr},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
+csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recMs}\n`;
 });
 }
 }
@@ -1938,7 +1943,11 @@ window.handleAllCSVUpload = function(event) {
             const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
             let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
             let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); 
-            let idxPersonalRec = header.indexOf('순발력(개인기록)'); if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('개인기록');
+            
+            let idxPersonalRec = header.indexOf('달리기(초)');
+            if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('순발력(개인기록)');
+            if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('개인기록');
+            
             let idxBall = header.indexOf('볼센스'); 
 
             for (let i = 1; i < lines.length; i++) {
@@ -1995,8 +2004,11 @@ window.handleAllCSVUpload = function(event) {
                     isDebouncing = true;
                     try {
                         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage });
-                    } catch (error) { console.error("즉시 저장 실패:", error); } 
+                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage }, { merge: true });
+                    } catch (error) { 
+                        console.error("즉시 저장 실패:", error); 
+                        window.showModal("저장 실패", "네트워크 또는 용량 문제로 클라우드 저장에 실패했습니다.");
+                    } 
                     finally { isDebouncing = false; }
                 }
 
@@ -2074,41 +2086,6 @@ renderStampBoard();
 }
 }
 
-window.importFromExcel = async function() {
-if (!currentClass) { window.showModal("알림", "먼저 상단에서 학급을 선택해주세요."); return; }
-const input = document.getElementById('excel-input').value.trim();
-if (!input) { window.showModal("입력 오류", "내용을 입력해주세요."); return; }
-
-const lines = input.split('\n');
-if (!classData[currentClass]) classData[currentClass] = [];
-let addedCount = 0; window.selectedGroupStudent = null;
-
-lines.forEach(line => {
-const parts = line.split('\t').map(p => p.trim());
-if (parts.length >= 2) {
-const no = parts[0]; const name = parts[1];
-const gender = (parts[2] && parts[2].includes('여')) ? '여' : '남';
-const bs = (parts[3] && ['1', '2', '3'].includes(parts[3])) ? parts[3] : '-'; 
-let group = null; if (parts[4]) { const g = parseInt(parts[4]); if (!isNaN(g) && g >= 1) group = g; }
-
-const newStudent = { 
-no: parseInt(no) || (classData[currentClass].length + 1), name: name, gender: gender, ballSense: bs, 
-attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
-};
-newStudent[`group_${currentGroupMode}`] = group;
-classData[currentClass].push(newStudent); addedCount++;
-}
-});
-
-if(addedCount > 0) {
-document.getElementById('excel-input').value = ""; 
-renderStudentList(); window.renderGagaball(); saveData(); 
-window.showModal("등록 완료", `<b class="text-blue-600">${addedCount}명</b>의 학생이 성공적으로 등록되었습니다.`);
-} else { 
-window.showModal("형식 오류", "형식이 올바르지 않습니다.<br>[번호 이름 성별 볼센스 모둠] 순으로 엑셀에서 복사해 주세요."); 
-}
-}
-
 window.cycleInputAbility = function(type) {
 const hiddenInput = document.getElementById(`add-${type}`); 
 const btn = document.getElementById(`btn-add-${type}`);
@@ -2137,13 +2114,23 @@ const groupInput = document.getElementById('add-group');
 
 if(!noInput.value || !nameInput.value) return;
 
+const runningVal = document.getElementById('add-running').value;
+let initRecordMs = 0;
+if (runningVal) {
+    initRecordMs = Math.floor(parseFloat(runningVal) * 1000);
+}
+
 let groupVal = null; if (groupInput.value) { const g = parseInt(groupInput.value); if (g >= 1) groupVal = g; }
 if (!classData[currentClass]) classData[currentClass] = [];
 
-const newStudent = { no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, attendance: true, score: 0, recordMs: 0, drawn: false, isCaptain: false, group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null };
+const newStudent = { 
+    no: parseInt(noInput.value), name: nameInput.value, gender: genderInput.value, ballSense: bsInput.value, 
+    attendance: true, score: 0, recordMs: initRecordMs, drawn: false, isCaptain: false, 
+    group_mixed2: null, group_mixed3: null, group_mixed4: null, group_gender: null 
+};
 newStudent[`group_${currentGroupMode}`] = groupVal; classData[currentClass].push(newStudent);
 
-noInput.value = ""; nameInput.value = ""; groupInput.value = "";
+noInput.value = ""; nameInput.value = ""; groupInput.value = ""; document.getElementById('add-running').value = "";
 ['ballSense'].forEach(type => {
 document.getElementById(`add-${type}`).value = "-";
 const btn = document.getElementById(`btn-add-${type}`);
@@ -2326,18 +2313,6 @@ tr.innerHTML = `
                        </button>
                    </td>
                    
-                   <td class="px-0 py-1 sm:p-2 text-center w-[54px] sm:w-auto">
-                       <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
-                           <div id="st-time-display-${s.no}" onclick="window.manualStudentTimeEdit(${s.no})" class="w-8 sm:w-12 text-center text-[8px] sm:text-[11px] font-bold tracking-tighter cursor-pointer hover:text-blue-500 transition-colors font-mono">
-                               ${window.formatTime(st.elapsed)}
-                           </div>
-                           <button onclick="window.toggleStudentTimerPlay(${s.no})" id="btn-st-play-${s.no}" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] ${stPlayColor}">
-                               ${stPlayIcon}
-                           </button>
-                           <button onclick="window.resetStudentTimer(${s.no})" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] text-red-400 font-bold">↻</button>
-                       </div>
-                   </td>
-
                    <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span></td>
                    
                    <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8"><button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass}" ${!s.attendance ? 'disabled' : ''}>${sGroup ? sGroup : '-'}</button></td>
@@ -2346,6 +2321,18 @@ tr.innerHTML = `
                        <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
                            ${window.getAbilityHTML('ballSense', s.ballSense)}
                        </button>
+                   </td>
+
+                   <td class="px-0 py-1 sm:p-2 text-center w-[64px] sm:w-auto">
+                       <div class="flex items-center justify-center bg-white rounded border border-slate-200 px-0.5 py-0.5 gap-0.5 w-fit mx-auto shadow-sm ${s.attendance ? '' : 'opacity-50 pointer-events-none'}">
+                           <div id="st-time-display-${s.no}" onclick="window.manualStudentTimeEdit(${s.no})" class="w-8 sm:w-12 text-center text-[8px] sm:text-[11px] font-bold tracking-tighter cursor-pointer hover:text-blue-500 transition-colors font-mono" title="터치하여 직접 입력">
+                               ${window.formatTime(st.elapsed)}
+                           </div>
+                           <button onclick="window.toggleStudentTimerPlay(${s.no})" id="btn-st-play-${s.no}" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] ${stPlayColor}">
+                               ${stPlayIcon}
+                           </button>
+                           <button onclick="window.resetStudentTimer(${s.no})" class="w-3.5 h-3.5 sm:w-5 sm:h-5 flex items-center justify-center rounded hover:bg-slate-100 transition text-[7px] sm:text-[10px] text-red-400 font-bold">↻</button>
+                       </div>
                    </td>
 
                    <td class="px-0 py-1 sm:p-2 text-center w-4 sm:w-8"><button onclick="window.deleteStudent(${s.no})" class="delete-btn text-slate-300 hover:text-red-500 transition p-0.5 sm:p-1"><svg class="h-3.5 w-3.5 sm:h-5 sm:w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></td>
@@ -2414,7 +2401,6 @@ else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback
             window.playCasinoJackpot(); 
             window.fireConfetti(); 
             
-            // (결과 카드들이 튀어나오는 효과인 animate-pop-in은 renderGroups() 내에 추가됨)
         }, 2200);
 
     }, "새로 편성하기");
@@ -2658,7 +2644,7 @@ card.innerHTML = `
                                    
                                    <div class="flex items-center justify-center gap-1.5 w-full pointer-events-none mt-0.5">
                                        <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('ballSense', m.ballSense)}</div>
-                                       <div class="w-[26px] h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100">${window.getAbilityHTML('agility', m.agility)}</div>
+                                       <div class="px-1.5 h-[24px] bg-white rounded flex items-center justify-center shadow-sm border border-slate-100 text-[9px] font-mono font-bold text-slate-600">${m.recordMs > 0 ? window.formatTime(m.recordMs) : '-'}</div>
                                    </div>
                                </div>
                            `;
@@ -2724,18 +2710,14 @@ availableStudents.splice(0, 1);
 // 우수한 학생 분산 배치 (기존 멤버들의 평균 능력치와 거리가 가장 먼 학생을 순차적으로 선택)
 while(selectedStudents.length < drawCount && availableStudents.length > 0) {
 let avgBs = selectedStudents.reduce((sum, s) => sum + (parseInt(s.ballSense)||2), 0) / selectedStudents.length;
-let avgAg = selectedStudents.reduce((sum, s) => sum + (parseInt(s.agility)||2), 0) / selectedStudents.length;
-
+// 순발력은 달리기 기록으로 통합되었으므로, 파워 계산 로직 단순화
 let maxDist = -1;
 let bestCandidateIdx = -1;
 
 for(let i=0; i<availableStudents.length; i++) {
 let s = availableStudents[i];
 let bs = parseInt(s.ballSense)||2;
-let ag = parseInt(s.agility)||2;
-let dist = Math.abs(bs - avgBs) + Math.abs(ag - avgAg);
-
-dist += Math.random() * 0.5; // 동일 능력치일 경우 무작위성 부여
+let dist = Math.abs(bs - avgBs) + (Math.random() * 0.5); // 동일 능력치일 경우 무작위성 부여
 
 if (dist > maxDist) {
 maxDist = dist;
