@@ -2854,6 +2854,12 @@ window.showDrawResultModal = function(title, contentHTML) {
     window.playGrandFanfare();
 }
 
+    // ⬇️ 여기에 창을 닫는 함수를 새로 추가합니다 ⬇️
+window.closeDrawResultModal = function() {
+    document.getElementById('drawResultModal').classList.add('hidden');
+    document.getElementById('drawResultModal').classList.remove('flex');
+}
+
 window.updateDrawStatus = function() {
 if (!currentClass) return;
 const students = classData[currentClass] || []; 
