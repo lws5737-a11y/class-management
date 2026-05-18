@@ -402,10 +402,10 @@ Google 계정으로 시작하기
 모둠<span id="sort-group-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('ballSense')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-6 sm:w-10 text-center text-slate-500 font-semibold whitespace-nowrap text-[12px] sm:text-xs" title="볼센스">
-볼센스 ⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
+⚽<span id="sort-ballSense-icon" class="sort-icon">↕</span>
 </th>
 <th onclick="window.toggleSort('recordMs')" class="bg-slate-50 border-b border-slate-200 sort-header px-0 py-1.5 sm:p-2 w-14 sm:w-24 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs" title="순발력(초)">
-순발력 ⚡<span id="sort-recordMs-icon" class="sort-icon">↕</span>
+⚡<span id="sort-recordMs-icon" class="sort-icon">↕</span>
 </th>
 <th class="bg-slate-50 border-b border-slate-200 px-0 py-1.5 sm:p-2 w-4 sm:w-8 text-center text-slate-500 font-semibold"></th>
 </tr>
@@ -550,19 +550,19 @@ Google 계정으로 시작하기
 </div> 
 
 <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 hidden items-start justify-center z-[250] backdrop-blur-sm overflow-y-auto pt-10 pb-10 px-4">
-<div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-6 sm:p-8 my-auto border border-slate-200">
+<div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-4 sm:p-8 my-auto border border-slate-200">
 <div class="flex justify-between items-center mb-4 border-b pb-2 pr-8">
     <h2 class="text-xl sm:text-2xl font-black text-slate-800"><span class="text-blue-500 mr-2">📁</span> 학급 선택 및 추가</h2>
-    <button id="toggle-hidden-classes-btn" onclick="window.toggleHiddenClasses()" class="text-sm font-bold text-slate-500 hover:text-blue-600 transition underline decoration-slate-300 underline-offset-4">전체 학급 보기</button>
+    <button id="toggle-hidden-classes-btn" onclick="window.toggleHiddenClasses()" class="text-sm font-bold text-slate-500 hover:text-blue-600 transition underline decoration-slate-300 underline-offset-4 shrink-0">전체 학급 보기</button>
 </div>
 <button onclick="window.closeManageModal()" class="absolute top-2 right-2 text-slate-500 hover:text-red-500 text-4xl font-black transition p-2 z-10">&times;</button>
 
 <div class="mb-6">
-<div id="modal-class-list" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+<div id="modal-class-list" class="flex flex-wrap gap-2 mb-4">
 </div>
-<div class="flex gap-2 w-full sm:w-2/3 mt-2">
-<input type="text" id="new-class-input" placeholder="새 학급명 입력" class="flex-1 p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-blue-500">
-<button onclick="window.addNewClass()" class="bg-blue-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition shrink-0">새 학급 추가</button>
+<div class="flex flex-col sm:flex-row gap-2 w-full mt-2">
+<input type="text" id="new-class-input" placeholder="새 학급명 입력" class="flex-1 p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-blue-500 w-full">
+<button onclick="window.addNewClass()" class="bg-blue-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition shrink-0 w-full sm:w-auto">새 학급 추가</button>
 </div>
 </div>
 
@@ -951,6 +951,7 @@ let currentTab = 'student';
 let activeTimers = {}; 
 let timerLoopStarted = false; 
 let draggedStudentNo = null;
+let currentEditingStudentNo = null;
 
 window.showHiddenClasses = false; // 전역 상태 변수
 
@@ -1108,7 +1109,7 @@ window.renderClassSelect = function() {
 
             // 버튼을 감싸는 래퍼 생성
             const wrapper = document.createElement('div');
-            wrapper.className = "flex items-center gap-1 border-2 shadow-sm rounded-xl px-2 py-1 bg-white border-slate-200 transition-colors";
+            wrapper.className = "flex items-center gap-1 border-2 shadow-sm rounded-xl px-1.5 py-1 bg-white border-slate-200 transition-colors w-auto shrink-0";
             if(currentClass === cls) wrapper.classList.add("border-blue-500");
 
             // 숨김/보임 토글 체크박스 (눈 모양)
@@ -2390,7 +2391,6 @@ tr.innerHTML = `
                    <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8">
                        <div class="flex flex-col items-center justify-center gap-0.5">
                            <button onclick="window.cycleStudentGroup(${s.no})" class="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-[13px] font-black rounded sm:rounded-lg transition outline-none ${groupColorClass} mx-auto" ${!s.attendance ? 'disabled' : ''}>${sGroup ? sGroup : '-'}</button>
-                           ${sGroup ? `<span class="text-[8px] sm:text-[9px] font-bold text-slate-500">${sGroup}모둠</span>` : ''}
                        </div>
                    </td>
                    
@@ -2399,7 +2399,6 @@ tr.innerHTML = `
                            <button onclick="window.cycleStudentAbility(${s.no}, 'ballSense')" class="w-[24px] h-[22px] sm:w-9 sm:h-9 mx-auto rounded transition outline-none ${bsColor} flex items-center justify-center" ${!s.attendance ? 'disabled' : ''}>
                                ${window.getAbilityHTML('ballSense', s.ballSense)}
                            </button>
-                           <span class="text-[8px] sm:text-[9px] font-bold text-slate-500 mt-1">${s.ballSense !== '-' ? `공 ${s.ballSense}개` : ''}</span>
                        </div>
                    </td>
 
