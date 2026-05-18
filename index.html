@@ -551,14 +551,14 @@ Google 계정으로 시작하기
 
 <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 hidden items-start justify-center z-[250] backdrop-blur-sm overflow-y-auto pt-10 pb-10 px-4">
 <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-6 sm:p-8 my-auto border border-slate-200">
-<div class="flex justify-between items-center mb-4 border-b pb-2">
+<div class="flex justify-between items-center mb-4 border-b pb-2 pr-8">
     <h2 class="text-xl sm:text-2xl font-black text-slate-800"><span class="text-blue-500 mr-2">📁</span> 학급 선택 및 추가</h2>
     <button id="toggle-hidden-classes-btn" onclick="window.toggleHiddenClasses()" class="text-sm font-bold text-slate-500 hover:text-blue-600 transition underline decoration-slate-300 underline-offset-4">전체 학급 보기</button>
 </div>
-<button onclick="window.closeManageModal()" class="absolute top-4 right-5 text-slate-400 hover:text-red-500 text-3xl font-black transition">&times;</button>
+<button onclick="window.closeManageModal()" class="absolute top-2 right-2 text-slate-500 hover:text-red-500 text-4xl font-black transition p-2 z-10">&times;</button>
 
 <div class="mb-6">
-<div id="modal-class-list" class="flex flex-wrap gap-2 mb-4">
+<div id="modal-class-list" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
 </div>
 <div class="flex gap-2 w-full sm:w-2/3 mt-2">
 <input type="text" id="new-class-input" placeholder="새 학급명 입력" class="flex-1 p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-blue-500">
