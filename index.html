@@ -2841,7 +2841,87 @@ window.renderStudentList(); window.renderGagaball(); window.renderGagaRanking();
 window.showModal("초기화 완료", "모든 학생의 점수가 0점으로 초기화되었습니다.");
 });
 }
+window.importFromExcel = function() {
+    if (!currentClass) {
+        window.showModal("알림", "먼저 추가할 학급을 선택하거나 새 학급을 만들어주세요.");
+        return;
+    }
 
+    const input = document.getElementById('excel-input').value.trim();
+    if (!input) {
+        window.showModal("알림", "붙여넣을 데이터가 없습니다.");
+        return;
+    }
+
+    // 엔터(줄바꿈)로 학생을 구분
+    const lines = input.split('\n');
+    let addedCount = 0;
+
+    lines.forEach(line => {
+        // 엑셀에서 복사하면 보통 탭(\t)이나 공백으로 띄워집니다.
+        const parts = line.trim().split(/\s+/); 
+        
+        // 최소 번호와 이름 2가지는 있어야 등록 진행
+        if (parts.length < 2) return; 
+
+        const no = parseInt(parts[0]);
+        if (isNaN(no)) return; // 첫 번째 값이 숫자가 아니면 스킵
+
+        const name = parts[1];
+        // 성별이 없거나 남/여가 아니면 기본값 '남'으로 처리 (에러 방지)
+        const gender = (parts.length > 2 && (parts[2] === '남' || parts[2] === '여')) ? parts[2] : '남';
+        
+        // 볼센스, 순발력, 모둠은 입력 안 하면 자동으로 기본값 처리
+        const ballSense = parts.length > 3 && ['1','2','3','하','중','상'].includes(parts[3]) ? parts[3] : '-';
+        const recordMs = parts.length > 4 ? window.parseTime(parts[4]) : 0;
+        const group = parts.length > 5 ? parseInt(parts[5]) || null : null;
+
+        // 이미 있는 번호인지 확인 (있으면 덮어쓰기)
+        const existingIdx = classData[currentClass].findIndex(s => s.no === no);
+        
+        const studentObj = {
+            no: no,
+            name: name,
+            gender: gender,
+            ballSense: ballSense,
+            attendance: true, // 일괄 등록 시 기본 참석
+            score: 0,
+            recordMs: recordMs,
+            memo: "",
+            dismissalInfo: "",
+            drawn: false,
+            isCaptain: false,
+            group_mixed2: group,
+            group_mixed3: group,
+            group_mixed4: group,
+            group_gender: group
+        };
+
+        if (existingIdx > -1) {
+            // 이미 등록된 번호라면, 점수나 메모 같은 기존 정보는 유지하면서 덮어쓰기
+            studentObj.score = classData[currentClass][existingIdx].score;
+            studentObj.attendance = classData[currentClass][existingIdx].attendance;
+            studentObj.memo = classData[currentClass][existingIdx].memo;
+            studentObj.dismissalInfo = classData[currentClass][existingIdx].dismissalInfo;
+            classData[currentClass][existingIdx] = studentObj;
+        } else {
+            // 새 번호라면 명단에 추가
+            classData[currentClass].push(studentObj);
+        }
+        addedCount++;
+    });
+
+    if (addedCount > 0) {
+        saveData();
+        window.renderStudentList();
+        window.renderGroups();
+        document.getElementById('excel-input').value = '';
+        window.showModal("추가 완료", `${addedCount}명의 학생이 일괄 등록되었습니다.`);
+        window.closeManageModal();
+    } else {
+        window.showModal("알림", "등록할 수 있는 데이터가 없습니다. 형식을 확인해주세요. (예: 1 홍길동 남)");
+    }
+};
 </script>
 </body>
 </html>
