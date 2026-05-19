@@ -1386,7 +1386,8 @@ const students = [...(classData[currentClass] || [])].sort((a,b) => a.no - b.no)
 let activeHTML = ''; let inactiveHTML = '';
 
 students.forEach((s) => {
-const isDrawn = s.drawn; const drawnClass = isDrawn ? 'drawn' : '';
+// 수정된 부분: s.gagaDrawn 사용
+const isDrawn = s.gagaDrawn; const drawnClass = isDrawn ? 'drawn' : '';
 const btnText = s.attendance ? '참석' : '불참';
 const btnClass = s.attendance ? 'bg-green-500 text-white' : 'bg-slate-400 text-white opacity-80';
 
@@ -1468,7 +1469,8 @@ tbody.innerHTML = rankHTML;
 window.triggerGagaDraw = function(targetGender) {
 if(!currentClass) return;
 const drawCount = parseInt(document.getElementById('gaga-draw-count').value, 10);
-let available = classData[currentClass].filter(s => s.attendance && !s.drawn && (targetGender === 'all' || s.gender === targetGender));
+// 수정된 부분: s.gagaDrawn 사용
+let available = classData[currentClass].filter(s => s.attendance && !s.gagaDrawn && (targetGender === 'all' || s.gender === targetGender));
 if(available.length === 0) return window.showModal("알림", "현재 대기 중인 학생이 없습니다.");
 
 document.getElementById('event-loading-overlay').classList.remove('hidden'); document.getElementById('event-loading-overlay').classList.add('flex');
@@ -1487,7 +1489,8 @@ const picked = available.slice(0, actualDrawCount);
 const pickedHTML = [];
 
 picked.forEach(s => {
-s.drawn = true;
+// 수정된 부분: s.gagaDrawn에 저장
+s.gagaDrawn = true;
 let borderColor = s.gender === '남' ? '#3498db' : '#e74c3c';
 const cuteAvatar = window.generateCuteAvatar(s);
 pickedHTML.push(`
@@ -1512,7 +1515,9 @@ window.fireConfetti();
 window.resetGagaDraw = function() {
 if(!currentClass) return;
 window.showModal("추첨 초기화", "추첨 기록을 초기화하시겠습니까?", true, () => {
-classData[currentClass].forEach(s => s.drawn = false); saveData(); window.renderGagaball(); window.renderStudentList();
+// 수정된 부분: s.gagaDrawn 초기화
+classData[currentClass].forEach(s => s.gagaDrawn = false); 
+saveData(); window.renderGagaball(); window.renderStudentList();
 });
 }
 window.closeGagaDrawModal = function() { document.getElementById('gagaDrawModal').style.display = 'none'; }
@@ -2002,6 +2007,9 @@ if (s.memo === undefined) s.memo = "";
 if (s.dismissalInfo === undefined) s.dismissalInfo = "";
 if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
 
+// 수정된 부분: gagaDrawn 속성 초기화
+if (s.gagaDrawn === undefined) s.gagaDrawn = false;
+
 delete s.group_partner;
 delete s.agility;
 });
@@ -2203,7 +2211,7 @@ window.handleAllCSVUpload = function(event) {
                 if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                 if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, gagaDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
             }
 
             if (Object.keys(newData).length > 0) {
@@ -2604,7 +2612,7 @@ else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
+    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점বাদী가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
         document.getElementById('group-shuffle-overlay').classList.remove('hidden');
         document.getElementById('group-shuffle-overlay').classList.add('flex');
         window.playCardShuffleSound();
@@ -3012,6 +3020,7 @@ window.importFromExcel = function() {
             score: 0,
             drawn: false,
             groupMemberDrawn: false,
+            gagaDrawn: false,
             captain_mixed2: false,
             captain_mixed3: false,
             captain_mixed4: false,
