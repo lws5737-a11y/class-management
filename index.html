@@ -707,6 +707,25 @@ placeholder="엑셀에서 범위를 복사한 후 여기에 붙여넣으세요.&
 </div>
 </div>
 
+<!-- 🖼️ 아바타 선택 모달 (새롭게 추가된 부분) -->
+<div id="avatarSelectModal" class="gaga-modal-overlay" style="z-index: 1500;" onclick="window.closeAvatarSelectModal()">
+    <div class="gaga-modal-content flex flex-col" style="max-width: 600px; max-height: 85vh; padding: 25px;" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b-2 border-slate-100 shrink-0">
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-800">🖼️ 아바타 선택</h2>
+            <button class="text-3xl text-slate-400 hover:text-red-500 font-black leading-none" onclick="window.closeAvatarSelectModal()">&times;</button>
+        </div>
+        
+        <div class="flex gap-2 mb-4 shrink-0">
+            <button onclick="window.renderAvatarGrid('boy')" class="flex-1 py-2.5 bg-blue-100 text-blue-600 font-bold rounded-xl hover:bg-blue-200 transition text-lg">👦 남학생 아바타</button>
+            <button onclick="window.renderAvatarGrid('girl')" class="flex-1 py-2.5 bg-pink-100 text-pink-600 font-bold rounded-xl hover:bg-pink-200 transition text-lg">👧 여학생 아바타</button>
+        </div>
+
+        <div id="avatar-grid-container" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 overflow-y-auto pr-2 pb-2 content-start flex-1" style="min-height: 0;">
+            <!-- Avatars injected here -->
+        </div>
+    </div>
+</div>
+
 <script type="module">
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -924,8 +943,11 @@ function isRegularClass(className) {
     return /^\d+-\d+$/.test(className);
 }
 
+// 🔥 아바타 생성 로직 (커스텀 아바타 반영)
 window.generateCuteAvatar = function(student) {
     if (!student) return `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23f1f2f6%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2268%22%20font-size%3D%2245%22%20text-anchor%3D%22middle%22%3E%F0%9F%91%A4%3C%2Ftext%3E%3C%2Fsvg%3E`;
+
+    if (student.customAvatar) return student.customAvatar;
 
     const studentsInClass = classData[currentClass] || [];
     let sameGenderStudents = studentsInClass.filter(s => s.gender === student.gender);
@@ -941,6 +963,57 @@ window.generateCuteAvatar = function(student) {
     let prefix = student.gender === '남' ? 'boy' : 'girl';
     return `images/avatars/${prefix}_${row}-${col}.png`;
 }
+
+// 🔥 아바타 선택 모달 로직
+let currentAvatarStudentNo = null;
+
+window.openAvatarSelectModal = function(studentNo) {
+    currentAvatarStudentNo = studentNo;
+    const student = classData[currentClass].find(s => s.no == studentNo);
+    if(!student) return;
+    
+    document.getElementById('avatarSelectModal').style.display = 'flex';
+    // 학생 성별에 맞춰 기본 탭 열기
+    window.renderAvatarGrid(student.gender === '여' ? 'girl' : 'boy');
+};
+
+window.closeAvatarSelectModal = function() {
+    document.getElementById('avatarSelectModal').style.display = 'none';
+    currentAvatarStudentNo = null;
+};
+
+window.renderAvatarGrid = function(prefix) {
+    const container = document.getElementById('avatar-grid-container');
+    let html = '';
+    
+    // 기본값 설정 버튼
+    html += `<div class="cursor-pointer border-4 border-slate-200 hover:border-slate-400 rounded-2xl flex flex-col items-center justify-center bg-slate-50 shadow-sm aspect-square transition" onclick="window.selectAvatar(null)">
+        <div class="text-2xl sm:text-3xl mb-1">🔄</div>
+        <span class="text-[10px] sm:text-xs font-bold text-slate-500">기본 아바타</span>
+    </div>`;
+
+    for(let row=1; row<=5; row++) {
+        for(let col=1; col<=10; col++) {
+            let path = `images/avatars/${prefix}_${row}-${col}.png`;
+            html += `<img src="${path}" class="w-full aspect-square rounded-2xl cursor-pointer border-4 border-transparent hover:border-blue-500 hover:scale-105 transition bg-slate-50 shadow-sm object-cover" onclick="window.selectAvatar('${path}')" onerror="this.style.display='none'">`;
+        }
+    }
+    
+    container.innerHTML = html;
+};
+
+window.selectAvatar = function(path) {
+    if(!currentAvatarStudentNo) return;
+    const student = classData[currentClass].find(s => s.no == currentAvatarStudentNo);
+    if(student) {
+        student.customAvatar = path;
+        saveData();
+        window.renderGagaball();
+        if(currentGagaTeams && currentGagaTeams.length > 0) window.renderGagaTeamView();
+        window.renderStudentList();
+    }
+    window.closeAvatarSelectModal();
+};
 
 // 볼센스 (0~2) 단계 표시용 HTML 함수
 window.getAbilityHTML = function(type, val) {
@@ -1325,7 +1398,8 @@ const cardHTML = `
                            <span class="font-mono font-bold text-slate-500 text-lg">${s.no}번</span>
                            <button class="${btnClass} px-3 py-1 rounded-md text-sm font-bold transition hover:opacity-80" onclick="window.toggleAttendance(${s.no})">${btnText}</button>
                        </div>
-                       <img src="${cuteAvatar}" alt="avatar" class="avatar-img" onerror="this.onerror=null; this.src='${fallbackSVG}';" style="border-color: ${borderStyle};">
+                       <!-- 🔥 아바타 클릭 시 선택 모달 오픈 -->
+                       <img src="${cuteAvatar}" alt="avatar" class="avatar-img cursor-pointer hover:scale-105 transition-transform" onclick="window.openAvatarSelectModal(${s.no})" onerror="this.onerror=null; this.src='${fallbackSVG}';" style="border-color: ${borderStyle};" title="아바타 변경">
                        <div class="name">${s.name} <span class="text-lg">(${s.gender})</span></div>
                        <div class="score-val">${s.score || 0}</div>
                        <div class="score-ctrl">
@@ -1390,7 +1464,8 @@ let borderColor = s.gender === '남' ? '#3498db' : '#e74c3c';
 const cuteAvatar = window.generateCuteAvatar(s);
 pickedHTML.push(`
                    <div class="border-[6px] p-6 rounded-3xl text-center shadow-xl bg-white w-64 transform transition hover:scale-105" style="border-color: ${borderColor};">
-                       <img src="${cuteAvatar}" class="w-32 h-32 rounded-full mx-auto mb-4 bg-slate-50 border-4 border-slate-100" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+                       <!-- 🔥 뽑기 결과에서도 아바타 클릭 시 변경 모달 오픈 -->
+                       <img src="${cuteAvatar}" class="w-32 h-32 rounded-full mx-auto mb-4 bg-slate-50 border-4 border-slate-100 cursor-pointer hover:scale-110 transition-transform" onclick="window.openAvatarSelectModal(${s.no})" onerror="this.onerror=null; this.src='${fallbackSVG}';" title="아바타 변경">
                        <div class="text-4xl font-black text-slate-800 mb-4">${s.name}</div>
                        <div class="text-3xl font-bold text-red-500 flex items-center justify-center gap-4">
                            <button class="bg-red-500 text-white rounded-xl w-14 h-14 flex items-center justify-center hover:bg-red-600 transition" onclick="window.changeGagaScore(${s.no}, -1)">-</button>
@@ -1465,7 +1540,8 @@ for(let i = 0; i < currentGagaTeams.length; i += 2) {
 const teamA = currentGagaTeams[i]; const teamB = currentGagaTeams[i+1];
 const createBadges = (members) => members.map(m => `
                    <div class="team-member-badge" style="border-color:${m.gender==='남'?'#3498db':'#e74c3c'};">
-                       <img src="${window.generateCuteAvatar(m)}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
+                       <!-- 🔥 대진표에서도 아바타 클릭 시 변경 모달 오픈 -->
+                       <img src="${window.generateCuteAvatar(m)}" class="cursor-pointer hover:scale-110 transition-transform" onclick="window.openAvatarSelectModal(${m.no})" onerror="this.onerror=null; this.src='${fallbackSVG}';" title="아바타 변경">
                        <div class="member-info"><b>${m.name}</b><span>${m.score || 0}점</span></div>
                    </div>`).join('');
 const createPanel = (team) => `
@@ -2944,163 +3020,193 @@ if (drawCount > availableStudents.length) drawCount = availableStudents.length;
 
 const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
 shuffle(availableStudents);
+    
+    // 지정된 수만큼 학생 뽑기
+    const picked = availableStudents.slice(0, drawCount);
+    picked.forEach(s => s.drawn = true);
+    
+    // 데이터 저장 및 화면 갱신
+    saveData();
+    window.renderStudentList();
+    window.updateDrawStatus();
 
-let selectedStudents = [];
-
-if (drawCount > 0) {
-selectedStudents.push(availableStudents[0]);
-availableStudents.splice(0, 1);
+    // 뽑기 결과창 HTML 생성
+    let resultHTML = '';
+    picked.forEach(s => {
+        resultHTML += `<div class="bg-purple-50 border-2 border-purple-200 p-4 rounded-2xl flex flex-col items-center justify-center transform transition hover:scale-105 shadow-sm w-32">
+            <span class="text-sm font-bold text-slate-500 mb-1">${s.no}번</span>
+            <span class="text-xl font-black text-purple-700">${s.name}</span>
+        </div>`;
+    });
+    
+    // 결과 모달 띄우기
+    window.showDrawResultModal("🎯 랜덤 뽑기 결과", resultHTML);
 }
 
-while(selectedStudents.length < drawCount && availableStudents.length > 0) {
-let avgBs = selectedStudents.reduce((sum, s) => sum + (parseInt(s.ballSense)||1), 0) / selectedStudents.length;
-let maxDist = -1;
-let bestCandidateIdx = -1;
-
-for(let i=0; i<availableStudents.length; i++) {
-let s = availableStudents[i];
-let bs = parseInt(s.ballSense)||1;
-let dist = Math.abs(bs - avgBs) + (Math.random() * 0.5);
-
-if (dist > maxDist) {
-maxDist = dist;
-bestCandidateIdx = i;
-}
-}
-
-selectedStudents.push(availableStudents[bestCandidateIdx]);
-availableStudents.splice(bestCandidateIdx, 1);
-}
-
-selectedStudents.forEach(s => s.drawn = true); saveData(); window.renderStudentList();
-
-const modalGrid = document.createElement('div');
-modalGrid.className = "flex flex-wrap justify-center gap-3 sm:gap-4 mb-8 w-full";
-
-selectedStudents.forEach((s, index) => {
-    const card = document.createElement('div');
-    card.className = "bg-purple-50 border-4 border-purple-300 p-4 rounded-2xl shadow-md text-center flex flex-col items-center justify-center animate-pop-in w-28 h-28 sm:w-36 sm:h-36";
-    card.style.animationDelay = `${index * 0.1}s`;
-    card.innerHTML = `
-        <span class="text-base sm:text-lg font-mono font-bold text-purple-400 mb-1 sm:mb-2">${s.no}번</span>
-        <span class="text-xl sm:text-3xl font-black text-purple-700 break-keep">${s.name}</span>
-    `;
-    modalGrid.appendChild(card);
-});
-
-window.showDrawResultModal("명단 랜덤 뽑기 결과", modalGrid.outerHTML);
-
-const container = document.getElementById('draw-result'); container.innerHTML = ""; container.classList.remove('hidden');
-selectedStudents.forEach((s, index) => {
-    const card = document.createElement('div'); card.className = "bg-purple-50 border-2 border-purple-200 p-2 sm:p-3 rounded-xl shadow-sm text-center flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 transition";
-    card.dataset.studentNo = s.no;
-    card.innerHTML = `
-        <div class="flex justify-between items-center w-full px-1 mb-1 gap-1">
-            <span class="text-[10px] sm:text-xs font-mono font-bold text-purple-400 shrink-0">${s.no}</span>
-        </div>
-        <span class="text-[13px] sm:text-base font-black text-purple-700 w-full mt-1.5 break-words whitespace-normal leading-tight px-1">${s.name}</span>
-    `;
-    container.appendChild(card);
-});
-}
-
+// ----------------------------------------------------
+// 뽑기 대상 초기화 함수
+// ----------------------------------------------------
 window.resetDrawPool = function() {
-if (!classData[currentClass]) return;
-window.showModal("뽑기 초기화", "뽑기 기록을 초기화하시겠습니까?<br>모든 학생이 다시 뽑힐 수 있는 상태로 되돌아갑니다.", true, () => {
-classData[currentClass].forEach(s => s.drawn = false); saveData(); window.renderStudentList(); window.renderGagaball();
-const container = document.getElementById('draw-result'); if (container) { container.innerHTML = ""; container.classList.add('hidden'); }
-window.showModal("초기화 완료", "모든 뽑기 기록이 초기화되었습니다.");
-});
+    if (!currentClass) return;
+    window.showModal("초기화", "뽑기 기록을 초기화하시겠습니까?", true, () => {
+        classData[currentClass].forEach(s => s.drawn = false);
+        saveData();
+        window.renderStudentList();
+        window.updateDrawStatus();
+        window.showModal("완료", "뽑기 기록이 초기화되었습니다.");
+    });
 }
 
-window.resetAllScoresDB = function() {
-if (!classData[currentClass]) return;
-window.showModal("점수 초기화", "전체 학생의 <b>개인 점수</b>를 모두 0점으로 초기화하시겠습니까?", true, () => {
-classData[currentClass].forEach(s => s.score = 0); 
-saveData(); 
-window.renderStudentList(); window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
-window.showModal("초기화 완료", "모든 학생의 점수가 0점으로 초기화되었습니다.");
-});
-}
+// ----------------------------------------------------
+// 엑셀 일괄 추가 함수 (명단 붙여넣기)
+// ----------------------------------------------------
 window.importFromExcel = function() {
+    const text = document.getElementById('excel-input').value.trim();
+    if (!text) {
+        window.showModal("알림", "입력된 데이터가 없습니다.");
+        return;
+    }
+    
     if (!currentClass) {
-        window.showModal("알림", "먼저 추가할 학급을 선택하거나 새 학급을 만들어주세요.");
+        window.showModal("알림", "데이터를 추가할 학급을 먼저 선택해주세요.");
         return;
     }
 
-    const input = document.getElementById('excel-input').value.trim();
-    if (!input) {
-        window.showModal("알림", "붙여넣을 데이터가 없습니다.");
-        return;
-    }
-
-    const lines = input.split('\n');
+    const lines = text.split('\n');
     let addedCount = 0;
-
+    
     lines.forEach(line => {
-        const parts = line.trim().split(/\s+/); 
-        
-        if (parts.length < 2) return; 
-
-        const no = parseInt(parts[0]);
-        if (isNaN(no)) return; 
-
-        const name = parts[1];
-        const gender = (parts.length > 2 && (parts[2] === '남' || parts[2] === '여')) ? parts[2] : '남';
-        
-        let ballSense = '0';
-        if (parts.length > 3) {
-            let rawBs = parts[3];
-            if (rawBs === '3' || rawBs === '상') ballSense = '2';
-            else if (rawBs === '2' || rawBs === '중') ballSense = '1';
-            else ballSense = '0';
-        }
-
-        const recordMs = parts.length > 4 ? window.parseTime(parts[4]) : 0;
-        const group = parts.length > 5 ? parseInt(parts[5]) || null : null;
-
-        const existingIdx = classData[currentClass].findIndex(s => s.no === no);
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            const no = parseInt(parts[0]);
+            const name = parts[1];
+            let gender = parts.length > 2 ? parts[2] : '-';
+            if (gender !== '남' && gender !== '여') gender = '-';
             
-            const studentObj = {
-                no: no,
-                name: name,
-                gender: gender,
-                ballSense: ballSense,
-                attendance: true, 
-                score: 0,
-                recordMs: recordMs,
-                memo: "",
-                dismissalInfo: "",
-                drawn: false,
-                groupMemberDrawn: false,
-                captain_mixed2: false,
-                captain_mixed3: false,
-                captain_mixed4: false,
-                captain_gender: false,
-                group_mixed2: null,
-                group_mixed3: null,
-                group_mixed4: group,
-                group_gender: null
-            };
-
-            if (existingIdx > -1) {
-                classData[currentClass][existingIdx] = { ...classData[currentClass][existingIdx], ...studentObj };
-            } else {
-                classData[currentClass].push(studentObj);
+            let ballSense = '0';
+            if (parts.length > 3) {
+                let rawBs = parts[3];
+                if (rawBs === '3' || rawBs === '상') ballSense = '2';
+                else if (rawBs === '2' || rawBs === '중') ballSense = '1';
             }
-            addedCount++;
-        });
+            
+            let recordMs = 0;
+            if (parts.length > 4) {
+                const parsed = parseFloat(parts[4]);
+                if (!isNaN(parsed)) recordMs = Math.floor(parsed * 1000);
+            }
+            
+            let group = null;
+            if (parts.length > 5) {
+                const parsedG = parseInt(parts[5]);
+                if (!isNaN(parsedG)) group = parsedG;
+            }
 
-        if (addedCount > 0) {
-            saveData();
-            window.renderStudentList();
-            window.renderGroups();
-            document.getElementById('excel-input').value = '';
-            window.showModal("추가 완료", `${addedCount}명의 학생이 일괄 등록되었습니다.`);
-        } else {
-            window.showModal("알림", "등록할 수 있는 데이터가 없습니다. 형식을 확인해주세요. (예: 1 홍길동 남)");
+            if (!isNaN(no) && name) {
+                // 중복 번호 체크 후 덮어쓰기 또는 새로 추가
+                const existingIdx = classData[currentClass].findIndex(s => s.no === no);
+                const newStudent = {
+                    no: no,
+                    name: name,
+                    gender: gender,
+                    ballSense: ballSense,
+                    recordMs: recordMs,
+                    attendance: true,
+                    score: 0,
+                    drawn: false,
+                    groupMemberDrawn: false,
+                    captain_mixed2: false,
+                    captain_mixed3: false,
+                    captain_mixed4: false,
+                    captain_gender: false,
+                    group_mixed2: group,
+                    group_mixed3: group,
+                    group_mixed4: group,
+                    group_gender: group,
+                    memo: "",
+                    dismissalInfo: ""
+                };
+                
+                if (existingIdx > -1) {
+                    classData[currentClass][existingIdx] = { ...classData[currentClass][existingIdx], ...newStudent };
+                } else {
+                    classData[currentClass].push(newStudent);
+                }
+                addedCount++;
+            }
         }
-    };
+    });
+
+    if (addedCount > 0) {
+        saveData();
+        window.renderStudentList();
+        window.renderGroups();
+        document.getElementById('excel-input').value = '';
+        window.showModal("완료", `${addedCount}명의 학생이 등록/수정되었습니다.`);
+    } else {
+        window.showModal("오류", "올바른 형식의 데이터를 찾을 수 없습니다.");
+    }
+}
+
+// ----------------------------------------------------
+// 점수 관리 모달창 제어 (score-modal)
+// ----------------------------------------------------
+let currentScoreStudentNo = null;
+window.openScoreModal = function(studentNo, studentName) {
+    currentScoreStudentNo = studentNo;
+    const student = classData[currentClass].find(s => s.no === studentNo);
+    if(!student) return;
+    
+    document.getElementById('score-modal-name').innerText = studentName;
+    document.getElementById('score-modal-input').value = student.score || 0;
+    document.getElementById('score-modal').classList.remove('hidden');
+    document.getElementById('score-modal').classList.add('flex');
+}
+
+window.closeScoreModal = function() {
+    document.getElementById('score-modal').classList.add('hidden');
+    document.getElementById('score-modal').classList.remove('flex');
+    currentScoreStudentNo = null;
+}
+
+window.adjustScore = function(val) {
+    const input = document.getElementById('score-modal-input');
+    let current = parseInt(input.value) || 0;
+    input.value = Math.max(0, current + val);
+}
+
+window.saveScore = function() {
+    if(currentScoreStudentNo === null) return;
+    const student = classData[currentClass].find(s => s.no === currentScoreStudentNo);
+    if(student) {
+        student.score = parseInt(document.getElementById('score-modal-input').value) || 0;
+        saveData();
+        window.renderStudentList();
+        window.renderGagaball();
+        window.renderGagaTeamView();
+        window.renderGagaRanking();
+    }
+    window.closeScoreModal();
+}
+
+// ----------------------------------------------------
+// 전역 ESC 키 이벤트 (모달 닫기)
+// ----------------------------------------------------
+document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') {
+        window.closeModal();
+        window.closeManageModal();
+        window.closeMemoModal();
+        window.closeScoreModal();
+        window.closeDrawResultModal();
+        window.closeGagaDrawModal();
+        window.closeRouletteModal();
+        window.closeMissionDescModal();
+        window.closeTimerSelectModal();
+        window.closeAvatarSelectModal();
+    }
+});
+
 </script>
 </body>
 </html>
