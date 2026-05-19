@@ -495,6 +495,13 @@ Google 계정으로 시작하기
         <button onclick="window.drawRandomGroup()" class="w-full sm:w-auto bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-600 transition whitespace-nowrap">🎲 모둠 랜덤 뽑기</button>
         
         <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="group-draw-target" class="border p-2 rounded-lg text-sm font-bold text-indigo-700 bg-white">
+                <option value="all">전체 모둠</option>
+                <option value="1">1모둠</option>
+                <option value="2">2모둠</option>
+                <option value="3">3모둠</option>
+                <option value="4">4모둠</option>
+            </select>
             <select id="group-draw-count" class="border p-2 rounded-lg text-sm font-bold text-indigo-700 bg-white">
                 <option value="1">1명</option>
                 <option value="2">2명</option>
@@ -1839,6 +1846,18 @@ window.updateGroupRecord(groupId, window.formatTime(t.elapsed));
 }
 }
 
+// 부장 드롭다운 동적 업데이트 함수
+window.updateGroupDrawSelect = function() {
+    const sel = document.getElementById('group-draw-target');
+    if(!sel) return;
+    let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+    let html = '<option value="all">전체 모둠</option>';
+    for(let i=1; i<=maxGroup; i++) {
+        html += `<option value="${i}">${i}모둠</option>`;
+    }
+    sel.innerHTML = html;
+}
+
 function migrateData() {
 for (const className in classData) {
 if (!groupScores[className] || groupScores[className][1] !== undefined) {
@@ -1853,14 +1872,21 @@ let h = parseInt(s.handSense) || 0; let f = parseInt(s.footSense) || 0; let maxS
 s.ballSense = maxSense > 0 ? String(maxSense) : '0'; delete s.handSense; delete s.footSense;
 }
 
-// ----------------------------------------------------
-// (NEW) 볼센스 등급 자동 변환 (3->2, 2->1, 1/0->0)
-// ----------------------------------------------------
+// 볼센스 등급 자동 변환
 if (s.ballSense === '3' || s.ballSense === '상') s.ballSense = '2';
 else if (s.ballSense === '2' || s.ballSense === '중') s.ballSense = '1';
 else if (s.ballSense === '1' || s.ballSense === '하' || s.ballSense === '-' || !s.ballSense) s.ballSense = '0';
 
-if (s.isCaptain === undefined) s.isCaptain = false;
+// 모둠별 부장 분리 마이그레이션
+if (s.isCaptain !== undefined) {
+    s.captain_mixed4 = s.isCaptain; 
+    delete s.isCaptain;
+}
+if (s.captain_mixed2 === undefined) s.captain_mixed2 = false;
+if (s.captain_mixed3 === undefined) s.captain_mixed3 = false;
+if (s.captain_mixed4 === undefined) s.captain_mixed4 = false;
+if (s.captain_gender === undefined) s.captain_gender = false;
+
 if (s.group !== undefined) { s.group_mixed4 = s.group; s.group_mixed3 = null; s.group_mixed2 = null; s.group_gender = null; delete s.group; }
 if (s.group_mixed2 === undefined) s.group_mixed2 = null;
 if (s.group_mixed3 === undefined) s.group_mixed3 = null;
@@ -1869,7 +1895,7 @@ if (s.group_gender === undefined) s.group_gender = null;
 if (s.running !== undefined) { delete s.running; } 
 if (s.memo === undefined) s.memo = "";
 if (s.dismissalInfo === undefined) s.dismissalInfo = "";
-if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; // 모둠 내 뽑기 상태 추가
+if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
 
 delete s.group_partner;
 delete s.agility;
@@ -1967,7 +1993,7 @@ students.forEach((s, idx) => {
 const attendance = s.attendance ? '참석' : '불참';
 const bs = s.ballSense || '0'; const score = s.score || 0;
 const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
-const isCapt = s.isCaptain ? 'Y' : 'N';
+const isCapt = s.captain_mixed4 ? 'Y' : 'N';
 const recSec = s.recordMs ? (s.recordMs / 1000).toFixed(2) : '';
 const memo = (s.memo || "").replace(/"/g, '""');
 const dismissal = (s.dismissalInfo || "").replace(/"/g, '""');
@@ -2072,7 +2098,7 @@ window.handleAllCSVUpload = function(event) {
                 if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                 if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, isCaptain: isCaptain, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
             }
 
             if (Object.keys(newData).length > 0) {
@@ -2127,6 +2153,7 @@ if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
 document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
 window.showTab(currentTab); window.renderClassSelect(); 
+window.updateGroupDrawSelect(); 
 window.renderStudentList(); window.renderGroups(); window.renderStampBoard();
 window.renderGagaball(); window.renderGagaRanking(); window.renderGagaTeamView();
 }
@@ -2218,7 +2245,12 @@ window.setAllAttendance = function(isAbsent) {
 
 window.toggleCaptain = function(studentNo) {
 const student = classData[currentClass].find(s => s.no == studentNo);
-if (student && student.attendance) { student.isCaptain = !student.isCaptain; saveData(); window.renderStudentList(); window.renderGroups(); }
+if (student && student.attendance) { 
+    const captainProp = 'captain_' + currentGroupMode;
+    student[captainProp] = !student[captainProp]; 
+    saveData(); 
+    window.renderGroups(); 
+}
 }
 
 window.toggleSelection = function(studentNo) {
@@ -2355,7 +2387,6 @@ if (sGroup % 4 === 1) groupColorClass = 'bg-indigo-500 text-white hover:bg-indig
 else if (sGroup % 4 === 3) groupColorClass = 'bg-cyan-500 text-white hover:bg-cyan-600 shadow-sm'; else if (sGroup % 4 === 0) groupColorClass = 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm';
 }
 
-const captainBadge = s.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5">C</span>' : '';
 const drawnBadge = s.drawn ? '<span class="text-[9px] bg-purple-500 text-white px-1 py-0.5 rounded ml-1 font-bold align-middle">뽑힘</span>' : '';
 
 let dismissalCell = '';
@@ -2379,7 +2410,7 @@ tr.innerHTML = `
                    <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
                        <div class="flex items-center justify-center gap-1.5">
                            <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 학생 하이라이트 선택">
-                               ${s.name}${drawnBadge}${captainBadge}
+                               ${s.name}${drawnBadge}
                            </button>
                            <button onclick="event.stopPropagation(); window.openMemoModal(${s.no}, '${s.name}')" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">
                                📝
@@ -2437,6 +2468,7 @@ else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결�
 else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
 else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
 
+window.updateGroupDrawSelect(); 
 window.renderStudentList(); window.renderGroups();
 }
 
@@ -2445,7 +2477,10 @@ if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학
 let modeName = currentGroupMode === 'mixed2' ? '혼성 2팀' : (currentGroupMode === 'mixed3' ? '혼성 3팀' : (currentGroupMode === 'mixed4' ? '혼성 4팀' : '동성 4팀'));
 
 window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 부여된 모둠 점수와 기록도 함께 지워집니다.</span>`, true, () => {
-classData[currentClass].forEach(student => { student[`group_${currentGroupMode}`] = null; student.isCaptain = false; });
+classData[currentClass].forEach(student => { 
+    student[`group_${currentGroupMode}`] = null; 
+    student[`captain_${currentGroupMode}`] = false;
+});
 if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
 if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
 activeTimers = {}; window.selectedGroupStudent = null; saveData(); window.renderStudentList(); window.renderGroups();
@@ -2477,7 +2512,10 @@ else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback
             if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) {
                 groupRecords[currentClass][currentGroupMode].drawnGroups = [];
             }
-            classData[currentClass].forEach(s => s.groupMemberDrawn = false);
+            classData[currentClass].forEach(s => {
+                s.groupMemberDrawn = false;
+                s[`captain_${currentGroupMode}`] = false;
+            });
 
             callback(); 
             window.playCasinoJackpot(); 
@@ -2707,7 +2745,8 @@ card.innerHTML = `
                    
                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 flex-1 min-h-[60px]">
                        ${members.map(m => {
-                           const captainBadgeHTML = m.isCaptain ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
+                           const isCap = m['captain_' + currentGroupMode] || false;
+                           const captainBadgeHTML = isCap ? '<span class="text-[10px] bg-yellow-400 text-white rounded w-[14px] h-[14px] inline-flex items-center justify-center font-black ml-1 align-text-bottom shadow-sm leading-none pt-0.5 shrink-0">C</span>' : '';
                            let cardStateClass = m.attendance ? (m.gender === '남' ? 'bg-blue-50 border-blue-200' : 'bg-pink-50 border-pink-200') : 'bg-red-50 border-red-200 opacity-60';
                            if (window.selectedGroupStudent === m.no) {
                                cardStateClass = 'ring-4 ring-yellow-400 bg-yellow-100 border-yellow-400 transform scale-105 z-10 shadow-md';
@@ -2784,12 +2823,21 @@ window.drawRandomGroup = function() {
 window.drawRandomMembersInGroups = function() {
     if (!currentClass) return;
     let count = parseInt(document.getElementById('group-draw-count').value);
+    let targetGroup = document.getElementById('group-draw-target').value;
     let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
     
     let results = [];
     let allDrawnAny = false;
 
-    for (let i = 1; i <= maxGroup; i++) {
+    let startGrp = 1;
+    let endGrp = maxGroup;
+
+    if (targetGroup !== 'all') {
+        startGrp = parseInt(targetGroup);
+        endGrp = parseInt(targetGroup);
+    }
+
+    for (let i = startGrp; i <= endGrp; i++) {
         let members = classData[currentClass].filter(s => s.attendance && s[`group_${currentGroupMode}`] === i);
         let available = members.filter(s => !s.groupMemberDrawn);
         
@@ -2811,7 +2859,7 @@ window.drawRandomMembersInGroups = function() {
     }
     
     if (!allDrawnAny) {
-        window.showModal("알림", "모든 모둠의 인원이 이미 다 뽑혔습니다. 초기화 후 다시 시도해주세요.");
+        window.showModal("알림", "해당 모둠의 인원이 이미 다 뽑혔거나 참석 학생이 없습니다. 초기화 후 다시 시도해주세요.");
         return;
     }
     
@@ -2854,7 +2902,6 @@ window.showDrawResultModal = function(title, contentHTML) {
     window.playGrandFanfare();
 }
 
-    // ⬇️ 여기에 창을 닫는 함수를 새로 추가합니다 ⬇️
 window.closeDrawResultModal = function() {
     document.getElementById('drawResultModal').classList.add('hidden');
     document.getElementById('drawResultModal').classList.remove('flex');
@@ -3026,7 +3073,10 @@ window.importFromExcel = function() {
                 dismissalInfo: "",
                 drawn: false,
                 groupMemberDrawn: false,
-                isCaptain: false,
+                captain_mixed2: false,
+                captain_mixed3: false,
+                captain_mixed4: false,
+                captain_gender: false,
                 group_mixed2: null,
                 group_mixed3: null,
                 group_mixed4: group,
@@ -3034,10 +3084,8 @@ window.importFromExcel = function() {
             };
 
             if (existingIdx > -1) {
-                // 이미 존재하는 번호면 정보 업데이트 (덮어쓰기)
                 classData[currentClass][existingIdx] = { ...classData[currentClass][existingIdx], ...studentObj };
             } else {
-                // 새로운 번호면 명단에 추가
                 classData[currentClass].push(studentObj);
             }
             addedCount++;
@@ -3049,8 +3097,6 @@ window.importFromExcel = function() {
             window.renderGroups();
             document.getElementById('excel-input').value = '';
             window.showModal("추가 완료", `${addedCount}명의 학생이 일괄 등록되었습니다.`);
-            // 필요에 따라 모달을 닫고 싶다면 아래 주석을 해제하세요.
-            // window.closeManageModal();
         } else {
             window.showModal("알림", "등록할 수 있는 데이터가 없습니다. 형식을 확인해주세요. (예: 1 홍길동 남)");
         }
