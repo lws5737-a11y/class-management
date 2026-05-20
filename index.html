@@ -1378,6 +1378,10 @@ document.getElementById('login-screen').classList.add('hidden');
 document.getElementById('app-container').classList.remove('hidden');
 document.getElementById('user-email').innerText = user.email.split('@')[0];
 setupFirestoreListener();
+// 로그인 성공 시 현재 선택된 학급이 없으면 모달 열기
+if (!currentClass) {
+    window.openManageModal();
+}
 } else {
 userId = null;
 if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
@@ -1602,6 +1606,9 @@ window.toggleReferee = function(no) {
     const student = classData[currentClass].find(s => s.no == no);
     if(student) {
         student.isReferee = !student.isReferee;
+        if(student.isReferee) {
+            window.playStampSound(); // 요구사항 4: 심판 도장 찍을 때 슈우웅~ 쿵! 사운드 재생
+        }
         saveData();
         window.renderGagaRanking();
     }
@@ -2177,7 +2184,7 @@ s.ballSense = maxSense > 0 ? String(maxSense) : '0'; delete s.handSense; delete 
         else if (s.ballSense === '하' || s.ballSense === '-') s.ballSense = '0';
         else if (!s.ballSense) s.ballSense = '0';
 
-// 모둠별 부장 분리 마이그레이션
+// 모둠별 부장 분리 마이그레이션 (요구사항 3)
 if (s.isCaptain !== undefined) {
     s.captain_mixed4 = s.isCaptain; 
     delete s.isCaptain;
@@ -2548,6 +2555,7 @@ window.setAllAttendance = function(isAbsent) {
 window.toggleCaptain = function(studentNo) {
 const student = classData[currentClass].find(s => s.no == studentNo);
 if (student && student.attendance) { 
+    // 요구사항 3: 각 모둠 편성에 따라 체육부장이 개별적으로 저장됩니다.
     const captainProp = 'captain_' + currentGroupMode;
     student[captainProp] = !student[captainProp]; 
     saveData(); 
@@ -3000,6 +3008,10 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 <div class="p-2 sm:p-3 flex-1 min-h-[100px] flex flex-wrap gap-2 items-start content-start relative">
                     ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-sm pointer-events-none">학생을 이곳으로 이동하세요</div>` : ''}
                     ${groupStudents.map(s => {
+                        // 요구사항 2: 모둠 화면 학생 기록 표시를 위한 데이터 가공
+                        let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
+                        let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) : '-';
+                        
                         let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
@@ -3010,11 +3022,15 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
 
                         return `
                         <div draggable="true" ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" ondrop="window.handleDropOnStudent(event, ${s.no})" onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                             class="student-card relative bg-white border-2 ${badgeColor} px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-w-[70px] sm:min-w-[80px]">
+                             class="student-card relative bg-white border-2 ${badgeColor} px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-xl cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-w-[75px] sm:min-w-[85px]">
                             ${captainBadge}
                             ${memberDrawnBadge}
-                            <span class="text-[10px] sm:text-xs font-bold opacity-60 mb-0.5">${s.no}번</span>
-                            <span class="font-black text-sm sm:text-base whitespace-nowrap" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                            <span class="text-[9px] sm:text-[10px] font-bold opacity-60 mb-0.5">${s.no}번</span>
+                            <span class="font-black text-sm sm:text-base whitespace-nowrap mb-1" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                            <div class="flex flex-col items-center w-full bg-white/60 rounded px-1 py-0.5 border border-slate-100/50">
+                                <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter" title="볼센스">${bsEmoji}</span>
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter" title="순발력">⚡${recText}</span>
+                            </div>
                         </div>
                         `;
                     }).join('')}
@@ -3211,120 +3227,122 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 const badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-pink-100 text-pink-700 border-pink-300';
                 return `<div class="${badgeColor} border-4 p-4 sm:p-6 rounded-2xl text-center shadow-lg w-32 sm:w-40 flex flex-col items-center justify-center transform transition hover:scale-105">
                             <span class="text-sm font-bold opacity-70 mb-1">${s.no}번</span>
-                            <span class="text-2xl sm:text-3xl font-black">${s.name}</span>
+                            <div class="text-xl sm:text-2xl font-black">${s.name}</div>
                         </div>`;
             }).join('');
             
             document.getElementById('drawResultGrid').innerHTML = resultHtml;
-            document.getElementById('drawResultTitle').innerText = "🎉 랜덤 뽑기 결과 🎉";
+            document.getElementById('drawResultTitle').innerText = "🎉 랜덤 뽑기 결과";
             document.getElementById('drawResultModal').style.display = 'flex';
+            
             window.playGrandFanfare();
             window.fireConfetti();
-            window.updateDrawStatus();
         }, 2000);
     }
 
     window.resetDrawPool = function() {
         if (!currentClass || !classData[currentClass]) return;
-        classData[currentClass].forEach(s => s.drawn = false);
-        saveData(); window.renderStudentList();
-        document.getElementById('draw-result').innerHTML = '';
-        document.getElementById('draw-result').classList.add('hidden');
-        window.updateDrawStatus();
+        window.showModal("초기화", "출석부 랜덤 뽑기 기록을 모두 초기화하시겠습니까?", true, () => {
+            classData[currentClass].forEach(s => s.drawn = false);
+            saveData();
+            window.renderStudentList();
+        });
     }
 
     window.closeDrawResultModal = function() {
         document.getElementById('drawResultModal').style.display = 'none';
     }
 
-    // Excel 데이터 붙여넣기 (일괄 등록)
+    // ==========================================
+    // 7. 엑셀 일괄 등록 로직
+    // ==========================================
     window.importFromExcel = function() {
-        if (!currentClass) {
-            window.showModal("알림", "학급을 먼저 선택하거나 추가해주세요.");
-            return;
-        }
         const input = document.getElementById('excel-input').value.trim();
         if (!input) {
-            window.showModal("알림", "붙여넣을 데이터가 없습니다.");
+            window.showModal("알림", "입력된 데이터가 없습니다.");
             return;
         }
-        
+
+        if (!currentClass) {
+            window.showModal("알림", "먼저 추가할 학급을 선택하거나 새 학급을 생성해주세요.");
+            return;
+        }
+
         const lines = input.split('\n');
-        let newStudents = [];
-        
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const parts = line.split(/[\t\s]+/);
+        let addedCount = 0;
+        let currentStudents = classData[currentClass] || [];
+
+        lines.forEach(line => {
+            const parts = line.trim().split(/\s+/);
             if (parts.length >= 2) {
-                let no = parseInt(parts[0]);
-                let name = parts[1];
-                let gender = parts[2] === '남' || parts[2] === '여' ? parts[2] : '-';
-                let bs = '0';
-                if (parts[3]) {
-                    if (parts[3] === '상' || parts[3] === '2') bs = '2';
-                    else if (parts[3] === '중' || parts[3] === '1') bs = '1';
+                const no = parseInt(parts[0]);
+                const name = parts[1];
+                let gender = parts.length > 2 ? parts[2] : '-'; // 성별 기본값 처리
+                let ballSense = '0';
+                let recordMs = 0;
+                let group = null;
+
+                if (parts.length > 3) {
+                    let bs = parts[3];
+                    if(bs === '2' || bs === '상') ballSense = '2';
+                    else if(bs === '1' || bs === '중') ballSense = '1';
                 }
-                let record = 0;
-                if (parts[4]) {
-                    let rStr = parts[4].replace(/[^0-9.]/g, '');
-                    if (rStr) record = Math.floor(parseFloat(rStr) * 1000);
+                if (parts.length > 4) {
+                    const parsedRec = parseFloat(parts[4]);
+                    if(!isNaN(parsedRec)) recordMs = Math.floor(parsedRec * 1000);
                 }
-                
-                let groupMixed4 = parts[5] ? parseInt(parts[5]) : null;
+                if (parts.length > 5) {
+                    group = parseInt(parts[5]) || null;
+                }
 
                 if (!isNaN(no) && name) {
-                    newStudents.push({
-                        no: no, name: name, gender: gender, ballSense: bs, attendance: true, score: 0,
-                        recordMs: record, memo: "", dismissalInfo: "",
-                        drawn: false, groupMemberDrawn: false, gagaDrawn: false, isReferee: false,
-                        captain_mixed2: false, captain_mixed3: false, captain_mixed4: false, captain_gender: false,
-                        group_mixed2: null, group_mixed3: null, group_mixed4: groupMixed4, group_gender: null
-                    });
+                    // 번호가 이미 존재하면 덮어쓰기, 아니면 새로 추가
+                    const existingIdx = currentStudents.findIndex(s => s.no === no);
+                    const newStudent = { 
+                        no: no, 
+                        name: name, 
+                        gender: gender, 
+                        ballSense: ballSense, 
+                        attendance: true, 
+                        score: 0, 
+                        recordMs: recordMs, 
+                        memo: "", 
+                        dismissalInfo: "", 
+                        drawn: false, 
+                        groupMemberDrawn: false, 
+                        gagaDrawn: false, 
+                        isReferee: false, 
+                        captain_mixed2: false, 
+                        captain_mixed3: false, 
+                        captain_mixed4: false, 
+                        captain_gender: false, 
+                        group_mixed2: group, 
+                        group_mixed3: group, 
+                        group_mixed4: group, 
+                        group_gender: group 
+                    };
+
+                    if (existingIdx > -1) {
+                        // 기존 상태(출석, 점수, 뽑힘 여부 등) 유지하면서 업데이트할 항목만 적용하고 싶다면 여기 로직을 수정할 수 있으나, 엑셀 등록 시에는 완전히 덮어쓰기로 진행.
+                        currentStudents[existingIdx] = newStudent;
+                    } else {
+                        currentStudents.push(newStudent);
+                    }
+                    addedCount++;
                 }
             }
-        }
-        
-        if (newStudents.length > 0) {
-            classData[currentClass] = newStudents;
+        });
+
+        if (addedCount > 0) {
+            classData[currentClass] = currentStudents;
             saveData();
             window.renderStudentList();
-            window.renderGroups();
-            window.updateDrawStatus();
             document.getElementById('excel-input').value = "";
-            window.closeManageModal();
-            window.showModal("완료", `${newStudents.length}명의 명단이 일괄 등록되었습니다.`);
+            window.showModal("등록 완료", `${addedCount}명의 학생이 성공적으로 등록/수정되었습니다.`);
         } else {
-            window.showModal("오류", "데이터 형식이 맞지 않습니다. 번호와 이름을 확인해주세요.");
+            window.showModal("알림", "올바른 형식의 데이터를 찾을 수 없습니다. (번호 이름 성별 순서)");
         }
     }
-
-    // Startup & DOMContentLoaded Initialization
-    document.addEventListener("DOMContentLoaded", () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlClass = urlParams.get('class');
-        
-        setTimeout(() => {
-            window.renderClassSelect();
-            if (urlClass && classData[urlClass]) {
-                window.selectClass(urlClass);
-                window.closeManageModal();
-            } else if (!currentClass && Object.keys(classData).length > 0) {
-                const firstClass = Object.keys(classData).sort()[0];
-                window.selectClass(firstClass);
-            } else if (!currentClass) {
-                window.openManageModal();
-            }
-        }, 500);
-
-        const storedMissions = JSON.parse(localStorage.getItem('gagaIndividualMissions'));
-        if (storedMissions) individualMissions = storedMissions;
-        
-        const storedTeamMissions = JSON.parse(localStorage.getItem('gagaTeamMissions'));
-        if (storedTeamMissions) teamMissions = storedTeamMissions;
-    });
-
 </script>
 </body>
 </html>
