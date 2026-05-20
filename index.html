@@ -184,6 +184,50 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
     .student-row td:nth-child(2) button {
         white-space: nowrap;
     }
+    
+    /* 가가볼 모드 스마트폰 2열(4장) 최적화 */
+    #gagaball-section .scoreboard-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 10px; 
+        margin-bottom: 15px;
+    }
+    #gagaball-section .score-item { 
+        padding: 12px 8px; 
+        border-width: 3px; 
+        border-radius: 12px;
+    }
+    #gagaball-section .avatar-img { 
+        width: 65px; 
+        height: 65px; 
+        border-width: 3px; 
+        margin: 0 auto 10px;
+    }
+    #gagaball-section .score-item .name { 
+        font-size: 1.4rem; 
+    }
+    #gagaball-section .score-item .score-val { 
+        font-size: 3rem; 
+        margin: 5px 0;
+    }
+    #gagaball-section .score-ctrl button { 
+        width: 45px; 
+        height: 36px; 
+        font-size: 2rem; 
+    }
+    /* 완료 뱃지 축소 */
+    #gagaball-section .score-item > .absolute {
+        padding: 4px 8px !important;
+        font-size: 0.75rem !important;
+        top: -8px !important;
+        right: -8px !important;
+    }
+    /* 번호 및 참/불 버튼 축소 */
+    #gagaball-section .score-item .font-mono {
+        font-size: 0.9rem !important;
+    }
+    #gagaball-section .score-item .mb-3 {
+        margin-bottom: 8px !important;
+    }
 }
 </style>
 </head>
@@ -2612,7 +2656,7 @@ else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점বাদী가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
+    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
         document.getElementById('group-shuffle-overlay').classList.remove('hidden');
         document.getElementById('group-shuffle-overlay').classList.add('flex');
         window.playCardShuffleSound();
