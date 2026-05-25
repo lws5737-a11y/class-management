@@ -290,6 +290,7 @@ window.handleTouchStart = function(e, studentNo) {
     window.touchStartX = touch.clientX;
     window.touchStartY = touch.clientY;
 
+    // 반응 속도를 60ms로 줄여 더 빠르게 드래그가 시작되도록 개선
     touchTimeout = setTimeout(() => {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
@@ -308,6 +309,11 @@ window.handleTouchStart = function(e, studentNo) {
         clone.style.zIndex = '9999';
         clone.style.pointerEvents = 'none'; 
         clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
+        
+        // ★ 핵심: 복제된 요소의 애니메이션 속성을 제거하여 즉각적으로 반응하도록 수정 ★
+        clone.style.transition = 'none'; 
+        clone.classList.remove('transition-all', 'duration-200');
+        
         clone.style.transform = 'translate3d(0px, 0px, 0px) scale(1.05)';
         clone.style.willChange = 'transform'; 
         
@@ -318,7 +324,7 @@ window.handleTouchStart = function(e, studentNo) {
         window.activeTouchElement = target;
         
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 100); 
+    }, 60); 
 };
 
 // 모바일: 카드를 끌고 이동할 때 (Touch Move) 
@@ -330,6 +336,7 @@ window.handleTouchMove = function(e) {
     e.preventDefault(); 
     const touch = e.touches[0];
     
+    // transition이 제거되었으므로 즉각적으로 손가락을 따라감
     const dx = touch.clientX - window.touchStartX;
     const dy = touch.clientY - window.touchStartY;
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
@@ -1552,7 +1559,6 @@ currentGroupMode = mode; activeTimers = {}; window.selectedGroupStudent = null;
 const btn = document.getElementById(`btn-mode-${m}`);
 if (btn) {
     if (m === mode) {
-        // 선택된 모드 시각적 강조 효과 적용
         btn.className = "flex-1 sm:flex-none px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition bg-indigo-600 text-white shadow-lg ring-2 ring-indigo-300 ring-offset-1 transform scale-105 whitespace-nowrap z-10";
     } else {
         btn.className = "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 bg-transparent hover:bg-slate-200 hover:text-slate-800 whitespace-nowrap border border-transparent hover:border-slate-200";
@@ -1923,6 +1929,23 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         </div>`;
         
         container.innerHTML = html;
+
+        // ★ 모둠 뽑기창 위치 이동 (미편성 영역 아래로 자동 정렬) ★
+        setTimeout(() => {
+            const groupResult = document.getElementById('group-result');
+            const drawTarget = document.getElementById('group-draw-target');
+            if (groupResult && drawTarget) {
+                let drawContainer = drawTarget;
+                // group-section의 직계 자식인 뽑기 컨테이너 찾기
+                while (drawContainer.parentElement && drawContainer.parentElement.id !== 'group-section') {
+                    drawContainer = drawContainer.parentElement;
+                }
+                // 찾은 컨테이너가 group-result가 아니라면 맨 아래로 이동
+                if (drawContainer && drawContainer.id !== 'group-result') {
+                    document.getElementById('group-section').appendChild(drawContainer);
+                }
+            }
+        }, 10);
     }
 
     window.drawRandomGroup = function() {
