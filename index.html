@@ -437,7 +437,368 @@ Google 계정으로 시작하기
 </section>
 </main>
 </div>
+<div id="manage-modal" class="fixed inset-0 bg-slate-900/60 hidden items-start justify-center z-[250] backdrop-blur-sm overflow-y-auto pt-10 pb-10 px-4">
+<div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl relative animate-pop-in p-4 sm:p-8 my-auto border border-slate-200">
+<div class="flex justify-between items-center mb-4 border-b pb-2 pr-8">
+    <h2 class="text-xl sm:text-2xl font-black text-slate-800"><span class="text-blue-500 mr-2">📁</span> 학급 선택 및 추가</h2>
+    <button id="toggle-hidden-classes-btn" onclick="window.toggleHiddenClasses()" class="text-sm font-bold text-slate-500 hover:text-blue-600 transition underline decoration-slate-300 underline-offset-4 shrink-0">전체 학급 보기</button>
+</div>
+<button onclick="window.closeManageModal()" class="absolute top-2 right-2 text-slate-500 hover:text-red-500 text-4xl font-black transition p-2 z-10">&times;</button>
+<div class="mb-6">
+<div id="modal-class-list" class="flex flex-wrap gap-2 mb-4"></div>
+<div class="flex flex-col sm:flex-row gap-2 w-full mt-2">
+<input type="text" id="new-class-input" placeholder="새 학급명 입력" class="flex-1 p-3 border-2 border-slate-200 rounded-xl text-sm font-bold focus:outline-blue-500 w-full">
+<button onclick="window.addNewClass()" class="bg-blue-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition shrink-0 w-full sm:w-auto">새 학급 추가</button>
+</div>
+</div>
+<h2 class="text-xl sm:text-2xl font-black text-slate-800 mb-4 border-b pb-2 mt-8"><span class="text-green-500 mr-2">👥</span> Excel 데이터 붙여넣기 일괄 추가</h2>
+<div class="mb-4">
+<textarea id="excel-input" rows="3" class="w-full p-3 sm:p-4 border-2 border-dashed border-blue-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 focus:outline-none text-sm transition placeholder:text-slate-400" placeholder="번호 이름 성별 볼센스 순발력 모둠"></textarea>
+<button onclick="window.importFromExcel()" class="mt-3 w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-xl hover:bg-blue-700 font-bold shadow-md shadow-blue-100 transition text-sm sm:text-base">일괄 등록하기</button>
+</div>
+<div class="mt-8 flex justify-center"><button onclick="window.closeManageModal()" class="bg-slate-800 text-white px-10 py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-slate-900 transition focus:outline-none">닫기</button></div>
+</div>
+</div>
+
+<div id="memo-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-[320] backdrop-blur-sm transition-opacity">
+    <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4 transform transition-all animate-pop-in">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><span class="text-xl">📝</span> <span id="memo-modal-name" class="text-blue-600"></span> 학생 메모</h3>
+            <button onclick="window.closeMemoModal()" class="text-slate-400 hover:text-red-500 text-2xl font-black transition leading-none">&times;</button>
+        </div>
+        <textarea id="memo-modal-input" rows="4" class="w-full p-3 border-2 border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 focus:outline-none text-sm transition placeholder:text-slate-400 resize-none mb-4"></textarea>
+        <button onclick="window.saveMemo()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-100 transition text-base">저장하기</button>
+    </div>
+</div>
+
+<div id="custom-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[300] backdrop-blur-sm transition-opacity">
+<div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4 transform transition-all">
+<h3 id="modal-title" class="text-lg font-bold text-slate-800 mb-2">알림</h3>
+<p id="modal-message" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
+<div class="flex justify-end gap-2">
+<button id="modal-cancel-btn" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold transition text-sm hidden">취소</button>
+<button id="modal-confirm-btn" class="px-4 py-2 bg-red-500 text-white rounded-xl font-bold transition text-sm hidden">삭제 확인</button>
+<button id="modal-alert-ok-btn" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold transition text-sm hidden">확인</button>
+</div>
+</div>
+</div>
+
+<div id="score-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[310] backdrop-blur-sm transition-opacity">
+<div class="bg-white p-6 rounded-2xl shadow-xl max-w-xs w-full mx-4 transform transition-all">
+<div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-slate-800">개인 점수 수정</h3><button onclick="window.closeScoreModal()" class="text-2xl font-bold leading-none">&times;</button></div>
+<p id="score-modal-name" class="text-center text-base font-bold text-slate-600 mb-4"></p>
+<div class="flex items-center justify-center gap-4 mb-6">
+<button onclick="window.adjustScore(-1)" class="w-12 h-12 rounded-full bg-slate-100 font-bold hover:bg-slate-200 text-xl shadow-sm">-1</button>
+<input type="number" id="score-modal-input" class="w-20 text-center text-3xl font-black text-blue-600 border-b-2 border-slate-200 focus:outline-none bg-transparent pb-1">
+<button onclick="window.adjustScore(1)" class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 text-xl shadow-sm">+1</button>
+</div>
+<button onclick="window.saveScore()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition">저장하기</button>
+</div>
+</div>
+
+<div id="drawResultModal" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center z-[1100] backdrop-blur-sm transition-opacity" onclick="window.closeDrawResultModal()">
+    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 text-center transform scale-100 transition-transform animate-pop-in" onclick="event.stopPropagation()">
+        <h2 id="drawResultTitle" class="text-3xl sm:text-4xl font-black text-purple-600 mb-6">🎉 뽑기 결과 🎉</h2>
+        <div id="drawResultGrid" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8 max-h-[50vh] overflow-y-auto p-2"></div>
+        <button class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-purple-700 transition shadow-md" onclick="window.closeDrawResultModal()">확인</button>
+    </div>
+</div>
+
+<div id="timerSelectModal" class="gaga-modal-overlay" style="z-index: 1050;" onclick="window.closeTimerSelectModal()">
+    <div class="gaga-modal-content" style="max-width: 400px; padding:30px;" onclick="event.stopPropagation()">
+        <h2 class="text-3xl font-black text-orange-500 mb-6">⏱️ 가가볼 타이머</h2>
+        <div class="flex flex-col gap-4">
+            <button class="bg-orange-500 text-white py-4 rounded-xl font-bold text-2xl shadow-md hover:bg-orange-600 transition" onclick="window.open('https://youtu.be/Nn9Exxw5Gg4', '_blank'); window.closeTimerSelectModal();">99초 타이머</button>
+            <button class="bg-orange-700 text-white py-4 rounded-xl font-bold text-2xl shadow-md hover:bg-orange-800 transition" onclick="window.open('https://youtu.be/eVGSsArJF6k', '_blank'); window.closeTimerSelectModal();">60초 타이머</button>
+        </div>
+    </div>
+</div>
+
+<div id="rouletteModal" class="gaga-modal-overlay" style="z-index: 1002;" onclick="window.closeRouletteModal()">
+<div class="gaga-modal-content" style="max-width: 950px; padding: 50px;" onclick="event.stopPropagation()">
+    <div class="flex justify-between items-center mb-8">
+        <h2 id="rouletteModalTitle" class="text-4xl sm:text-5xl font-black text-slate-800">🎡 오늘의 미션 룰렛</h2>
+        <button onclick="window.openRouletteEditModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300">편집</button>
+    </div>
+    <div class="roulette-container">
+        <div class="roulette-pointer">🔽</div>
+        <canvas id="rouletteCanvas" width="800" height="800"></canvas>
+    </div>
+    <button class="w-full mt-10 py-6 text-4xl font-black bg-pink-500 text-white rounded-3xl shadow-xl hover:bg-pink-600 transition transform hover:scale-105" onclick="window.spinRoulette()">🎯 룰렛 돌리기!</button>
+</div>
+</div>
+
+<div id="rouletteEditModal" class="gaga-modal-overlay" style="z-index: 1005;" onclick="window.closeRouletteEditModal()">
+    <div class="gaga-modal-content" style="max-width: 600px; padding: 30px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-black text-slate-800">룰렛 내용 편집</h2>
+            <button class="text-3xl text-slate-400 hover:text-red-500 font-black leading-none" onclick="window.closeRouletteEditModal()">&times;</button>
+        </div>
+        <div id="roulette-edit-list" class="flex flex-col gap-3 mb-6"></div>
+        <button onclick="window.addRouletteItem()" class="w-full py-3 border-2 border-dashed border-blue-400 text-blue-500 font-bold rounded-xl mb-4 hover:bg-blue-50">+ 항목 추가</button>
+        <button onclick="window.saveRouletteEdit()" class="w-full py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 text-xl">저장하기</button>
+    </div>
+</div>
+
+<div id="missionDescModal" class="gaga-modal-overlay" style="z-index: 1003;" onclick="window.closeMissionDescModal()">
+<div class="gaga-modal-content" style="max-width: 550px; padding: 40px;" onclick="event.stopPropagation()">
+<h2 id="missionDescTitle" class="text-3xl sm:text-4xl font-black text-blue-500 mb-4"></h2>
+<p id="missionDescText" class="text-xl sm:text-2xl leading-relaxed text-slate-700 bg-slate-50 p-6 rounded-2xl mb-8 border border-slate-200"></p>
+<button class="w-full py-4 text-2xl font-black bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 transition" onclick="window.closeMissionDescModal()">미션 확인!</button>
+</div>
+</div>
+
+<div id="gagaDrawModal" class="gaga-modal-overlay" onclick="window.closeGagaDrawModal()">
+<div class="gaga-modal-content" style="max-width: 1200px;" onclick="event.stopPropagation()">
+<h1 class="text-5xl sm:text-6xl font-black text-red-500 mb-8">🎉 참가 선수 🎉</h1>
+<div id="gagaDrawResultGrid" class="flex flex-wrap justify-center gap-6 mb-10"></div>
+<div class="flex justify-center gap-6 mb-10">
+<button class="bg-orange-500 text-white px-8 py-4 rounded-2xl font-bold text-3xl shadow-lg hover:bg-orange-600 transition" onclick="window.openTimerSelectModal()">⏱️ 타이머</button>
+<button class="bg-purple-500 text-white px-8 py-4 rounded-2xl font-bold text-3xl shadow-lg hover:bg-purple-600 transition" onclick="window.openRouletteModal('individual')">🎡 개인전 룰렛</button>
+</div>
+<button class="bg-slate-800 text-white w-full py-6 rounded-2xl font-black text-3xl shadow-xl hover:bg-slate-700 transition" onclick="window.closeGagaDrawModal()">확인 및 닫기</button>
+</div>
+</div>
+
+<div id="stampSelectModal" class="gaga-modal-overlay" style="z-index: 1500;" onclick="window.closeStampSelectModal()">
+    <div class="gaga-modal-content flex flex-col" style="max-width: 600px; padding: 25px;" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b-2 border-slate-100">
+            <h2 class="text-2xl font-black text-slate-800">🎨 도장 선택</h2>
+            <button class="text-3xl text-slate-400 hover:text-red-500 font-black leading-none" onclick="window.closeStampSelectModal()">&times;</button>
+        </div>
+        <div id="stamp-grid-container" class="grid grid-cols-4 sm:grid-cols-5 gap-4 overflow-y-auto pr-2 max-h-[60vh]"></div>
+    </div>
+</div>
+
+<div id="avatarSelectModal" class="gaga-modal-overlay" style="z-index: 1500;" onclick="window.closeAvatarSelectModal()">
+    <div class="gaga-modal-content flex flex-col" style="max-width: 600px; max-height: 85vh; padding: 25px;" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b-2 border-slate-100 shrink-0">
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-800">🖼️ 아바타 선택</h2>
+            <button class="text-3xl text-slate-400 hover:text-red-500 font-black leading-none" onclick="window.closeAvatarSelectModal()">&times;</button>
+        </div>
+        <div class="flex gap-2 mb-4 shrink-0">
+            <button onclick="window.renderAvatarGrid('boy')" class="flex-1 py-2.5 bg-blue-100 text-blue-600 font-bold rounded-xl hover:bg-blue-200 transition text-lg">👦 남학생</button>
+            <button onclick="window.renderAvatarGrid('girl')" class="flex-1 py-2.5 bg-pink-100 text-pink-600 font-bold rounded-xl hover:bg-pink-200 transition text-lg">👧 여학생</button>
+        </div>
+        <div id="avatar-grid-container" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 overflow-y-auto pr-2 pb-2 content-start flex-1" style="min-height: 0;"></div>
+    </div>
+</div>
+
+<script type="module">
+window.isDraggingCard = false; 
+window.selectedGroupStudent = null; 
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 // ==========================================
+// 1. 오디오 통합 관리
+// ==========================================
+let audioCtx;
+function initAudio() {
+if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+return audioCtx;
+}
+document.body.addEventListener('click', initAudio, { once: true });
+document.body.addEventListener('touchstart', initAudio, { once: true });
+
+window.playCoinSound = function() {
+try {
+const ctx = initAudio();
+const osc = ctx.createOscillator(); const gain = ctx.createGain();
+osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+osc.frequency.setValueAtTime(987.77, ctx.currentTime);
+osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
+gain.gain.setValueAtTime(0.1, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+} catch(e) {}
+}
+
+window.playBumpSound = function() {
+try {
+const ctx = initAudio();
+const osc = ctx.createOscillator(); const gain = ctx.createGain();
+osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
+osc.frequency.setValueAtTime(150, ctx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
+gain.gain.setValueAtTime(0.2, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+} catch(e) {}
+}
+
+window.playDrumRoll = function() {
+try {
+const ctx = initAudio();
+for (let i = 0; i < 20; i++) {
+setTimeout(() => {
+const osc = ctx.createOscillator(); const gain = ctx.createGain();
+osc.type = 'triangle';
+osc.frequency.setValueAtTime(100 + Math.random() * 50, ctx.currentTime);
+gain.gain.setValueAtTime(0.3, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+osc.connect(gain); gain.connect(ctx.destination);
+osc.start(); osc.stop(ctx.currentTime + 0.1);
+}, i * 100);
+}
+} catch(e) {}
+}
+
+window.playGrandFanfare = function() {
+try {
+const ctx = initAudio();
+const playChord = (freqs, t, d) => {
+freqs.forEach(f => {
+const osc = ctx.createOscillator(); const gain = ctx.createGain();
+osc.type = 'square'; osc.frequency.value = f;
+gain.gain.setValueAtTime(0.15, ctx.currentTime + t);
+gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + t + d);
+osc.connect(gain); gain.connect(ctx.destination);
+osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
+});
+};
+playChord([440, 554.37, 659.25], 0, 0.2); 
+playChord([440, 554.37, 659.25], 0.2, 0.2);
+playChord([440, 554.37, 659.25], 0.4, 0.2);
+playChord([493.88, 587.33, 739.99], 0.6, 0.4); 
+playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); 
+} catch(e) {}
+}
+
+window.playCardShuffleSound = function() {
+    try {
+        const ctx = initAudio();
+        let startTime = ctx.currentTime;
+        for (let i = 0; i < 18; i++) {
+            let tickTime = startTime + i * 0.08;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400 + Math.random() * 200, tickTime);
+            gain.gain.setValueAtTime(0, tickTime);
+            gain.gain.linearRampToValueAtTime(0.06, tickTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(tickTime);
+            osc.stop(tickTime + 0.08);
+        }
+    } catch(e) {}
+};
+
+window.playCasinoRoulette = function() {
+    try {
+        const ctx = initAudio();
+        let startTime = ctx.currentTime;
+        for (let i = 0; i < 40; i++) {
+            let tickTime = startTime + 2.5 * (1 - Math.pow(1 - (i/40), 2.5)); 
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800 + (i % 3) * 200, tickTime); 
+            gain.gain.setValueAtTime(0, tickTime);
+            gain.gain.linearRampToValueAtTime(0.1, tickTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, tickTime + 0.05);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(tickTime); osc.stop(tickTime + 0.05);
+        }
+    } catch(e) {}
+};
+
+window.playCasinoJackpot = function() {
+    try {
+        const ctx = initAudio();
+        let now = ctx.currentTime;
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; 
+        for(let i=0; i<15; i++) {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freqs[i % freqs.length] + (Math.random() * 10 - 5);
+            gain.gain.setValueAtTime(0, now + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.15, now + i * 0.1 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.08);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.08);
+        }
+    } catch(e) {}
+};
+
+window.playOlympicFanfare = function() {
+    try {
+        const ctx = initAudio();
+        const playBrass = (f, t, d) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.value = f;
+            gain.gain.setValueAtTime(0, ctx.currentTime + t);
+            gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + d);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
+        };
+        
+        const chords = [
+            [261.63, 329.63, 392.00], 
+            [349.23, 440.00, 523.25], 
+            [392.00, 493.88, 587.33], 
+            [523.25, 659.25, 783.99, 1046.50] 
+        ];
+        
+        chords[0].forEach(f => playBrass(f, 0, 0.4));
+        chords[1].forEach(f => playBrass(f, 0.4, 0.4));
+        chords[2].forEach(f => playBrass(f, 0.8, 0.4));
+        chords[3].forEach(f => playBrass(f, 1.2, 1.2));
+    } catch(e) {}
+};
+
+let confettiAnimationFrame;
+let confettiParticles = [];
+window.fireConfetti = function() {
+    const canvas = document.getElementById('confetti-canvas');
+    canvas.classList.remove('hidden');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if(confettiAnimationFrame) cancelAnimationFrame(confettiAnimationFrame);
+    confettiParticles = [];
+    
+    const colors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#48b8d0', '#3498db', '#2ecc71', '#ffb74d'];
+
+    for(let i = 0; i < 200; i++) {
+        confettiParticles.push({
+            x: canvas.width / 2, y: canvas.height / 2 + 150,
+            r: Math.random() * 8 + 4, dx: Math.random() * 30 - 15, dy: Math.random() * -25 - 5,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.floor(Math.random() * 10) - 10, tiltAngle: 0, tiltAngleInc: (Math.random() * 0.07) + 0.05
+        });
+    }
+    
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let active = false;
+        confettiParticles.forEach(p => {
+            p.tiltAngle += p.tiltAngleInc;
+            p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
+            p.x += Math.sin(p.tiltAngle) * 2;
+            p.dy += 0.3; p.y += p.dy; p.x += p.dx;
+            if (p.y <= canvas.height) active = true;
+
+            ctx.beginPath(); ctx.lineWidth = p.r; ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt + p.r, p.y);
+            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+            ctx.stroke();
+        });
+        if (active) confettiAnimationFrame = requestAnimationFrame(render);
+        else { 
+            cancelAnimationFrame(confettiAnimationFrame); 
+            canvas.classList.add('hidden'); 
+        }
+    }
+    render();
+}
+ // ==========================================
 // 2. 상태 관리 및 유틸리티
 // ==========================================
 
@@ -872,7 +1233,7 @@ setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, st
     window.showModal("저장 실패", "네트워크 문제 또는 도장 이미지 용량이 너무 커서 저장에 실패했습니다. (새로고침 시 데이터가 유실될 수 있습니다.)");
 });
 }
-}
+}  
     // ==========================================
 // 4. 가가볼 스코어보드
 // ==========================================
@@ -1879,7 +2240,7 @@ window.handleAllCSVUpload = function(event) {
     };
     reader.readAsText(file, "utf-8");
 }
-                // ==========================================
+    // ==========================================
 // 8. 앱 초기화 (요구사항 1 반영)
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
