@@ -1,4 +1,3 @@
-// firebase-config.js에서 설정값 가져오기
 import { auth, db, provider } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -273,85 +272,203 @@ let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3
 const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
 
-// --- 드래그 앤 드롭 및 터치 이동 ---
+// ==========================================
+// --- 드래그 앤 드롭 및 터치 이동 통합 로직 ---
+// ==========================================
+let touchTimeout;
+window.touchClone = null;
+window.activeTouchElement = null;
+window.touchOffsetX = 0;
+window.touchOffsetY = 0;
+window.isTouchDragging = false;
+
+// 모바일: 카드를 꾹 눌렀을 때 (Touch Start)
+window.handleTouchStart = function(e, studentNo) {
+    const touch = e.touches[0];
+    const target = e.currentTarget;
+
+    // 0.2초 이상 길게 누르면 드래그 상태로 진입
+    touchTimeout = setTimeout(() => {
+        window.isTouchDragging = true;
+        window.draggedStudentNo = studentNo;
+        window.selectedGroupStudent = null; 
+
+        // 현재 클릭 하이라이트된 링 삭제
+        document.querySelectorAll('.student-card').forEach(card => card.classList.remove('ring-4', 'ring-yellow-400'));
+
+        const clone = target.cloneNode(true);
+        const rect = target.getBoundingClientRect();
+        clone.style.position = 'fixed';
+        clone.style.left = rect.left + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+        clone.style.opacity = '0.9';
+        clone.style.zIndex = '9999';
+        clone.style.pointerEvents = 'none'; // 아래쪽 요소를 인식하기 위해 필수
+        clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
+        clone.style.transform = 'scale(1.05)';
+        document.body.appendChild(clone);
+        window.touchClone = clone;
+
+        window.touchOffsetX = touch.clientX - rect.left;
+        window.touchOffsetY = touch.clientY - rect.top;
+
+        target.style.opacity = '0.3';
+        window.activeTouchElement = target;
+        
+        // 드래그가 시작됨을 진동으로 알림
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 200); 
+};
+
+// 모바일: 카드를 끌고 이동할 때 (Touch Move)
+window.handleTouchMove = function(e) {
+    if (!window.touchClone) {
+        clearTimeout(touchTimeout); // 꾹 누르기 전에 움직이면 드래그 취소 (일반 스크롤 허용)
+        return;
+    }
+    e.preventDefault(); // 드래그 중에는 화면 스크롤 방지
+    const touch = e.touches[0];
+    window.touchClone.style.left = (touch.clientX - window.touchOffsetX) + 'px';
+    window.touchClone.style.top = (touch.clientY - window.touchOffsetY) + 'px';
+};
+
+// 모바일: 손가락을 뗐을 때 (Touch End)
+window.handleTouchEnd = function(e) {
+    clearTimeout(touchTimeout);
+    if (!window.touchClone) return;
+    
+    e.preventDefault(); // 드래그 후 클릭 이벤트가 추가로 발생하는 것 방지
+    
+    const touch = e.changedTouches[0];
+    window.touchClone.style.display = 'none'; 
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY); // 손가락 아래의 요소 찾기
+    window.touchClone.style.display = 'block';
+
+    if (window.activeTouchElement) {
+        window.activeTouchElement.style.opacity = '1';
+    }
+
+    if (elemBelow) {
+        const studentCard = elemBelow.closest('.student-card');
+        if (studentCard) {
+            // 다른 학생 카드 위에 놓았을 때 -> 위치 교환
+            const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
+            if (targetNo && targetNo !== window.draggedStudentNo) {
+                window.handleDropLogic(window.draggedStudentNo, targetNo, null);
+            }
+        } else {
+            // 모둠 빈 공간에 놓았을 때 -> 해당 모둠으로 이동
+            const groupArea = elemBelow.closest('.group-area');
+            if (groupArea) {
+                const targetGroup = parseInt(groupArea.getAttribute('data-group-id'));
+                if (targetGroup) {
+                    window.handleDropLogic(window.draggedStudentNo, null, targetGroup);
+                }
+            }
+        }
+    }
+
+    // 상태 초기화
+    window.touchClone.remove();
+    window.touchClone = null;
+    window.activeTouchElement = null;
+    window.draggedStudentNo = null;
+    
+    setTimeout(() => { window.isTouchDragging = false; }, 10);
+};
+
+// PC 및 모바일 공용: 교체 및 이동 처리 함수
+window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
+    if (!draggedNo) return;
+    const students = classData[currentClass];
+    const draggedIndex = students.findIndex(s => s.no === draggedNo);
+    if (draggedIndex === -1) return;
+    
+    const draggedStudent = students[draggedIndex];
+    let changed = false;
+
+    if (targetNo !== null && targetNo !== draggedNo) {
+        const targetIndex = students.findIndex(s => s.no === targetNo);
+        if (targetIndex > -1) {
+            const targetStudent = students[targetIndex];
+            const dGroup = draggedStudent[`group_${currentGroupMode}`];
+            const tGroup = targetStudent[`group_${currentGroupMode}`];
+            
+            if (dGroup !== tGroup) { // 다른 모둠 학생과 교체
+                draggedStudent[`group_${currentGroupMode}`] = tGroup;
+                targetStudent[`group_${currentGroupMode}`] = dGroup;
+            } else { // 같은 모둠 내에서 순서 변경
+                students.splice(draggedIndex, 1); 
+                const newTargetIndex = students.findIndex(s => s.no === targetNo);
+                students.splice(newTargetIndex, 0, draggedStudent);
+            }
+            changed = true;
+        }
+    } else if (targetGroup !== null) { // 빈 모둠 영역으로 이동
+        if (draggedStudent[`group_${currentGroupMode}`] !== targetGroup) {
+            draggedStudent[`group_${currentGroupMode}`] = targetGroup;
+            changed = true;
+        }
+    }
+    
+    if (changed) {
+        saveData(); 
+        window.renderStudentList(); 
+    }
+    window.renderGroups();
+};
+
+// PC 환경: 드래그 앤 드롭 이벤트
+window.handleDragStart = function(e, studentNo) {
+    window.isDraggingCard = true; window.draggedStudentNo = studentNo;
+    window.selectedGroupStudent = null; 
+    window.renderGroups(); 
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
+};
+
+window.handleDragEnd = function(e) {
+    window.isDraggingCard = false; window.draggedStudentNo = null;
+    e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
+};
+
+window.handleDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+
+window.handleDropOnStudent = function(e, targetStudentNo) {
+    e.preventDefault(); e.stopPropagation(); 
+    window.handleDropLogic(window.draggedStudentNo, targetStudentNo, null);
+    window.draggedStudentNo = null;
+};
+
+window.handleDropOnGroup = function(e, targetGroupId) {
+    e.preventDefault();
+    window.handleDropLogic(window.draggedStudentNo, null, targetGroupId);
+    window.draggedStudentNo = null;
+};
+
+// 일반 클릭 이벤트 (선택 및 교체)
 window.handleStudentCardClick = function(studentNo) {
+    if (window.isTouchDragging) { window.isTouchDragging = false; return; } // 드래그 직후 클릭 무시
+    
     if (window.selectedGroupStudent === null) {
         window.selectedGroupStudent = studentNo;
     } else if (window.selectedGroupStudent === studentNo) {
         window.selectedGroupStudent = null; 
     } else {
-        const students = classData[currentClass];
-        const studentA = students.find(s => s.no === window.selectedGroupStudent);
-        const studentB = students.find(s => s.no === studentNo);
-        
-        if (studentA && studentB) {
-            let tempGroup = studentA[`group_${currentGroupMode}`];
-            studentA[`group_${currentGroupMode}`] = studentB[`group_${currentGroupMode}`];
-            studentB[`group_${currentGroupMode}`] = tempGroup;
-            saveData(); window.renderStudentList(); 
-        }
+        window.handleDropLogic(window.selectedGroupStudent, studentNo, null);
         window.selectedGroupStudent = null;
     }
     window.renderGroups();
 };
 
 window.handleGroupAreaClick = function(groupId) {
+    if (window.isTouchDragging) return;
     if (window.selectedGroupStudent !== null) {
-        const students = classData[currentClass];
-        const studentA = students.find(s => s.no === window.selectedGroupStudent);
-        if (studentA && studentA[`group_${currentGroupMode}`] !== groupId) {
-            studentA[`group_${currentGroupMode}`] = groupId;
-            saveData(); window.renderStudentList();
-        }
+        window.handleDropLogic(window.selectedGroupStudent, null, groupId);
         window.selectedGroupStudent = null;
-        window.renderGroups();
     }
-};
-
-window.handleDragStart = function(e, studentNo) {
-window.isDraggingCard = true; draggedStudentNo = studentNo;
-window.selectedGroupStudent = null; 
-window.renderGroups(); 
-e.dataTransfer.effectAllowed = 'move';
-setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
-};
-window.handleDragEnd = function(e) {
-window.isDraggingCard = false; draggedStudentNo = null;
-e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
-};
-window.handleDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-
-window.handleDropOnStudent = function(e, targetStudentNo) {
-e.preventDefault(); e.stopPropagation(); 
-if (!draggedStudentNo || draggedStudentNo === targetStudentNo) return;
-const students = classData[currentClass];
-const draggedIndex = students.findIndex(s => s.no === draggedStudentNo);
-const targetIndex = students.findIndex(s => s.no === targetStudentNo);
-
-if (draggedIndex > -1 && targetIndex > -1) {
-const draggedStudent = students[draggedIndex]; const targetStudent = students[targetIndex];
-const draggedGroup = draggedStudent[`group_${currentGroupMode}`]; const targetGroup = targetStudent[`group_${currentGroupMode}`];
-
-if (draggedGroup !== targetGroup) {
-draggedStudent[`group_${currentGroupMode}`] = targetGroup; targetStudent[`group_${currentGroupMode}`] = draggedGroup;
-} else {
-students.splice(draggedIndex, 1); 
-const newTargetIndex = students.findIndex(s => s.no === targetStudentNo);
-students.splice(newTargetIndex, 0, draggedStudent);
-}
-saveData(); window.renderStudentList(); window.renderGroups();
-}
-};
-
-window.handleDropOnGroup = function(e, targetGroupId) {
-e.preventDefault();
-if (!draggedStudentNo) return;
-const students = classData[currentClass];
-const draggedStudent = students.find(s => s.no === draggedStudentNo);
-if (draggedStudent && draggedStudent[`group_${currentGroupMode}`] !== targetGroupId) {
-draggedStudent[`group_${currentGroupMode}`] = targetGroupId;
-saveData(); window.renderStudentList(); window.renderGroups();
-}
 };
 
 // 학급 숨김 및 모달 관리
@@ -1567,12 +1684,19 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         window.renderGroups();
     }
 
+    // ★ 모둠별 열(Column) 렌더링 영역 전면 개편 ★
     window.renderGroups = function() {
         const container = document.getElementById('group-result'); if (!container) return;
         if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
         
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
+        
+        // 스마트폰에서 n개의 열이 각각 나란히 배치되도록 그리드 구성
+        container.className = 'grid gap-1 sm:gap-4 p-1 w-full';
+        if (numGroups === 2) container.classList.add('grid-cols-2');
+        else if (numGroups === 3) container.classList.add('grid-cols-3');
+        else container.classList.add('grid-cols-4');
         
         const students = classData[currentClass];
         const colors = [
@@ -1614,24 +1738,24 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
 
             html += `
-            <div class="${color.bg} border-2 ${color.border} rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle}"
-                 ondragover="window.handleDragOver(event)" ondrop="window.handleDropOnGroup(event, ${i})" onclick="window.handleGroupAreaClick(${i})">
-                <div class="${color.header} px-3 py-2 sm:px-4 sm:py-3 flex justify-between items-center border-b ${color.border}">
-                    <h3 class="font-black text-lg sm:text-xl ${color.text} flex items-center gap-2">
+            <div class="${color.bg} border sm:border-2 ${color.border} rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
+                 data-group-id="${i}" ondragover="window.handleDragOver(event)" ondrop="window.handleDropOnGroup(event, ${i})" onclick="window.handleGroupAreaClick(${i})">
+                
+                <div class="${color.header} px-1 py-1 sm:px-4 sm:py-3 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
+                    <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 text-center">
                         <span>${i}모둠</span>
-                        <span class="text-xs bg-white/60 px-2 py-0.5 rounded-full font-bold">${groupStudents.length}명</span>
                     </h3>
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center bg-white rounded-lg shadow-sm overflow-hidden">
-                            <button onclick="window.updateGroupScore(${i}, -1)" class="w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
-                            <span class="w-8 sm:w-12 text-center font-black text-lg sm:text-xl ${color.text}">${gScore}</span>
-                            <button onclick="window.updateGroupScore(${i}, 1)" class="w-8 h-8 sm:w-10 sm:h-10 text-lg sm:text-xl font-bold ${color.btn} text-white transition">+</button>
+                    <div class="flex items-center gap-1 mt-1 sm:mt-0">
+                        <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-75 sm:scale-100 transform origin-center">
+                            <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-10 sm:h-10 text-sm sm:text-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
+                            <span class="w-6 sm:w-12 text-center font-black text-sm sm:text-xl ${color.text}">${gScore}</span>
+                            <button onclick="window.updateGroupScore(${i}, 1)" class="w-6 h-6 sm:w-10 sm:h-10 text-sm sm:text-xl font-bold ${color.btn} text-white transition">+</button>
                         </div>
                     </div>
                 </div>
                 
-                <div class="p-2 sm:p-3 flex-1 min-h-[100px] flex flex-wrap gap-2 items-start content-start relative">
-                    ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-sm pointer-events-none">학생을 이곳으로 이동하세요</div>` : ''}
+                <div class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1 sm:gap-2 items-stretch relative">
+                    ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                     ${groupStudents.map(s => {
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
                         let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) : '-';
@@ -1644,14 +1768,22 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         
                         let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
+                        // PC용 드래그이벤트와 모바일용 터치이벤트 통합 할당
                         return `
-                        <div draggable="true" ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" ondrop="window.handleDropOnStudent(event, ${s.no})" onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                             class="student-card relative bg-white border-2 ${badgeColor} px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-xl cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-w-[75px] sm:minw-[85px]">
+                        <div draggable="true" data-student-no="${s.no}" 
+                             ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
+                             ondrop="window.handleDropOnStudent(event, ${s.no})" 
+                             ontouchstart="window.handleTouchStart(event, ${s.no})"
+                             ontouchmove="window.handleTouchMove(event)"
+                             ontouchend="window.handleTouchEnd(event)"
+                             onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
+                             class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[36px] sm:min-h-[50px]">
                             ${captainBadge}
                             ${memberDrawnBadge}
-                            <span class="text-[9px] sm:text-[10px] font-bold opacity-60 mb-0.5">${s.no}번</span>
-                            <span class="font-black text-sm sm:text-base whitespace-nowrap mb-1" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
-                            <div class="flex flex-col items-center w-full bg-white/60 rounded px-1 py-0.5 border border-slate-100/50">
+                            <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
+                            <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                            
+                            <div class="hidden sm:flex flex-col items-center w-full bg-white/60 rounded px-1 py-0.5 border border-slate-100/50 mt-1">
                                 <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter" title="볼센스">${bsEmoji}</span>
                                 <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter" title="순발력">⚡${recText}</span>
                             </div>
@@ -1660,17 +1792,19 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     }).join('')}
                 </div>
 
-                <div class="bg-white/50 border-t ${color.border} p-2 flex justify-between items-center gap-2 print-hide">
-                    <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-xl sm:text-2xl hover:scale-110 transition bg-white w-8 h-8 sm:w-10 sm:h-10 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
-                        ${t.mode === 'stopwatch' ? '⏱️' : '⏳'}
-                    </button>
-                    <div class="flex-1 bg-white border border-slate-200 rounded-lg py-1 sm:py-1.5 text-center cursor-pointer shadow-inner" onclick="window.manualTimeEdit(${i})" title="터치하여 시간 직접 입력">
-                        <span id="time-display-${i}" class="font-mono text-lg sm:text-xl font-black tracking-wider ${timeColorClass}">${timerDisplayVal}</span>
-                    </div>
-                    <div class="flex gap-1">
-                        <button id="btn-play-${i}" onclick="window.toggleTimerPlay(${i})" class="bg-white text-slate-300 w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center text-sm sm:text-base font-bold">▶</button>
-                        <button onclick="window.resetTimer(${i})" class="bg-white text-slate-400 w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-red-500 hover:border-red-300 transition flex items-center justify-center text-sm sm:text-base font-bold">↻</button>
-                    </div>
+                <div class="bg-white/50 border-t ${color.border} p-1 flex flex-col sm:flex-row justify-between items-center gap-1 print-hide">
+                     <div class="w-full flex justify-between items-center">
+                         <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-2xl hover:scale-110 transition bg-white w-5 h-5 sm:w-10 sm:h-10 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
+                             ${t.mode === 'stopwatch' ? '⏱️' : '⏳'}
+                         </button>
+                         <div class="flex-1 mx-1 bg-white border border-slate-200 rounded text-center cursor-pointer shadow-inner px-1" onclick="window.manualTimeEdit(${i})" title="터치하여 시간 직접 입력">
+                             <span id="time-display-${i}" class="font-mono text-[10px] sm:text-xl font-black tracking-tighter ${timeColorClass}">${timerDisplayVal}</span>
+                         </div>
+                         <div class="flex gap-0.5">
+                             <button id="btn-play-${i}" onclick="window.toggleTimerPlay(${i})" class="bg-white text-slate-300 w-5 h-5 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-blue-500 transition flex items-center justify-center text-[10px] sm:text-base font-bold">▶</button>
+                             <button onclick="window.resetTimer(${i})" class="bg-white text-slate-400 w-5 h-5 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-red-500 transition flex items-center justify-center text-[10px] sm:text-base font-bold">↻</button>
+                         </div>
+                     </div>
                 </div>
             </div>`;
         }
