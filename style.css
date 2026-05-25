@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+.font-jua { font-family: 'Jua', sans-serif; }
+
+.student-row:hover .delete-btn { opacity: 1; }
+.delete-btn { opacity: 0; transition: opacity 0.2s; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+.sort-header { cursor: pointer; transition: background 0.2s; }
+.sort-header:hover { background-color: #f1f5f9; }
+.sort-icon { font-size: 0.7rem; margin-left: 1px; color: #94a3b8; }
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+@media (max-width: 640px) {
+.delete-btn { opacity: 1; }
+}
+
+@keyframes pop-in {
+0% { transform: scale(0.8); opacity: 0; }
+50% { transform: scale(1.05); }
+100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in {
+animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 카드 섞기 애니메이션 */
+@keyframes shuffle-left {
+    0%, 100% { transform: translateX(0) rotate(0deg); z-index: 10; }
+    50% { transform: translateX(-50px) rotate(-15deg) translateY(-10px); z-index: 20; }
+}
+@keyframes shuffle-right {
+    0%, 100% { transform: translateX(0) rotate(0deg); z-index: 10; }
+    50% { transform: translateX(50px) rotate(15deg) translateY(10px); z-index: 20; }
+}
+@keyframes shuffle-center {
+    0%, 100% { transform: scale(1); z-index: 15; }
+    50% { transform: scale(1.15); z-index: 25; }
+}
+.card-shuffle-1 { animation: shuffle-left 0.5s infinite ease-in-out; }
+.card-shuffle-2 { animation: shuffle-right 0.5s infinite ease-in-out 0.2s; }
+.card-shuffle-3 { animation: shuffle-center 0.5s infinite ease-in-out 0.4s; }
+
+/* 터치 조작 시 텍스트 선택 등 방지 */
+.student-card {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -user-select: none;
+    user-select: none;
+}
+
+.emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+
+.emoji-lvl-2 { position: relative; width: 18px; height: 14px; margin: 0 auto; }
+.emoji-lvl-2 span { position: absolute; font-size: 11px; line-height: 1; top: 1px; }
+.emoji-lvl-2 span:nth-child(1) { left: 0; z-index: 1; }
+.emoji-lvl-2 span:nth-child(2) { right: 0; z-index: 2; }
+
+@media print {
+.sticky.top-0, #tab-navigation, header, #manage-modal { display: none !important; }
+#student-management, #stamp-section { display: none !important; }
+#group-section { display: block !important; border: none; box-shadow: none; padding: 0; margin: 0; }
+.print-hide { display: none !important; }
+body { background: white !important; }
+main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+@page { margin: 10mm; }
+}
+
+/* 도장판 CSS */
+.stamp-cell { position: relative; cursor: pointer; transition: transform 0.1s ease-in-out, background-color 0.2s; }
+.stamp-cell:active { transform: scale(0.95); }
+@keyframes stampSlam {
+0% { transform: translate(-50%, -200%) scale(5); opacity: 0; }
+60% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+80% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.stamp-img {
+position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(3);
+width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
+}
+.stamp-cell.stamped .stamp-img { animation: stampSlam 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+.cell-number { color: #d1d5db; font-size: 1.5rem; z-index: 0; }
+.badge-animate { animation: popInAndShine 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+@keyframes popInAndShine {
+0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+50% { transform: scale(1.1) rotate(10deg); opacity: 1; }
+80% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes shake {
+0% { transform: translate(1px, 1px) rotate(0deg); }
+10% { transform: translate(-1px, -2px) rotate(-1deg); }
+20% { transform: translate(-3px, 0px) rotate(1deg); }
+30% { transform: translate(3px, 2px) rotate(0deg); }
+40% { transform: translate(1px, -1px) rotate(1deg); }
+50% { transform: translate(-1px, 2px) rotate(-1deg); }
+60% { transform: translate(-3px, 1px) rotate(0deg); }
+70% { transform: translate(3px, 1px) rotate(-1deg); }
+80% { transform: translate(-1px, -1px) rotate(1deg); }
+90% { transform: translate(1px, 2px) rotate(0deg); }
+100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+.animate-shake { animation: shake 0.3s infinite; }
+
+/* 스마트폰 세로 화면 최적화 */
+@media screen and (max-width: 640px) {
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+    table th, 
+    table td {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+        white-space: nowrap; 
+    }
+    .student-row button, .student-row input {
+        min-height: 32px; 
+    }
+    .student-row td:nth-child(2) button {
+        white-space: nowrap;
+    }
+}
