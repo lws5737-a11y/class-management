@@ -278,8 +278,8 @@ const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 let touchTimeout;
 window.touchClone = null;
 window.activeTouchElement = null;
-window.touchOffsetX = 0;
-window.touchOffsetY = 0;
+window.touchStartX = 0;
+window.touchStartY = 0;
 window.isTouchDragging = false;
 
 // 모바일: 카드를 꾹 눌렀을 때 (Touch Start)
@@ -287,19 +287,22 @@ window.handleTouchStart = function(e, studentNo) {
     const touch = e.touches[0];
     const target = e.currentTarget;
 
-    // 0.2초 이상 길게 누르면 드래그 상태로 진입
+    // 터치 시작 위치 저장 (GPU 가속 변환용)
+    window.touchStartX = touch.clientX;
+    window.touchStartY = touch.clientY;
+
+    // 0.1초 이상 길게 누르면 드래그 상태로 진입 (반응 속도 개선)
     touchTimeout = setTimeout(() => {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
         window.selectedGroupStudent = null; 
 
-        // 현재 클릭 하이라이트된 링 삭제
         document.querySelectorAll('.student-card').forEach(card => card.classList.remove('ring-4', 'ring-yellow-400'));
 
         const clone = target.cloneNode(true);
         const rect = target.getBoundingClientRect();
         clone.style.position = 'fixed';
-        clone.style.left = rect.left + 'px';
+        clone.style.left = rect.left + 'px'; // 초기 위치는 left, top으로 고정
         clone.style.top = rect.top + 'px';
         clone.style.width = rect.width + 'px';
         clone.style.height = rect.height + 'px';
@@ -307,44 +310,64 @@ window.handleTouchStart = function(e, studentNo) {
         clone.style.zIndex = '9999';
         clone.style.pointerEvents = 'none'; // 아래쪽 요소를 인식하기 위해 필수
         clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
-        clone.style.transform = 'scale(1.05)';
+        clone.style.transform = 'translate3d(0px, 0px, 0px) scale(1.05)';
+        clone.style.willChange = 'transform'; // GPU 렌더링 힌트
+        
         document.body.appendChild(clone);
         window.touchClone = clone;
-
-        window.touchOffsetX = touch.clientX - rect.left;
-        window.touchOffsetY = touch.clientY - rect.top;
 
         target.style.opacity = '0.3';
         window.activeTouchElement = target;
         
-        // 드래그가 시작됨을 진동으로 알림
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 200); 
+    }, 100); 
 };
 
-// 모바일: 카드를 끌고 이동할 때 (Touch Move)
+// 모바일: 카드를 끌고 이동할 때 (Touch Move) - 딜레이 최적화 및 하이라이트 추가
 window.handleTouchMove = function(e) {
     if (!window.touchClone) {
         clearTimeout(touchTimeout); // 꾹 누르기 전에 움직이면 드래그 취소 (일반 스크롤 허용)
         return;
     }
-    e.preventDefault(); // 드래그 중에는 화면 스크롤 방지
+    e.preventDefault(); 
     const touch = e.touches[0];
-    window.touchClone.style.left = (touch.clientX - window.touchOffsetX) + 'px';
-    window.touchClone.style.top = (touch.clientY - window.touchOffsetY) + 'px';
+    
+    // translate3d를 사용하여 DOM Reflow 없이 하드웨어 가속으로 부드럽게 이동
+    const dx = touch.clientX - window.touchStartX;
+    const dy = touch.clientY - window.touchStartY;
+    window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
+
+    // 하이라이트 효과 처리
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    // 이전 하이라이트 지우기
+    document.querySelectorAll('.drop-target-active').forEach(el => {
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    });
+
+    if (elemBelow) {
+        const studentCard = elemBelow.closest('.student-card');
+        const groupArea = elemBelow.closest('.group-area');
+        
+        if (studentCard) {
+            const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
+            if (targetNo && targetNo !== window.draggedStudentNo) {
+                studentCard.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400');
+            }
+        } else if (groupArea) {
+            groupArea.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+        }
+    }
 };
 
 // 모바일: 손가락을 뗐을 때 (Touch End)
 window.handleTouchEnd = function(e) {
     clearTimeout(touchTimeout);
     if (!window.touchClone) return;
-    
-    e.preventDefault(); // 드래그 후 클릭 이벤트가 추가로 발생하는 것 방지
+    e.preventDefault(); 
     
     const touch = e.changedTouches[0];
-    window.touchClone.style.display = 'none'; 
-    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY); // 손가락 아래의 요소 찾기
-    window.touchClone.style.display = 'block';
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
 
     if (window.activeTouchElement) {
         window.activeTouchElement.style.opacity = '1';
@@ -352,25 +375,25 @@ window.handleTouchEnd = function(e) {
 
     if (elemBelow) {
         const studentCard = elemBelow.closest('.student-card');
+        const groupArea = elemBelow.closest('.group-area');
         if (studentCard) {
-            // 다른 학생 카드 위에 놓았을 때 -> 위치 교환
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
             if (targetNo && targetNo !== window.draggedStudentNo) {
                 window.handleDropLogic(window.draggedStudentNo, targetNo, null);
             }
-        } else {
-            // 모둠 빈 공간에 놓았을 때 -> 해당 모둠으로 이동
-            const groupArea = elemBelow.closest('.group-area');
-            if (groupArea) {
-                const targetGroup = parseInt(groupArea.getAttribute('data-group-id'));
-                if (targetGroup) {
-                    window.handleDropLogic(window.draggedStudentNo, null, targetGroup);
-                }
+        } else if (groupArea) {
+            const targetGroup = parseInt(groupArea.getAttribute('data-group-id'));
+            if (targetGroup) {
+                window.handleDropLogic(window.draggedStudentNo, null, targetGroup);
             }
         }
     }
 
-    // 상태 초기화
+    // 상태 및 하이라이트 초기화
+    document.querySelectorAll('.drop-target-active').forEach(el => {
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    });
+    
     window.touchClone.remove();
     window.touchClone = null;
     window.activeTouchElement = null;
@@ -388,6 +411,11 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     
     const draggedStudent = students[draggedIndex];
     let changed = false;
+
+    // 만약의 경우를 대비한 하이라이트 클래스 전체 제거
+    document.querySelectorAll('.drop-target-active').forEach(el => {
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    });
 
     if (targetNo !== null && targetNo !== draggedNo) {
         const targetIndex = students.findIndex(s => s.no === targetNo);
@@ -420,11 +448,10 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     window.renderGroups();
 };
 
-// PC 환경: 드래그 앤 드롭 이벤트
+// PC 환경: 드래그 앤 드롭 이벤트 및 하이라이트
 window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
-    window.renderGroups(); 
     e.dataTransfer.effectAllowed = 'move';
     setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
@@ -432,9 +459,28 @@ window.handleDragStart = function(e, studentNo) {
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
     e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
+    document.querySelectorAll('.drop-target-active').forEach(el => {
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    });
 };
 
-window.handleDragOver = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+window.handleDragOverGroup = function(e) { 
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move'; 
+    e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+};
+window.handleDragLeaveGroup = function(e) {
+    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+};
+
+window.handleDragOverStudent = function(e, studentNo) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    if (studentNo !== window.draggedStudentNo) {
+        e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400');
+    }
+};
+window.handleDragLeaveStudent = function(e) {
+    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400');
+};
 
 window.handleDropOnStudent = function(e, targetStudentNo) {
     e.preventDefault(); e.stopPropagation(); 
@@ -450,7 +496,7 @@ window.handleDropOnGroup = function(e, targetGroupId) {
 
 // 일반 클릭 이벤트 (선택 및 교체)
 window.handleStudentCardClick = function(studentNo) {
-    if (window.isTouchDragging) { window.isTouchDragging = false; return; } // 드래그 직후 클릭 무시
+    if (window.isTouchDragging) { window.isTouchDragging = false; return; } 
     
     if (window.selectedGroupStudent === null) {
         window.selectedGroupStudent = studentNo;
@@ -655,7 +701,6 @@ setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, st
 }
 }
 
-
 // ==========================================
 // 5. 도장판, 스톱워치 등 기존 공통 로직
 // ==========================================
@@ -780,7 +825,6 @@ if (!str.includes(':')) return isNaN(parseFloat(str)) ? 0 : Math.floor(parseFloa
 let parts = str.split(':'); return ((parseInt(parts[0]) || 0) * 60 * 1000) + Math.floor((parseFloat(parts[1]) || 0) * 1000);
 }
 
-// 메모장 기능
 window.openMemoModal = function(studentNo, studentName) {
     currentEditingStudentNo = studentNo;
     const student = classData[currentClass].find(s => s.no === studentNo);
@@ -1692,13 +1736,16 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
         
-        // 스마트폰에서 n개의 열이 각각 나란히 배치되도록 그리드 구성
         container.className = 'grid gap-1 sm:gap-4 p-1 w-full';
         if (numGroups === 2) container.classList.add('grid-cols-2');
         else if (numGroups === 3) container.classList.add('grid-cols-3');
         else container.classList.add('grid-cols-4');
         
         const students = classData[currentClass];
+        const presentStudents = students.filter(s => s.attendance);
+        // 전체 학생을 대상으로 랭킹을 매기기 위해 유효한 기록 추출
+        let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
+
         const colors = [
             { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
             { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', text: 'text-fuchsia-800', header: 'bg-fuchsia-100', btn: 'bg-fuchsia-500 hover:bg-fuchsia-600', ring: 'ring-fuchsia-300' },
@@ -1737,9 +1784,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             const isGroupDrawn = drawnGroupIds.includes(i);
             const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
 
+            // 드롭 가능한 모둠 영역 (PC용 이벤트 추가)
             html += `
             <div class="${color.bg} border sm:border-2 ${color.border} rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
-                 data-group-id="${i}" ondragover="window.handleDragOver(event)" ondrop="window.handleDropOnGroup(event, ${i})" onclick="window.handleGroupAreaClick(${i})">
+                 data-group-id="${i}" 
+                 ondragover="window.handleDragOverGroup(event)" 
+                 ondragleave="window.handleDragLeaveGroup(event)"
+                 ondrop="window.handleDropOnGroup(event, ${i})" 
+                 onclick="window.handleGroupAreaClick(${i})">
                 
                 <div class="${color.header} px-1 py-1 sm:px-4 sm:py-3 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
                     <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 text-center">
@@ -1758,7 +1810,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                     ${groupStudents.map(s => {
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
-                        let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) : '-';
+                        
+                        // 개인 순발력 및 랭킹 계산
+                        let rankStr = "";
+                        if (s.recordMs > 0) {
+                            let rank = validRecords.indexOf(s.recordMs) + 1;
+                            rankStr = ` <span class="text-blue-600 font-black">(${rank}위)</span>`;
+                        }
+                        let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
                         
                         let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                         let isSelected = window.selectedGroupStudent === s.no;
@@ -1768,24 +1827,26 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         
                         let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
-                        // PC용 드래그이벤트와 모바일용 터치이벤트 통합 할당
+                        // 학생 카드 생성 (숨김 처리 해제 및 항상 능력치 표시)
                         return `
                         <div draggable="true" data-student-no="${s.no}" 
                              ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
+                             ondragover="window.handleDragOverStudent(event, ${s.no})"
+                             ondragleave="window.handleDragLeaveStudent(event)"
                              ondrop="window.handleDropOnStudent(event, ${s.no})" 
                              ontouchstart="window.handleTouchStart(event, ${s.no})"
                              ontouchmove="window.handleTouchMove(event)"
                              ontouchend="window.handleTouchEnd(event)"
                              onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                             class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[36px] sm:min-h-[50px]">
+                             class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[46px] sm:min-h-[50px]">
                             ${captainBadge}
                             ${memberDrawnBadge}
                             <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
                             <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
                             
-                            <div class="hidden sm:flex flex-col items-center w-full bg-white/60 rounded px-1 py-0.5 border border-slate-100/50 mt-1">
-                                <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter" title="볼센스">${bsEmoji}</span>
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter" title="순발력">⚡${recText}</span>
+                            <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
+                                <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="순발력">⚡${recText}</span>
                             </div>
                         </div>
                         `;
