@@ -287,11 +287,9 @@ window.handleTouchStart = function(e, studentNo) {
     const touch = e.touches[0];
     const target = e.currentTarget;
 
-    // 터치 시작 위치 저장 (GPU 가속 변환용)
     window.touchStartX = touch.clientX;
     window.touchStartY = touch.clientY;
 
-    // 0.1초 이상 길게 누르면 드래그 상태로 진입 (반응 속도 개선)
     touchTimeout = setTimeout(() => {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
@@ -302,16 +300,16 @@ window.handleTouchStart = function(e, studentNo) {
         const clone = target.cloneNode(true);
         const rect = target.getBoundingClientRect();
         clone.style.position = 'fixed';
-        clone.style.left = rect.left + 'px'; // 초기 위치는 left, top으로 고정
+        clone.style.left = rect.left + 'px'; 
         clone.style.top = rect.top + 'px';
         clone.style.width = rect.width + 'px';
         clone.style.height = rect.height + 'px';
         clone.style.opacity = '0.9';
         clone.style.zIndex = '9999';
-        clone.style.pointerEvents = 'none'; // 아래쪽 요소를 인식하기 위해 필수
+        clone.style.pointerEvents = 'none'; 
         clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
         clone.style.transform = 'translate3d(0px, 0px, 0px) scale(1.05)';
-        clone.style.willChange = 'transform'; // GPU 렌더링 힌트
+        clone.style.willChange = 'transform'; 
         
         document.body.appendChild(clone);
         window.touchClone = clone;
@@ -323,24 +321,21 @@ window.handleTouchStart = function(e, studentNo) {
     }, 100); 
 };
 
-// 모바일: 카드를 끌고 이동할 때 (Touch Move) - 딜레이 최적화 및 하이라이트 추가
+// 모바일: 카드를 끌고 이동할 때 (Touch Move) 
 window.handleTouchMove = function(e) {
     if (!window.touchClone) {
-        clearTimeout(touchTimeout); // 꾹 누르기 전에 움직이면 드래그 취소 (일반 스크롤 허용)
+        clearTimeout(touchTimeout); 
         return;
     }
     e.preventDefault(); 
     const touch = e.touches[0];
     
-    // translate3d를 사용하여 DOM Reflow 없이 하드웨어 가속으로 부드럽게 이동
     const dx = touch.clientX - window.touchStartX;
     const dy = touch.clientY - window.touchStartY;
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
 
-    // 하이라이트 효과 처리
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
     
-    // 이전 하이라이트 지우기
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -382,14 +377,13 @@ window.handleTouchEnd = function(e) {
                 window.handleDropLogic(window.draggedStudentNo, targetNo, null);
             }
         } else if (groupArea) {
-            const targetGroup = parseInt(groupArea.getAttribute('data-group-id'));
-            if (targetGroup) {
-                window.handleDropLogic(window.draggedStudentNo, null, targetGroup);
+            const targetGroupAttr = groupArea.getAttribute('data-group-id');
+            if (targetGroupAttr !== null) {
+                window.handleDropLogic(window.draggedStudentNo, null, parseInt(targetGroupAttr));
             }
         }
     }
 
-    // 상태 및 하이라이트 초기화
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -412,7 +406,6 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     const draggedStudent = students[draggedIndex];
     let changed = false;
 
-    // 만약의 경우를 대비한 하이라이트 클래스 전체 제거
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -424,19 +417,20 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
             const dGroup = draggedStudent[`group_${currentGroupMode}`];
             const tGroup = targetStudent[`group_${currentGroupMode}`];
             
-            if (dGroup !== tGroup) { // 다른 모둠 학생과 교체
-                draggedStudent[`group_${currentGroupMode}`] = tGroup;
-                targetStudent[`group_${currentGroupMode}`] = dGroup;
-            } else { // 같은 모둠 내에서 순서 변경
+            if (dGroup !== tGroup) { // 다른 모둠 학생과 교체 또는 미편성-편성 교체
+                draggedStudent[`group_${currentGroupMode}`] = tGroup || null;
+                targetStudent[`group_${currentGroupMode}`] = dGroup || null;
+            } else { // 같은 모둠(또는 둘다 미편성) 내에서 순서 변경
                 students.splice(draggedIndex, 1); 
                 const newTargetIndex = students.findIndex(s => s.no === targetNo);
                 students.splice(newTargetIndex, 0, draggedStudent);
             }
             changed = true;
         }
-    } else if (targetGroup !== null) { // 빈 모둠 영역으로 이동
-        if (draggedStudent[`group_${currentGroupMode}`] !== targetGroup) {
-            draggedStudent[`group_${currentGroupMode}`] = targetGroup;
+    } else if (targetGroup !== null) { // 특정 모둠 또는 미편성 영역(0)으로 이동
+        let newGroup = targetGroup === 0 ? null : targetGroup;
+        if (draggedStudent[`group_${currentGroupMode}`] !== newGroup) {
+            draggedStudent[`group_${currentGroupMode}`] = newGroup;
             changed = true;
         }
     }
@@ -448,7 +442,7 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     window.renderGroups();
 };
 
-// PC 환경: 드래그 앤 드롭 이벤트 및 하이라이트
+// PC 환경: 드래그 앤 드롭 이벤트
 window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
@@ -494,7 +488,6 @@ window.handleDropOnGroup = function(e, targetGroupId) {
     window.draggedStudentNo = null;
 };
 
-// 일반 클릭 이벤트 (선택 및 교체)
 window.handleStudentCardClick = function(studentNo) {
     if (window.isTouchDragging) { window.isTouchDragging = false; return; } 
     
@@ -517,7 +510,6 @@ window.handleGroupAreaClick = function(groupId) {
     }
 };
 
-// 학급 숨김 및 모달 관리
 window.saveClassVisibility = function(className, isVisible) {
     let visibilityData = JSON.parse(localStorage.getItem('classVisibility')) || {};
     visibilityData[className] = isVisible;
@@ -696,7 +688,7 @@ setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, st
     console.error("클라우드 자동 저장 실패:", error); 
     isDebouncing = false; 
     if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } 
-    window.showModal("저장 실패", "네트워크 문제 또는 도장 이미지 용량이 너무 커서 저장에 실패했습니다. (새로고침 시 데이터가 유실될 수 있습니다.)");
+    window.showModal("저장 실패", "네트워크 문제 또는 도장 이미지 용량이 너무 커서 저장에 실패했습니다.");
 });
 }
 }
@@ -1266,6 +1258,7 @@ if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
 document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
 window.showTab(currentTab); window.renderClassSelect(); 
+window.setGroupMode(currentGroupMode); 
 window.updateGroupDrawSelect(); 
 window.renderStudentList(); window.renderGroups(); window.renderStampBoard();
 }
@@ -1557,7 +1550,14 @@ window.setGroupMode = function(mode) {
 currentGroupMode = mode; activeTimers = {}; window.selectedGroupStudent = null;
 ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
 const btn = document.getElementById(`btn-mode-${m}`);
-if (btn) btn.className = (m === mode) ? "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition bg-white text-indigo-600 shadow-sm whitespace-nowrap" : "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 hover:text-slate-700 whitespace-nowrap";
+if (btn) {
+    if (m === mode) {
+        // 선택된 모드 시각적 강조 효과 적용
+        btn.className = "flex-1 sm:flex-none px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition bg-indigo-600 text-white shadow-lg ring-2 ring-indigo-300 ring-offset-1 transform scale-105 whitespace-nowrap z-10";
+    } else {
+        btn.className = "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 bg-transparent hover:bg-slate-200 hover:text-slate-800 whitespace-nowrap border border-transparent hover:border-slate-200";
+    }
+}
 });
 
 const descEl = document.getElementById('group-mode-desc'); const btnText = document.getElementById('generate-btn-text');
@@ -1575,7 +1575,7 @@ window.resetCurrentGroup = function() {
 if (!currentClass || !classData[currentClass]) { window.showModal("알림", "학급을 먼저 선택해주세요."); return; }
 let modeName = currentGroupMode === 'mixed2' ? '혼성 2팀' : (currentGroupMode === 'mixed3' ? '혼성 3팀' : (currentGroupMode === 'mixed4' ? '혼성 4팀' : '동성 4팀'));
 
-window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 부여된 모둠 점수와 기록도 함께 지워집니다.</span>`, true, () => {
+window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b> 편성을 모두 초기화하시겠습니까?<br><span class="text-red-500 text-xs">※ 모둠 기록이 초기화되며 모든 학생이 미편성 영역으로 이동합니다.</span>`, true, () => {
 classData[currentClass].forEach(student => { 
     student[`group_${currentGroupMode}`] = null; 
     student[`captain_${currentGroupMode}`] = false;
@@ -1596,7 +1596,7 @@ else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback
 else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
 else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
 
-    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점 삼기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
+    window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
         document.getElementById('group-shuffle-overlay').classList.remove('hidden');
         document.getElementById('group-shuffle-overlay').classList.add('flex');
         window.playCardShuffleSound();
@@ -1728,7 +1728,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         window.renderGroups();
     }
 
-    // ★ 모둠별 열(Column) 렌더링 영역 전면 개편 ★
+    // 모둠별 열(Column) 및 미편성 영역 렌더링
     window.renderGroups = function() {
         const container = document.getElementById('group-result'); if (!container) return;
         if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -1743,7 +1743,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         
         const students = classData[currentClass];
         const presentStudents = students.filter(s => s.attendance);
-        // 전체 학생을 대상으로 랭킹을 매기기 위해 유효한 기록 추출
         let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
 
         const colors = [
@@ -1784,7 +1783,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             const isGroupDrawn = drawnGroupIds.includes(i);
             const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
 
-            // 드롭 가능한 모둠 영역 (PC용 이벤트 추가)
             html += `
             <div class="${color.bg} border sm:border-2 ${color.border} rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
                  data-group-id="${i}" 
@@ -1810,24 +1808,19 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                     ${groupStudents.map(s => {
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
-                        
-                        // 개인 순발력 및 랭킹 계산
                         let rankStr = "";
                         if (s.recordMs > 0) {
                             let rank = validRecords.indexOf(s.recordMs) + 1;
                             rankStr = ` <span class="text-blue-600 font-black">(${rank}위)</span>`;
                         }
                         let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
-                        
                         let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                         let isCaptain = s[`captain_${currentGroupMode}`];
                         let captainBadge = isCaptain ? '<span class="absolute -top-2 -right-2 text-lg drop-shadow-sm z-20">👑</span>' : '';
-                        
                         let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
-                        // 학생 카드 생성 (숨김 처리 해제 및 항상 능력치 표시)
                         return `
                         <div draggable="true" data-student-no="${s.no}" 
                              ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
@@ -1843,7 +1836,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                             ${memberDrawnBadge}
                             <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
                             <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
-                            
                             <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
                                 <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
                                 <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="순발력">⚡${recText}</span>
@@ -1869,6 +1861,66 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 </div>
             </div>`;
         }
+
+        // --- 🎲 미편성 영역 추가 ---
+        const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`] && s.attendance);
+        unassignedStudents.sort((a, b) => a.no - b.no);
+
+        html += `
+        <div class="col-span-full mt-2 bg-slate-100/80 border-2 border-dashed border-slate-300 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
+             data-group-id="0" 
+             ondragover="window.handleDragOverGroup(event)" 
+             ondragleave="window.handleDragLeaveGroup(event)"
+             ondrop="window.handleDropOnGroup(event, 0)" 
+             onclick="window.handleGroupAreaClick(0)">
+            
+            <div class="flex items-center gap-2 mb-2 px-1">
+                <h3 class="font-bold text-sm sm:text-base text-slate-600 flex items-center gap-1">
+                    <span>🤷 미편성 영역</span>
+                </h3>
+                <span class="text-[10px] sm:text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">${unassignedStudents.length}명</span>
+                <span class="text-[10px] text-slate-400 ml-auto hidden sm:inline">※ 편성에서 제외되거나 아직 배치되지 않은 학생들입니다.</span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 min-h-[60px] items-start p-2 bg-white/50 rounded-lg border border-slate-200">
+                ${unassignedStudents.length === 0 ? `<div class="w-full flex items-center justify-center text-slate-400 font-bold text-xs sm:text-sm py-4 pointer-events-none">모든 학생이 편성되었습니다.</div>` : ''}
+                ${unassignedStudents.map(s => {
+                    let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
+                    let rankStr = "";
+                    if (s.recordMs > 0) {
+                        let rank = validRecords.indexOf(s.recordMs) + 1;
+                        rankStr = ` <span class="text-blue-600 font-black">(${rank}위)</span>`;
+                    }
+                    let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
+                    let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
+                    let isSelected = window.selectedGroupStudent === s.no;
+                    let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                    let isCaptain = s[`captain_${currentGroupMode}`];
+                    let captainBadge = isCaptain ? '<span class="absolute -top-2 -right-2 text-lg drop-shadow-sm z-20">👑</span>' : '';
+                    
+                    return `
+                    <div draggable="true" data-student-no="${s.no}" 
+                         ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
+                         ondragover="window.handleDragOverStudent(event, ${s.no})"
+                         ondragleave="window.handleDragLeaveStudent(event)"
+                         ondrop="window.handleDropOnStudent(event, ${s.no})" 
+                         ontouchstart="window.handleTouchStart(event, ${s.no})"
+                         ontouchmove="window.handleTouchMove(event)"
+                         ontouchend="window.handleTouchEnd(event)"
+                         onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
+                         class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[46px] sm:min-h-[50px]">
+                        ${captainBadge}
+                        <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
+                        <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                        <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
+                            <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="순발력">⚡${recText}</span>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>`;
         
         container.innerHTML = html;
     }
