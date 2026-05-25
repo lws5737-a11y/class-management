@@ -290,7 +290,7 @@ window.handleTouchStart = function(e, studentNo) {
     window.touchStartX = touch.clientX;
     window.touchStartY = touch.clientY;
 
-    // 반응 속도를 60ms로 줄여 더 빠르게 드래그가 시작되도록 개선
+    // 터치 클릭과 드래그를 구분하기 위해 300ms 딜레이 부여
     touchTimeout = setTimeout(() => {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
@@ -310,7 +310,6 @@ window.handleTouchStart = function(e, studentNo) {
         clone.style.pointerEvents = 'none'; 
         clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
         
-        // ★ 핵심: 복제된 요소의 애니메이션 속성을 제거하여 즉각적으로 반응하도록 수정 ★
         clone.style.transition = 'none'; 
         clone.classList.remove('transition-all', 'duration-200');
         
@@ -324,7 +323,7 @@ window.handleTouchStart = function(e, studentNo) {
         window.activeTouchElement = target;
         
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 60); 
+    }, 300); // 60ms -> 300ms 로 변경
 };
 
 // 모바일: 카드를 끌고 이동할 때 (Touch Move) 
@@ -424,17 +423,17 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
             const dGroup = draggedStudent[`group_${currentGroupMode}`];
             const tGroup = targetStudent[`group_${currentGroupMode}`];
             
-            if (dGroup !== tGroup) { // 다른 모둠 학생과 교체 또는 미편성-편성 교체
+            if (dGroup !== tGroup) { 
                 draggedStudent[`group_${currentGroupMode}`] = tGroup || null;
                 targetStudent[`group_${currentGroupMode}`] = dGroup || null;
-            } else { // 같은 모둠(또는 둘다 미편성) 내에서 순서 변경
+            } else { 
                 students.splice(draggedIndex, 1); 
                 const newTargetIndex = students.findIndex(s => s.no === targetNo);
                 students.splice(newTargetIndex, 0, draggedStudent);
             }
             changed = true;
         }
-    } else if (targetGroup !== null) { // 특정 모둠 또는 미편성 영역(0)으로 이동
+    } else if (targetGroup !== null) { 
         let newGroup = targetGroup === 0 ? null : targetGroup;
         if (draggedStudent[`group_${currentGroupMode}`] !== newGroup) {
             draggedStudent[`group_${currentGroupMode}`] = newGroup;
@@ -1749,7 +1748,11 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         
         const students = classData[currentClass];
         const presentStudents = students.filter(s => s.attendance);
-        let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
+        
+        // ★ 전체 및 성별 기준 유효 기록 분리 계산 ★
+        let validRecordsAll = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
+        let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
+        let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
 
         const colors = [
             { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
@@ -1814,11 +1817,21 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                     ${groupStudents.map(s => {
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
+                        
+                        // ★ 동성 4팀 여부에 따른 순위 계산 로직 ★
                         let rankStr = "";
                         if (s.recordMs > 0) {
-                            let rank = validRecords.indexOf(s.recordMs) + 1;
-                            rankStr = ` <span class="text-blue-600 font-black">(${rank}위)</span>`;
+                            let rank;
+                            let rankPrefix = "";
+                            if (currentGroupMode === 'gender') {
+                                rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
+                                rankPrefix = s.gender;
+                            } else {
+                                rank = validRecordsAll.indexOf(s.recordMs) + 1;
+                            }
+                            rankStr = ` <span class="text-blue-600 font-black">(${rankPrefix}${rank}위)</span>`;
                         }
+                        
                         let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
                         let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                         let isSelected = window.selectedGroupStudent === s.no;
@@ -1868,7 +1881,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             </div>`;
         }
 
-        // --- 🎲 미편성 영역 추가 ---
+        // --- 🎲 미편성 영역 ---
         const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`] && s.attendance);
         unassignedStudents.sort((a, b) => a.no - b.no);
 
@@ -1892,11 +1905,21 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 ${unassignedStudents.length === 0 ? `<div class="w-full flex items-center justify-center text-slate-400 font-bold text-xs sm:text-sm py-4 pointer-events-none">모든 학생이 편성되었습니다.</div>` : ''}
                 ${unassignedStudents.map(s => {
                     let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
+                    
+                    // ★ 동성 4팀 여부에 따른 순위 계산 로직 (미편성 영역) ★
                     let rankStr = "";
                     if (s.recordMs > 0) {
-                        let rank = validRecords.indexOf(s.recordMs) + 1;
-                        rankStr = ` <span class="text-blue-600 font-black">(${rank}위)</span>`;
+                        let rank;
+                        let rankPrefix = "";
+                        if (currentGroupMode === 'gender') {
+                            rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
+                            rankPrefix = s.gender;
+                        } else {
+                            rank = validRecordsAll.indexOf(s.recordMs) + 1;
+                        }
+                        rankStr = ` <span class="text-blue-600 font-black">(${rankPrefix}${rank}위)</span>`;
                     }
+                    
                     let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
                     let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                     let isSelected = window.selectedGroupStudent === s.no;
@@ -1930,17 +1953,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         
         container.innerHTML = html;
 
-        // ★ 모둠 뽑기창 위치 이동 (미편성 영역 아래로 자동 정렬) ★
         setTimeout(() => {
             const groupResult = document.getElementById('group-result');
             const drawTarget = document.getElementById('group-draw-target');
             if (groupResult && drawTarget) {
                 let drawContainer = drawTarget;
-                // group-section의 직계 자식인 뽑기 컨테이너 찾기
                 while (drawContainer.parentElement && drawContainer.parentElement.id !== 'group-section') {
                     drawContainer = drawContainer.parentElement;
                 }
-                // 찾은 컨테이너가 group-result가 아니라면 맨 아래로 이동
                 if (drawContainer && drawContainer.id !== 'group-result') {
                     document.getElementById('group-section').appendChild(drawContainer);
                 }
