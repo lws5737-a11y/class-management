@@ -6,26 +6,36 @@ window.isDraggingCard = false;
 window.selectedGroupStudent = null; 
 
 // ==========================================
-// 1. 오디오 및 상단 헤더 고정 처리
+// 1. 헤더 슬라이드 및 탭 텍스트 처리 / 오디오 초기화
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => {
-        const allElements = document.querySelectorAll('div, header, p, span, h1, h2');
-        for (let el of allElements) {
-            if (el.textContent && el.textContent.includes("스마트체육수업 매니저 made by 우석쌤")) {
-                let headerBar = el.closest('header') || el.closest('.bg-white') || el.parentElement;
-                if (headerBar) {
-                    headerBar.style.position = 'sticky';
-                    headerBar.style.top = '0';
-                    headerBar.style.zIndex = '1000';
-                    headerBar.style.backgroundColor = 'white'; 
-                }
-                break;
-            }
-        }
-    }, 100);
+    // 하단 탭 아이콘(이모지)을 제거하고 텍스트만 표시되도록 강제 설정
+    const tabStudent = document.getElementById('tab-student');
+    if(tabStudent) tabStudent.innerText = '출석부';
+    
+    const tabGroup = document.getElementById('tab-group');
+    if(tabGroup) tabGroup.innerText = '모둠';
+    
+    const tabStamp = document.getElementById('tab-stamp');
+    if(tabStamp) tabStamp.innerText = '도장판';
 });
+
+// 상단 헤더 숨김버튼 슬라이드 토글 기능
+window.toggleHeaderActions = function() {
+    const panel = document.getElementById('header-action-panel');
+    const icon = document.getElementById('header-toggle-icon');
+    
+    if (panel.classList.contains('max-h-0')) {
+        panel.classList.remove('max-h-0');
+        panel.classList.add('max-h-[200px]'); // 열림 (최대 높이 지정으로 슬라이드 효과)
+        icon.style.transform = 'rotate(180deg)'; // 화살표 방향 전환
+    } else {
+        panel.classList.remove('max-h-[200px]');
+        panel.classList.add('max-h-0'); // 닫힘
+        icon.style.transform = 'rotate(0deg)';
+    }
+};
 
 let audioCtx;
 function initAudio() {
@@ -870,7 +880,13 @@ onAuthStateChanged(auth, (user) => {
         userId = user.uid;
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
-        document.getElementById('user-email').innerText = user.email.split('@')[0];
+        
+        // 이메일 표시 엘리먼트가 존재할 경우에만 업데이트
+        const emailEl = document.getElementById('user-email');
+        if(emailEl) {
+            emailEl.innerText = user.email.split('@')[0];
+        }
+        
         setupFirestoreListener();
         if (!currentClass) {
             window.openManageModal();
