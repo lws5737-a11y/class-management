@@ -9,7 +9,6 @@ window.selectedGroupStudent = null;
 // 1. 오디오 및 상단 헤더 고정 처리
 // ==========================================
 
-// 최상단 타이틀(스마트체육수업 매니저) 고정 스크립트
 document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
         const allElements = document.querySelectorAll('div, header, p, span, h1, h2');
@@ -20,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     headerBar.style.position = 'sticky';
                     headerBar.style.top = '0';
                     headerBar.style.zIndex = '1000';
-                    headerBar.style.backgroundColor = 'white'; // 투명해지지 않도록 배경색 지정
+                    headerBar.style.backgroundColor = 'white'; 
                 }
                 break;
             }
@@ -760,7 +759,6 @@ window.renderClassSelect = function() {
     const toggleBtn = document.getElementById('toggle-hidden-classes-btn');
     if(!listEl) return;
     
-    // 기존 버튼이 HTML에 있다면 안 보이게 처리
     if (toggleBtn) toggleBtn.style.display = 'none';
 
     listEl.innerHTML = ''; 
@@ -775,7 +773,6 @@ window.renderClassSelect = function() {
     let visibleClasses = classes.filter(c => window.isClassVisible(c));
     let hiddenClasses = classes.filter(c => !window.isClassVisible(c));
 
-    // 1. 보이는 학급 (Drop Zone)
     const visibleContainer = document.createElement('div');
     visibleContainer.className = "flex flex-wrap gap-2 mb-4 p-2 border-2 border-transparent rounded-xl transition visible-drop-zone min-h-[60px] bg-white w-full items-center";
     visibleContainer.ondragover = window.handleClassDragOver;
@@ -790,7 +787,6 @@ window.renderClassSelect = function() {
     }
     listEl.appendChild(visibleContainer);
 
-    // 2. 숨긴 학급 휴지통 영역 (드롭 & 버튼 클릭 겸용)
     const hiddenHeader = document.createElement('div');
     hiddenHeader.className = "w-full text-center py-3 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer text-slate-500 font-bold text-sm hover:bg-slate-200 transition hidden-drop-zone flex items-center justify-center gap-2";
     hiddenHeader.innerHTML = window.showHiddenClasses ? "🙈 숨긴 학급 닫기" : `🗑️ 숨긴 학급 휴지통 보기/버리기 (${hiddenClasses.length})`;
@@ -801,7 +797,6 @@ window.renderClassSelect = function() {
     
     listEl.appendChild(hiddenHeader);
 
-    // 3. 숨겨진 학급 목록 펼치기
     if (window.showHiddenClasses && hiddenClasses.length > 0) {
         const hiddenContainer = document.createElement('div');
         hiddenContainer.className = "flex flex-wrap gap-2 mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200 hidden-drop-zone min-h-[60px] w-full items-center";
@@ -840,12 +835,10 @@ function createClassButtonDOM(cls, isVisible) {
         window.closeManageModal(); 
     }; 
     
-    // 모바일 터치 이벤트
     btn.ontouchstart = (e) => window.handleClassTouchStart(e, cls);
     btn.ontouchmove = window.handleClassTouchMove;
     btn.ontouchend = window.handleClassTouchEnd;
     
-    // PC 드래그 이벤트
     btn.ondragstart = (e) => window.handleClassDragStart(e, cls);
     btn.ondragend = window.handleClassDragEnd;
     btn.ondragover = window.handleClassDragOver;
@@ -1988,15 +1981,15 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
         
-        container.className = 'grid gap-1 sm:gap-4 p-1 w-full';
-        if (numGroups === 2) container.classList.add('grid-cols-2');
-        else if (numGroups === 3) container.classList.add('grid-cols-3');
-        else container.classList.add('grid-cols-4');
+        // 두꺼운 구분선을 포함하는 동적 그리드 설정
+        container.className = 'grid gap-x-1 sm:gap-x-2 gap-y-3 p-1 w-full items-stretch relative';
+        let colsPattern = "1fr";
+        for(let j=1; j<numGroups; j++) colsPattern += " 3px 1fr";
+        container.style.gridTemplateColumns = colsPattern;
         
         const students = classData[currentClass];
         const presentStudents = students.filter(s => s.attendance);
         
-        // ★ 전체 및 성별 기준 유효 기록 분리 계산 ★
         let validRecordsAll = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
         let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
         let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
@@ -2075,10 +2068,10 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                             } else {
                                 rank = validRecordsAll.indexOf(s.recordMs) + 1;
                             }
-                            rankStr = ` <span class="text-blue-600 font-black">(${rankPrefix}${rank}위)</span>`;
+                            rankStr = `<span class="text-blue-600 font-black text-[9px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                         }
                         
-                        let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
+                        let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
                         let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
@@ -2096,35 +2089,43 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                              ontouchmove="window.handleTouchMove(event)"
                              ontouchend="window.handleTouchEnd(event)"
                              onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                             class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[46px] sm:min-h-[50px]">
+                             class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                             ${captainBadge}
                             ${memberDrawnBadge}
                             <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
-                            <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                            <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
                             <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
-                                <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="순발력">⚡${recText}</span>
+                                <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                                <div class="flex flex-col items-center justify-center w-full mt-0.5">
+                                    <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                                    ${rankStr}
+                                </div>
                             </div>
                         </div>
                         `;
                     }).join('')}
                 </div>
 
-                <div class="bg-white/50 border-t ${color.border} p-1 flex flex-col sm:flex-row justify-between items-center gap-1 print-hide">
-                     <div class="w-full flex justify-between items-center">
-                         <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-2xl hover:scale-110 transition bg-white w-5 h-5 sm:w-10 sm:h-10 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
+                <div class="bg-white/50 border-t ${color.border} p-1 flex flex-col justify-center items-center gap-1 print-hide">
+                     <div class="w-full flex justify-between items-center gap-0.5 sm:gap-1 overflow-hidden">
+                         <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-sm hover:scale-110 transition bg-white w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
                              ${t.mode === 'stopwatch' ? '⏱️' : '⏳'}
                          </button>
-                         <div class="flex-1 mx-1 bg-white border border-slate-200 rounded text-center cursor-pointer shadow-inner px-1" onclick="window.manualTimeEdit(${i})" title="터치하여 시간 직접 입력">
-                             <span id="time-display-${i}" class="font-mono text-[10px] sm:text-xl font-black tracking-tighter ${timeColorClass}">${timerDisplayVal}</span>
+                         <div class="flex-1 min-w-0 mx-0.5 bg-white border border-slate-200 rounded text-center cursor-pointer shadow-inner px-1 overflow-hidden flex items-center justify-center h-5 sm:h-8" onclick="window.manualTimeEdit(${i})" title="터치하여 시간 직접 입력">
+                             <span id="time-display-${i}" class="font-mono text-[9px] sm:text-sm font-black tracking-tighter truncate ${timeColorClass} block w-full">${timerDisplayVal}</span>
                          </div>
-                         <div class="flex gap-0.5">
-                             <button id="btn-play-${i}" onclick="window.toggleTimerPlay(${i})" class="bg-white text-slate-300 w-5 h-5 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-blue-500 transition flex items-center justify-center text-[10px] sm:text-base font-bold">▶</button>
-                             <button onclick="window.resetTimer(${i})" class="bg-white text-slate-400 w-5 h-5 sm:w-10 sm:h-10 rounded-full border border-slate-200 shadow-sm hover:text-red-500 transition flex items-center justify-center text-[10px] sm:text-base font-bold">↻</button>
+                         <div class="flex gap-0.5 shrink-0">
+                             <button id="btn-play-${i}" onclick="window.toggleTimerPlay(${i})" class="bg-white text-slate-400 w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full border border-slate-200 shadow-sm hover:text-blue-500 transition flex items-center justify-center text-[9px] sm:text-sm font-bold">▶</button>
+                             <button onclick="window.resetTimer(${i})" class="bg-white text-slate-400 w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full border border-slate-200 shadow-sm hover:text-red-500 transition flex items-center justify-center text-[9px] sm:text-sm font-bold">↻</button>
                          </div>
                      </div>
                 </div>
             </div>`;
+            
+            // 모둠 영역 사이에 수직 구분선 추가
+            if (i < numGroups) {
+                html += `<div class="bg-slate-400/80 rounded-full w-full h-auto my-2 sm:my-4 shadow-[inset_0_0_2px_rgba(0,0,0,0.3)]"></div>`;
+            }
         }
 
         // --- 🎲 미편성 영역 ---
@@ -2144,7 +2145,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     <span>🤷 미편성 영역</span>
                 </h3>
                 <span class="text-[10px] sm:text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">${unassignedStudents.length}명</span>
-                <span class="text-[10px] text-slate-400 ml-auto hidden sm:inline">※ 편성에서 제외되거나 아직 배치되지 않은 학생들입니다.</span>
             </div>
             
             <div class="flex flex-wrap gap-2 min-h-[60px] items-start p-2 bg-white/50 rounded-lg border border-slate-200">
@@ -2162,10 +2162,10 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         } else {
                             rank = validRecordsAll.indexOf(s.recordMs) + 1;
                         }
-                        rankStr = ` <span class="text-blue-600 font-black">(${rankPrefix}${rank}위)</span>`;
+                        rankStr = `<span class="text-blue-600 font-black text-[9px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                     }
                     
-                    let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" + rankStr : '-';
+                    let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
                     let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
                     let isSelected = window.selectedGroupStudent === s.no;
                     let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
@@ -2182,13 +2182,16 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                         class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[46px] sm:min-h-[50px]">
+                         class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                         ${captainBadge}
                         <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
-                        <span class="font-black text-[11px] sm:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                        <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
                         <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
-                            <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
-                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="순발력">⚡${recText}</span>
+                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                            <div class="flex flex-col items-center justify-center w-full mt-0.5">
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                                ${rankStr}
+                            </div>
                         </div>
                     </div>
                     `;
