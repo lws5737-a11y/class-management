@@ -6,8 +6,28 @@ window.isDraggingCard = false;
 window.selectedGroupStudent = null; 
 
 // ==========================================
-// 1. 오디오 통합 관리
+// 1. 오디오 및 상단 헤더 고정 처리
 // ==========================================
+
+// 최상단 타이틀(스마트체육수업 매니저) 고정 스크립트
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        const allElements = document.querySelectorAll('div, header, p, span, h1, h2');
+        for (let el of allElements) {
+            if (el.textContent && el.textContent.includes("스마트체육수업 매니저 made by 우석쌤")) {
+                let headerBar = el.closest('header') || el.closest('.bg-white') || el.parentElement;
+                if (headerBar) {
+                    headerBar.style.position = 'sticky';
+                    headerBar.style.top = '0';
+                    headerBar.style.zIndex = '1000';
+                    headerBar.style.backgroundColor = 'white'; // 투명해지지 않도록 배경색 지정
+                }
+                break;
+            }
+        }
+    }, 100);
+});
+
 let audioCtx;
 function initAudio() {
 if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -302,7 +322,182 @@ window.hideFloatingUnassigned = function() {
 };
 
 // ==========================================
-// --- 드래그 앤 드롭 및 터치 이동 통합 로직 ---
+// --- 학급 버튼 전용 드래그 앤 드롭 로직 ---
+// ==========================================
+window.draggedClass = null;
+let classTouchTimeout;
+window.classTouchClone = null;
+window.activeClassTouchElement = null;
+window.isClassTouchDragging = false;
+window.classTouchStartX = 0;
+window.classTouchStartY = 0;
+
+function getSortedClasses() {
+    let classes = Object.keys(classData);
+    let savedOrder = JSON.parse(localStorage.getItem('classOrder')) || [];
+    classes.sort((a, b) => {
+        let idxA = savedOrder.indexOf(a);
+        let idxB = savedOrder.indexOf(b);
+        if(idxA === -1 && idxB === -1) return a.localeCompare(b);
+        if(idxA === -1) return 1;
+        if(idxB === -1) return -1;
+        return idxA - idxB;
+    });
+    return classes;
+}
+
+function saveClassOrder(classes) {
+    localStorage.setItem('classOrder', JSON.stringify(classes));
+}
+
+window.handleClassDragStart = function(e, cls) {
+    window.draggedClass = cls;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => { e.target.style.opacity = '0.4'; }, 0);
+}
+window.handleClassDragEnd = function(e) {
+    window.draggedClass = null;
+    e.target.style.opacity = '1';
+    document.querySelectorAll('.class-drop-active').forEach(el => el.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50'));
+}
+window.handleClassDragOver = function(e) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('class-drop-active', 'ring-4', 'ring-blue-400');
+    if(e.currentTarget.classList.contains('hidden-drop-zone')) e.currentTarget.classList.add('bg-blue-50');
+}
+window.handleClassDragLeave = function(e) {
+    e.currentTarget.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+}
+window.handleClassDropOnClass = function(e, targetCls) {
+    e.preventDefault(); e.stopPropagation();
+    e.currentTarget.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+    window.processClassDrop(window.draggedClass, targetCls, null);
+}
+window.handleClassZoneDrop = function(e, zone) {
+    e.preventDefault(); e.stopPropagation();
+    e.currentTarget.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+    window.processClassDrop(window.draggedClass, null, zone);
+}
+
+window.handleClassTouchStart = function(e, cls) {
+    const touch = e.touches[0];
+    const target = e.currentTarget;
+    window.classTouchStartX = touch.clientX;
+    window.classTouchStartY = touch.clientY;
+
+    classTouchTimeout = setTimeout(() => {
+        window.isClassTouchDragging = true;
+        window.draggedClass = cls;
+        const clone = target.cloneNode(true);
+        const rect = target.getBoundingClientRect();
+        clone.style.position = 'fixed';
+        clone.style.left = rect.left + 'px'; 
+        clone.style.top = rect.top + 'px';
+        clone.style.width = rect.width + 'px';
+        clone.style.height = rect.height + 'px';
+        clone.style.opacity = '0.9';
+        clone.style.zIndex = '9999';
+        clone.style.pointerEvents = 'none'; 
+        clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
+        clone.style.transition = 'none'; 
+        document.body.appendChild(clone);
+        window.classTouchClone = clone;
+        target.style.opacity = '0.3';
+        window.activeClassTouchElement = target;
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 300);
+};
+
+window.handleClassTouchMove = function(e) {
+    if (!window.classTouchClone) { clearTimeout(classTouchTimeout); return; }
+    e.preventDefault(); 
+    const touch = e.touches[0];
+    const dx = touch.clientX - window.classTouchStartX;
+    const dy = touch.clientY - window.classTouchStartY;
+    window.classTouchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
+
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    document.querySelectorAll('.class-drop-active').forEach(el => {
+        el.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+    });
+
+    if (elemBelow) {
+        const classBtn = elemBelow.closest('.class-btn');
+        const hiddenZone = elemBelow.closest('.hidden-drop-zone');
+        const visibleZone = elemBelow.closest('.visible-drop-zone');
+        
+        if (classBtn && classBtn.getAttribute('data-class-name') !== window.draggedClass) {
+            classBtn.classList.add('class-drop-active', 'ring-4', 'ring-blue-400');
+        } else if (hiddenZone && !classBtn) {
+            hiddenZone.classList.add('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+        } else if (visibleZone && !classBtn) {
+            visibleZone.classList.add('class-drop-active', 'ring-4', 'ring-blue-400');
+        }
+    }
+};
+
+window.handleClassTouchEnd = function(e) {
+    clearTimeout(classTouchTimeout);
+    if (!window.classTouchClone) return;
+    e.preventDefault(); 
+    const touch = e.changedTouches[0];
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (window.activeClassTouchElement) window.activeClassTouchElement.style.opacity = '1';
+
+    if (elemBelow) {
+        const classBtn = elemBelow.closest('.class-btn');
+        const hiddenZone = elemBelow.closest('.hidden-drop-zone');
+        const visibleZone = elemBelow.closest('.visible-drop-zone');
+
+        if (classBtn) {
+            const targetCls = classBtn.getAttribute('data-class-name');
+            if (targetCls && targetCls !== window.draggedClass) {
+                window.processClassDrop(window.draggedClass, targetCls, null);
+            }
+        } else if (hiddenZone) {
+            window.processClassDrop(window.draggedClass, null, 'hidden');
+        } else if (visibleZone) {
+            window.processClassDrop(window.draggedClass, null, 'visible');
+        }
+    }
+
+    document.querySelectorAll('.class-drop-active').forEach(el => {
+        el.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50');
+    });
+    
+    window.classTouchClone.remove();
+    window.classTouchClone = null;
+    window.activeClassTouchElement = null;
+    window.draggedClass = null;
+    
+    setTimeout(() => { window.isClassTouchDragging = false; }, 10);
+};
+
+window.processClassDrop = function(draggedCls, targetCls, targetZone) {
+    if(!draggedCls) return;
+    let classes = getSortedClasses();
+    
+    if (targetCls && targetCls !== draggedCls) {
+        const oldIdx = classes.indexOf(draggedCls);
+        const newIdx = classes.indexOf(targetCls);
+        if(oldIdx > -1 && newIdx > -1) {
+            classes.splice(oldIdx, 1);
+            classes.splice(newIdx, 0, draggedCls);
+            saveClassOrder(classes);
+        }
+        window.saveClassVisibility(draggedCls, window.isClassVisible(targetCls));
+    } else if (targetZone === 'hidden') {
+        window.saveClassVisibility(draggedCls, false);
+    } else if (targetZone === 'visible') {
+        window.saveClassVisibility(draggedCls, true);
+    }
+    
+    window.renderClassSelect();
+}
+
+// ==========================================
+// --- 학생 드래그 앤 드롭 및 터치 이동 통합 로직 ---
 // ==========================================
 let touchTimeout;
 window.touchClone = null;
@@ -311,15 +506,12 @@ window.touchStartX = 0;
 window.touchStartY = 0;
 window.isTouchDragging = false;
 
-// 모바일: 카드를 꾹 눌렀을 때 (Touch Start)
 window.handleTouchStart = function(e, studentNo) {
     const touch = e.touches[0];
     const target = e.currentTarget;
-
     window.touchStartX = touch.clientX;
     window.touchStartY = touch.clientY;
 
-    // 터치 클릭과 드래그를 구분하기 위해 300ms 딜레이 부여
     touchTimeout = setTimeout(() => {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
@@ -338,42 +530,30 @@ window.handleTouchStart = function(e, studentNo) {
         clone.style.zIndex = '9999';
         clone.style.pointerEvents = 'none'; 
         clone.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
-        
         clone.style.transition = 'none'; 
         clone.classList.remove('transition-all', 'duration-200');
-        
         clone.style.transform = 'translate3d(0px, 0px, 0px) scale(1.05)';
         clone.style.willChange = 'transform'; 
-        
         document.body.appendChild(clone);
         window.touchClone = clone;
-
         target.style.opacity = '0.3';
         window.activeTouchElement = target;
         
-        // ★ 드래그가 시작되면 미편성 영역을 하단 플로팅으로 띄움
         window.showFloatingUnassigned();
 
         if (navigator.vibrate) navigator.vibrate(50);
     }, 300);
 };
 
-// 모바일: 카드를 끌고 이동할 때 (Touch Move) 
 window.handleTouchMove = function(e) {
-    if (!window.touchClone) {
-        clearTimeout(touchTimeout); 
-        return;
-    }
+    if (!window.touchClone) { clearTimeout(touchTimeout); return; }
     e.preventDefault(); 
     const touch = e.touches[0];
-    
-    // transition이 제거되었으므로 즉각적으로 손가락을 따라감
     const dx = touch.clientX - window.touchStartX;
     const dy = touch.clientY - window.touchStartY;
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
 
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -381,7 +561,6 @@ window.handleTouchMove = function(e) {
     if (elemBelow) {
         const studentCard = elemBelow.closest('.student-card');
         const groupArea = elemBelow.closest('.group-area');
-        
         if (studentCard) {
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
             if (targetNo && targetNo !== window.draggedStudentNo) {
@@ -393,20 +572,15 @@ window.handleTouchMove = function(e) {
     }
 };
 
-// 모바일: 손가락을 뗐을 때 (Touch End)
 window.handleTouchEnd = function(e) {
     clearTimeout(touchTimeout);
     if (!window.touchClone) return;
     e.preventDefault(); 
-    
     const touch = e.changedTouches[0];
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
 
-    if (window.activeTouchElement) {
-        window.activeTouchElement.style.opacity = '1';
-    }
+    if (window.activeTouchElement) { window.activeTouchElement.style.opacity = '1'; }
 
-    // ★ 드래그 종료 시 미편성 플로팅 창 해제
     window.hideFloatingUnassigned();
 
     if (elemBelow) {
@@ -437,7 +611,6 @@ window.handleTouchEnd = function(e) {
     setTimeout(() => { window.isTouchDragging = false; }, 10);
 };
 
-// PC 및 모바일 공용: 교체 및 이동 처리 함수
 window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     if (!draggedNo) return;
     const students = classData[currentClass];
@@ -483,25 +656,18 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     window.renderGroups();
 };
 
-// PC 환경: 드래그 앤 드롭 이벤트
 window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
-    
-    // ★ PC에서 드래그 시작 시 미편성 플로팅 창 띄우기
     window.showFloatingUnassigned();
-
     setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
 
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
     e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
-    
-    // ★ 드래그 종료 시 플로팅 창 닫기
     window.hideFloatingUnassigned();
-
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -570,11 +736,6 @@ window.isClassVisible = function(className) {
     return visibilityData[className] !== false;
 };
 
-window.toggleClassVisibility = function(className, checkbox) {
-    window.saveClassVisibility(className, checkbox.checked);
-    window.renderClassSelect();
-};
-
 window.toggleHiddenClasses = function() {
     window.showHiddenClasses = !window.showHiddenClasses;
     window.renderClassSelect();
@@ -590,65 +751,108 @@ document.getElementById('manage-modal').classList.add('hidden');
 document.getElementById('manage-modal').classList.remove('flex');
 }
 
+// ==========================================
+// --- 학급 버튼 렌더링 화면 업데이트 ---
+// ==========================================
 window.renderClassSelect = function() {
     const listEl = document.getElementById('modal-class-list');
     const displayBtn = document.getElementById('current-class-display');
     const toggleBtn = document.getElementById('toggle-hidden-classes-btn');
-
     if(!listEl) return;
-
-    if (toggleBtn) {
-        toggleBtn.innerText = window.showHiddenClasses ? "숨긴 학급 숨기기" : "전체 학급 보기";
-    }
+    
+    // 기존 버튼이 HTML에 있다면 안 보이게 처리
+    if (toggleBtn) toggleBtn.style.display = 'none';
 
     listEl.innerHTML = ''; 
-    const classes = Object.keys(classData).sort();
+    let classes = getSortedClasses();
 
     if(classes.length === 0) { 
         listEl.innerHTML = '<div class="text-slate-400 font-bold text-sm w-full py-2">등록된 학급이 없습니다. 새 학급을 추가해주세요.</div>'; 
         if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 설정 및 시작</span>";
-    } else {
-        let activeCount = 0;
-        classes.forEach(cls => {
-            const isVisible = window.isClassVisible(cls);
-            if (!isVisible && !window.showHiddenClasses) return;
-            activeCount++;
-
-            const wrapper = document.createElement('div');
-            wrapper.className = "flex items-center gap-1 border-2 shadow-sm rounded-xl px-1.5 py-1 bg-white border-slate-200 transition-colors w-auto shrink-0";
-            if(currentClass === cls) wrapper.classList.add("border-blue-500");
-
-            const toggleWrapper = document.createElement('label');
-            toggleWrapper.className = "cursor-pointer flex items-center justify-center p-1 rounded-lg hover:bg-slate-100 transition";
-            toggleWrapper.innerHTML = `
-                <input type="checkbox" class="hidden" onchange="window.toggleClassVisibility('${cls}', this)" ${isVisible ? 'checked' : ''}>
-                <span class="text-lg opacity-80">${isVisible ? '👁️' : '🙈'}</span>
-            `;
-            wrapper.appendChild(toggleWrapper);
-
-            const btn = document.createElement('button'); 
-            btn.className = "px-2 py-1.5 font-bold text-sm whitespace-nowrap outline-none ";
-            if (!isVisible) btn.classList.add("opacity-40", "text-slate-400", "line-through");
-            else btn.classList.add("text-slate-700", "hover:text-blue-600");
-            
-            if(currentClass === cls) btn.classList.add("text-blue-600", "font-black");
-            
-            btn.innerText = cls; 
-            btn.onclick = function() { window.selectClass(cls); window.closeManageModal(); }; 
-            wrapper.appendChild(btn);
-            listEl.appendChild(wrapper);
-        });
-
-        if (activeCount === 0) {
-            listEl.innerHTML = '<div class="text-slate-400 font-bold text-sm w-full py-2">활성화된 학급이 없습니다. [전체 학급 보기]를 눌러 확인해주세요.</div>';
-        }
-
-        if (currentClass && classes.includes(currentClass)) {
-            if(displayBtn) displayBtn.innerHTML = `<span>⚙️ ${currentClass}</span>`;
-        } else { 
-            if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 학급 선택</span>";
-        }
+        return;
     }
+
+    let visibleClasses = classes.filter(c => window.isClassVisible(c));
+    let hiddenClasses = classes.filter(c => !window.isClassVisible(c));
+
+    // 1. 보이는 학급 (Drop Zone)
+    const visibleContainer = document.createElement('div');
+    visibleContainer.className = "flex flex-wrap gap-2 mb-4 p-2 border-2 border-transparent rounded-xl transition visible-drop-zone min-h-[60px] bg-white w-full items-center";
+    visibleContainer.ondragover = window.handleClassDragOver;
+    visibleContainer.ondragleave = window.handleClassDragLeave;
+    visibleContainer.ondrop = (e) => window.handleClassZoneDrop(e, 'visible');
+
+    visibleClasses.forEach(cls => {
+        visibleContainer.appendChild(createClassButtonDOM(cls, true));
+    });
+    if(visibleClasses.length === 0) {
+        visibleContainer.innerHTML = '<span class="text-slate-400 text-sm w-full text-center py-2 flex items-center justify-center">보이는 학급이 없습니다.</span>';
+    }
+    listEl.appendChild(visibleContainer);
+
+    // 2. 숨긴 학급 휴지통 영역 (드롭 & 버튼 클릭 겸용)
+    const hiddenHeader = document.createElement('div');
+    hiddenHeader.className = "w-full text-center py-3 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer text-slate-500 font-bold text-sm hover:bg-slate-200 transition hidden-drop-zone flex items-center justify-center gap-2";
+    hiddenHeader.innerHTML = window.showHiddenClasses ? "🙈 숨긴 학급 닫기" : `🗑️ 숨긴 학급 휴지통 보기/버리기 (${hiddenClasses.length})`;
+    hiddenHeader.onclick = window.toggleHiddenClasses;
+    hiddenHeader.ondragover = window.handleClassDragOver;
+    hiddenHeader.ondragleave = window.handleClassDragLeave;
+    hiddenHeader.ondrop = (e) => window.handleClassZoneDrop(e, 'hidden');
+    
+    listEl.appendChild(hiddenHeader);
+
+    // 3. 숨겨진 학급 목록 펼치기
+    if (window.showHiddenClasses && hiddenClasses.length > 0) {
+        const hiddenContainer = document.createElement('div');
+        hiddenContainer.className = "flex flex-wrap gap-2 mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200 hidden-drop-zone min-h-[60px] w-full items-center";
+        hiddenContainer.ondragover = window.handleClassDragOver;
+        hiddenContainer.ondragleave = window.handleClassDragLeave;
+        hiddenContainer.ondrop = (e) => window.handleClassZoneDrop(e, 'hidden');
+
+        hiddenClasses.forEach(cls => {
+            hiddenContainer.appendChild(createClassButtonDOM(cls, false));
+        });
+        listEl.appendChild(hiddenContainer);
+    }
+
+    if (currentClass && classes.includes(currentClass)) {
+        if(displayBtn) displayBtn.innerHTML = `<span>⚙️ ${currentClass}</span>`;
+    } else { 
+        if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 학급 선택</span>";
+    }
+}
+
+function createClassButtonDOM(cls, isVisible) {
+    const btn = document.createElement('div');
+    btn.setAttribute('draggable', 'true');
+    btn.setAttribute('data-class-name', cls);
+    
+    let colorClass = "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300";
+    if(currentClass === cls) colorClass = "bg-blue-50 border-blue-500 text-blue-700 ring-2 ring-blue-200";
+    if(!isVisible) colorClass = "bg-slate-100 border-dashed border-slate-300 text-slate-400 opacity-80 hover:bg-slate-200 hover:opacity-100";
+
+    btn.className = `class-btn flex items-center justify-center px-4 py-2 font-black text-sm whitespace-nowrap outline-none rounded-xl border-2 shadow-sm transition cursor-grab ${colorClass}`;
+    btn.innerText = cls;
+    
+    btn.onclick = function(e) { 
+        if(window.isClassTouchDragging) { window.isClassTouchDragging = false; return; }
+        window.selectClass(cls); 
+        window.closeManageModal(); 
+    }; 
+    
+    // 모바일 터치 이벤트
+    btn.ontouchstart = (e) => window.handleClassTouchStart(e, cls);
+    btn.ontouchmove = window.handleClassTouchMove;
+    btn.ontouchend = window.handleClassTouchEnd;
+    
+    // PC 드래그 이벤트
+    btn.ondragstart = (e) => window.handleClassDragStart(e, cls);
+    btn.ondragend = window.handleClassDragEnd;
+    btn.ondragover = window.handleClassDragOver;
+    btn.ondragleave = window.handleClassDragLeave;
+    btn.ondrop = (e) => window.handleClassDropOnClass(e, cls);
+
+    return btn;
 }
 
 // ==========================================
