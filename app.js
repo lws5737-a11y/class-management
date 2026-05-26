@@ -273,6 +273,35 @@ const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
 
 // ==========================================
+// --- 미편성 영역 플로팅 창 전환 함수 ---
+// ==========================================
+window.showFloatingUnassigned = function() {
+    const el = document.getElementById('unassigned-area');
+    if (el) {
+        el.classList.remove('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
+        el.classList.add(
+            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-50', 
+            'bg-slate-50', 'shadow-[0_-10px_40px_rgba(0,0,0,0.2)]', 
+            'border-t-4', 'border-amber-400', 'rounded-t-3xl', 
+            'max-h-[45vh]', 'overflow-y-auto', 'm-0', 'border-x-0', 'border-b-0'
+        );
+    }
+};
+
+window.hideFloatingUnassigned = function() {
+    const el = document.getElementById('unassigned-area');
+    if (el) {
+        el.classList.add('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
+        el.classList.remove(
+            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-50', 
+            'bg-slate-50', 'shadow-[0_-10px_40px_rgba(0,0,0,0.2)]', 
+            'border-t-4', 'border-amber-400', 'rounded-t-3xl', 
+            'max-h-[45vh]', 'overflow-y-auto', 'm-0', 'border-x-0', 'border-b-0'
+        );
+    }
+};
+
+// ==========================================
 // --- 드래그 앤 드롭 및 터치 이동 통합 로직 ---
 // ==========================================
 let touchTimeout;
@@ -322,8 +351,11 @@ window.handleTouchStart = function(e, studentNo) {
         target.style.opacity = '0.3';
         window.activeTouchElement = target;
         
+        // ★ 드래그가 시작되면 미편성 영역을 하단 플로팅으로 띄움
+        window.showFloatingUnassigned();
+
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 300); // 60ms -> 300ms 로 변경
+    }, 300);
 };
 
 // 모바일: 카드를 끌고 이동할 때 (Touch Move) 
@@ -373,6 +405,9 @@ window.handleTouchEnd = function(e) {
     if (window.activeTouchElement) {
         window.activeTouchElement.style.opacity = '1';
     }
+
+    // ★ 드래그 종료 시 미편성 플로팅 창 해제
+    window.hideFloatingUnassigned();
 
     if (elemBelow) {
         const studentCard = elemBelow.closest('.student-card');
@@ -453,12 +488,20 @@ window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
+    
+    // ★ PC에서 드래그 시작 시 미편성 플로팅 창 띄우기
+    window.showFloatingUnassigned();
+
     setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
 
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
     e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
+    
+    // ★ 드래그 종료 시 플로팅 창 닫기
+    window.hideFloatingUnassigned();
+
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
     });
@@ -1818,7 +1861,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     ${groupStudents.map(s => {
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
                         
-                        // ★ 동성 4팀 여부에 따른 순위 계산 로직 ★
                         let rankStr = "";
                         if (s.recordMs > 0) {
                             let rank;
@@ -1886,7 +1928,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         unassignedStudents.sort((a, b) => a.no - b.no);
 
         html += `
-        <div class="col-span-full mt-2 bg-slate-100/80 border-2 border-dashed border-slate-300 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
+        <div id="unassigned-area" class="col-span-full mt-2 bg-slate-100/80 border-2 border-dashed border-slate-300 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
              data-group-id="0" 
              ondragover="window.handleDragOverGroup(event)" 
              ondragleave="window.handleDragLeaveGroup(event)"
@@ -1906,7 +1948,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 ${unassignedStudents.map(s => {
                     let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
                     
-                    // ★ 동성 4팀 여부에 따른 순위 계산 로직 (미편성 영역) ★
                     let rankStr = "";
                     if (s.recordMs > 0) {
                         let rank;
