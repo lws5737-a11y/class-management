@@ -38,45 +38,44 @@ Google 계정으로 시작하기
 </div>
 
 <div id="app-container" class="hidden">
-<header class="bg-blue-600 text-white p-3 sm:p-4 w-full print-hide relative z-50">
-<div class="max-w-4xl mx-auto flex flex-col justify-between gap-2" id="header-inner-container">
-<div class="flex flex-row justify-between items-center w-full">
-<div class="flex items-center gap-2">
-<h1 class="text-lg sm:text-xl font-bold flex items-center gap-2 whitespace-nowrap">
-<span>🏫</span> 스마트 체육 수업 매니저 <span class="text-sm font-normal text-blue-200 hidden md:inline ml-1">made by 우석쌤</span>
-</h1>
-<div class="hidden lg:flex gap-1.5 ml-4">
-<button onclick="document.getElementById('csv-all-file-input').click()" class="text-[11px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">불러오기</button>
-<button onclick="window.exportAllToExcel()" class="text-[11px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">저장하기</button>
-<button onclick="window.deleteCurrentClass()" class="text-[11px] bg-red-600/90 hover:bg-red-700 text-white px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">현재학급삭제</button>
-<button onclick="window.deleteAllClasses()" class="text-[11px] bg-red-800/90 hover:bg-red-900 text-white px-2.5 py-1.5 rounded shadow-sm transition whitespace-nowrap">전체학급삭제</button>
-</div>
-</div>
+<!-- 상단 헤더 영역 전체 (이 코드로 기존 헤더/버튼 영역을 교체하세요) -->
+<header class="sticky top-0 z-[100] bg-white shadow-sm w-full flex flex-col">
+    <!-- 1. 최상단 고정 영역 (타이틀, 학급, 로그인 정보) -->
+    <div class="flex flex-col sm:flex-row justify-between items-center p-3 gap-3 bg-white w-full max-w-4xl mx-auto">
+        <h1 class="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
+            <span class="text-blue-600">🏫 스마트 체육수업 매니저</span>
+            <span class="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">made by 우석쌤</span>
+        </h1>
+        
+        <div class="flex items-center gap-2 sm:gap-4">
+            <button id="current-class-display" onclick="window.openManageModal()" class="text-center bg-blue-50 text-blue-700 font-bold px-4 py-2 rounded-xl border border-blue-200 hover:bg-blue-100 transition shadow-sm whitespace-nowrap text-sm">
+                <span>⚙️ 설정 및 시작</span>
+            </button>
+            <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 shadow-inner">
+                <span id="user-email" class="text-slate-700">lws5737</span>
+                <span class="text-slate-300">|</span>
+                <button onclick="window.signOutApp()" class="hover:text-red-500 transition">로그아웃</button>
+            </div>
+        </div>
+    </div>
 
-<div class="flex items-center gap-2 shrink-0">
-<div id="sync-status" class="hidden items-center text-xs font-bold bg-blue-800/50 px-2 py-1 rounded-md" title="클라우드 동기화 중">
-<svg class="animate-spin h-3 w-3 text-white mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-</svg>
-<span class="hidden sm:inline">동기화</span>
-</div>
-<button onclick="window.openManageModal()" id="current-class-display" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 sm:px-4 rounded-full text-xs sm:text-sm font-medium border border-blue-400 whitespace-nowrap shadow-sm transition cursor-pointer flex items-center gap-1.5">
-<span>⚙️ 설정</span>
-</button>
-<span id="user-email" class="text-[10px] sm:text-xs text-blue-100 hidden sm:inline font-bold"></span>
-<button onclick="window.signOutApp()" class="bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-900 border border-blue-400 shadow-sm transition whitespace-nowrap">로그아웃</button>
-</div>
-</div>
+    <!-- 2. 슬라이드로 숨겨지는 액션 버튼 패널 -->
+    <div id="header-action-panel" class="max-h-0 overflow-hidden transition-all duration-500 ease-in-out bg-slate-100 border-t border-slate-200">
+        <div class="max-w-4xl mx-auto p-3 flex flex-wrap justify-center gap-2 sm:gap-3">
+            <button onclick="document.getElementById('csv-all-file-input').click()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-slate-600 font-bold text-xs sm:text-sm rounded-lg border border-slate-300 hover:bg-slate-50 shadow-sm transition">불러오기</button>
+            <input type="file" id="csv-all-file-input" accept=".csv" onchange="window.handleAllCSVUpload(event)" class="hidden">
+            <button onclick="window.exportAllToExcel()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-slate-600 font-bold text-xs sm:text-sm rounded-lg border border-slate-300 hover:bg-slate-50 shadow-sm transition">저장하기</button>
+            <button onclick="window.deleteCurrentClass()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-red-500 font-bold text-xs sm:text-sm rounded-lg border border-red-200 hover:bg-red-50 shadow-sm transition">현재학급 삭제</button>
+            <button onclick="window.deleteAllClasses()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-red-600 font-black text-xs sm:text-sm rounded-lg border border-red-300 hover:bg-red-50 shadow-sm transition">전체학급 삭제</button>
+        </div>
+    </div>
 
-<div class="flex lg:hidden flex-wrap gap-1.5 w-full justify-start mt-1">
-<button onclick="document.getElementById('csv-all-file-input').click()" class="text-[10px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">불러오기</button>
-<button onclick="window.exportAllToExcel()" class="text-[10px] bg-blue-800/80 hover:bg-blue-900 text-blue-100 px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">저장하기</button>
-<button onclick="window.deleteCurrentClass()" class="text-[10px] bg-red-600/90 hover:bg-red-700 text-white px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">현재삭제</button>
-<button onclick="window.deleteAllClasses()" class="text-[10px] bg-red-800/90 hover:bg-red-900 text-white px-2 py-1.5 rounded shadow-sm transition flex-1 whitespace-nowrap">전체삭제</button>
-</div>
-</div>
+    <!-- 3. 슬라이드 토글 버튼 (▽) -->
+    <button onclick="window.toggleHeaderActions()" class="w-full flex justify-center items-center h-6 bg-white border-b border-slate-200 text-slate-400 hover:bg-slate-50 transition cursor-pointer">
+        <span id="header-toggle-icon" class="text-[10px] transform transition-transform duration-300">▼</span>
+    </button>
 </header>
+<!-- 상단 헤더 영역 끝 -->
 <input type="file" id="csv-all-file-input" accept=".csv" class="hidden" onchange="window.handleAllCSVUpload(event)">
 
 <main id="main-container" class="max-w-4xl mx-auto p-2 sm:p-4 space-y-6 mt-1 w-full transition-all duration-300">
