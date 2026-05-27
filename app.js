@@ -302,7 +302,7 @@ let currentClass = "";
 let classData = {};
 let groupScores = {};
 let groupRecords = {}; 
-let groupPenalties = {}; // 📌 모둠 경고 데이터를 저장하는 객체
+let groupPenalties = {};
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
 
@@ -327,6 +327,49 @@ const getGroupsCycle = () => {
 let max = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
 const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
+
+// ==========================================
+// 🌟 드래그 시 자동 스크롤(Auto Scroll) 기능 🌟
+// ==========================================
+window.currentDragY = -1;
+window.autoScrollRaf = null;
+
+window.startAutoScroll = function() {
+    if (window.autoScrollRaf) return;
+    function scrollLoop() {
+        if (!window.isTouchDragging && !window.isDraggingCard && !window.isClassTouchDragging && !window.draggedClass) {
+            window.currentDragY = -1;
+            window.autoScrollRaf = null;
+            return;
+        }
+        if (window.currentDragY !== -1) {
+            const threshold = 120; // 화면 위아래 120px 이내 접근 시 스크롤 시작
+            const speed = 12; // 스크롤 속도
+            if (window.currentDragY < threshold) {
+                window.scrollBy(0, -speed);
+            } else if (window.innerHeight - window.currentDragY < threshold) {
+                window.scrollBy(0, speed);
+            }
+        }
+        window.autoScrollRaf = requestAnimationFrame(scrollLoop);
+    }
+    scrollLoop();
+};
+
+window.stopAutoScroll = function() {
+    if (window.autoScrollRaf) {
+        cancelAnimationFrame(window.autoScrollRaf);
+        window.autoScrollRaf = null;
+    }
+    window.currentDragY = -1;
+};
+
+// 마우스(PC) 드래그 중 Y좌표 추적
+document.addEventListener('dragover', function(e) {
+    if (window.isDraggingCard || window.draggedClass) {
+        window.currentDragY = e.clientY;
+    }
+});
 
 // ==========================================
 // --- 미편성 영역 플로팅 창 전환 함수 ---
@@ -389,10 +432,13 @@ function saveClassOrder(classes) {
 window.handleClassDragStart = function(e, cls) {
     window.draggedClass = cls;
     e.dataTransfer.effectAllowed = 'move';
+    window.currentDragY = e.clientY;
+    window.startAutoScroll();
     setTimeout(() => { e.target.style.opacity = '0.4'; }, 0);
 }
 window.handleClassDragEnd = function(e) {
     window.draggedClass = null;
+    window.stopAutoScroll();
     e.target.style.opacity = '1';
     document.querySelectorAll('.class-drop-active').forEach(el => el.classList.remove('class-drop-active', 'ring-4', 'ring-blue-400', 'bg-blue-50'));
 }
@@ -424,6 +470,9 @@ window.handleClassTouchStart = function(e, cls) {
     classTouchTimeout = setTimeout(() => {
         window.isClassTouchDragging = true;
         window.draggedClass = cls;
+        window.currentDragY = touch.clientY;
+        window.startAutoScroll();
+
         const clone = target.cloneNode(true);
         const rect = target.getBoundingClientRect();
         clone.style.position = 'fixed';
@@ -448,6 +497,8 @@ window.handleClassTouchMove = function(e) {
     if (!window.classTouchClone) { clearTimeout(classTouchTimeout); return; }
     e.preventDefault(); 
     const touch = e.touches[0];
+    window.currentDragY = touch.clientY;
+    
     const dx = touch.clientX - window.classTouchStartX;
     const dy = touch.clientY - window.classTouchStartY;
     window.classTouchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
@@ -476,6 +527,9 @@ window.handleClassTouchEnd = function(e) {
     clearTimeout(classTouchTimeout);
     if (!window.classTouchClone) return;
     e.preventDefault(); 
+    
+    window.stopAutoScroll();
+    
     const touch = e.changedTouches[0];
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
 
@@ -552,6 +606,9 @@ window.handleTouchStart = function(e, studentNo) {
         window.isTouchDragging = true;
         window.draggedStudentNo = studentNo;
         window.selectedGroupStudent = null; 
+        
+        window.currentDragY = touch.clientY;
+        window.startAutoScroll();
 
         document.querySelectorAll('.student-card').forEach(card => card.classList.remove('ring-4', 'ring-yellow-400'));
 
@@ -585,6 +642,9 @@ window.handleTouchMove = function(e) {
     if (!window.touchClone) { clearTimeout(touchTimeout); return; }
     e.preventDefault(); 
     const touch = e.touches[0];
+    
+    window.currentDragY = touch.clientY;
+    
     const dx = touch.clientX - window.touchStartX;
     const dy = touch.clientY - window.touchStartY;
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
@@ -612,6 +672,9 @@ window.handleTouchEnd = function(e) {
     clearTimeout(touchTimeout);
     if (!window.touchClone) return;
     e.preventDefault(); 
+    
+    window.stopAutoScroll();
+    
     const touch = e.changedTouches[0];
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
 
@@ -697,11 +760,16 @@ window.handleDragStart = function(e, studentNo) {
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
     window.showFloatingUnassigned();
+    
+    window.currentDragY = e.clientY;
+    window.startAutoScroll();
+    
     setTimeout(() => { e.target.style.opacity = '0.4'; e.target.style.transform = 'scale(0.95)'; }, 0);
 };
 
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
+    window.stopAutoScroll();
     e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
     window.hideFloatingUnassigned();
     document.querySelectorAll('.drop-target-active').forEach(el => {
@@ -1930,7 +1998,7 @@ window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b>
 classData[currentClass].forEach(student => { 
     student[`group_${currentGroupMode}`] = null; 
     student[`captain_${currentGroupMode}`] = false;
-    student.penaltyCard = 0; // 초기화 시 패널티 카드 리셋
+    student.penaltyCard = 0; 
 });
 if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
 if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
@@ -1963,12 +2031,12 @@ else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback
                 groupRecords[currentClass][currentGroupMode].drawnGroups = [];
             }
             if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) {
-                groupPenalties[currentClass][currentGroupMode] = {}; // 편성 시 모둠 경고 리셋
+                groupPenalties[currentClass][currentGroupMode] = {}; 
             }
             classData[currentClass].forEach(s => {
                 s.groupMemberDrawn = false;
                 s[`captain_${currentGroupMode}`] = false;
-                s.penaltyCard = 0; // 편성 시 개인 경고 리셋
+                s.penaltyCard = 0; 
             });
 
             callback(); 
@@ -2094,15 +2162,13 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
         
-        // --- 🌟 모바일 세로 모드 2x2 배치를 위한 그리드 수정 🌟 ---
         let gridCols = "grid-cols-1";
         if (numGroups === 2) gridCols = "grid-cols-2";
-        else if (numGroups === 3) gridCols = "grid-cols-3"; // 3팀은 3열 유지
-        else if (numGroups === 4) gridCols = "grid-cols-2 md:grid-cols-4"; // 4팀은 모바일 2열, PC 4열
+        else if (numGroups === 3) gridCols = "grid-cols-3"; 
+        else if (numGroups === 4) gridCols = "grid-cols-2 md:grid-cols-4"; 
 
         container.className = `grid gap-2 sm:gap-3 p-1 w-full items-stretch relative ${gridCols}`;
-        container.style.gridTemplateColumns = ""; // 강제 인라인 스타일 제거 (공간 확보)
-        // -------------------------------------------------------------
+        container.style.gridTemplateColumns = ""; 
         
         const students = classData[currentClass];
         
@@ -2153,7 +2219,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             const isGroupDrawn = drawnGroupIds.includes(i);
             const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
             
-            // 📌 모둠 경고 카드 데이터 불러오기
             let gp = 0;
             if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) {
                 gp = groupPenalties[currentClass][currentGroupMode][i] || 0;
