@@ -10,7 +10,6 @@ window.selectedGroupStudent = null;
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 하단 탭 아이콘(이모지)을 제거하고 텍스트만 표시되도록 강제 설정
     const tabStudent = document.getElementById('tab-student');
     if(tabStudent) tabStudent.innerText = '출석부';
     
@@ -21,18 +20,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if(tabStamp) tabStamp.innerText = '도장판';
 });
 
-// 상단 헤더 숨김버튼 슬라이드 토글 기능
 window.toggleHeaderActions = function() {
     const panel = document.getElementById('header-action-panel');
     const icon = document.getElementById('header-toggle-icon');
     
     if (panel.classList.contains('max-h-0')) {
         panel.classList.remove('max-h-0');
-        panel.classList.add('max-h-[200px]'); // 열림 (최대 높이 지정으로 슬라이드 효과)
-        icon.style.transform = 'rotate(180deg)'; // 화살표 방향 전환
+        panel.classList.add('max-h-[200px]');
+        icon.style.transform = 'rotate(180deg)'; 
     } else {
         panel.classList.remove('max-h-[200px]');
-        panel.classList.add('max-h-0'); // 닫힘
+        panel.classList.add('max-h-0'); 
         icon.style.transform = 'rotate(0deg)';
     }
 };
@@ -279,7 +277,9 @@ let groupScores = {};
 let groupRecords = {}; 
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
-let currentGroupMode = 'mixed4'; 
+
+// 📌 저장된 그룹 모드가 있다면 불러오기 (없으면 mixed4 기본값)
+let currentGroupMode = localStorage.getItem('pinnedGroupMode') || 'mixed4'; 
 let currentTab = 'student'; 
 
 let activeTimers = {}; 
@@ -414,7 +414,7 @@ window.handleClassTouchStart = function(e, cls) {
         target.style.opacity = '0.3';
         window.activeClassTouchElement = target;
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
+    }, 500); 
 };
 
 window.handleClassTouchMove = function(e) {
@@ -551,7 +551,7 @@ window.handleTouchStart = function(e, studentNo) {
         window.showFloatingUnassigned();
 
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
+    }, 500); 
 };
 
 window.handleTouchMove = function(e) {
@@ -881,7 +881,6 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
         
-        // 이메일 표시 엘리먼트가 존재할 경우에만 업데이트
         const emailEl = document.getElementById('user-email');
         if(emailEl) {
             emailEl.innerText = user.email.split('@')[0];
@@ -1115,6 +1114,17 @@ window.updateDismissal = function(studentNo, value) {
     }
 }
 
+// 📌 패널티 카드 사이클 함수 (0 -> 1(노랑) -> 2(빨강))
+window.cyclePenaltyCard = function(studentNo) {
+    if (!currentClass || !classData[currentClass]) return;
+    const student = classData[currentClass].find(s => s.no === studentNo);
+    if (student) {
+        student.penaltyCard = ((student.penaltyCard || 0) + 1) % 3;
+        saveData();
+        window.renderGroups();
+    }
+};
+
 // ==========================================
 // 6. 타이머, 모달, 리스트 렌더링 등 코어 로직
 // ==========================================
@@ -1263,6 +1273,7 @@ if (s.running !== undefined) { delete s.running; }
 if (s.memo === undefined) s.memo = "";
 if (s.dismissalInfo === undefined) s.dismissalInfo = "";
 if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
+if (s.penaltyCard === undefined) s.penaltyCard = 0; // 패널티 카드 추가 마이그레이션
 
 delete s.group_partner;
 delete s.agility;
@@ -1465,7 +1476,7 @@ window.handleAllCSVUpload = function(event) {
                 if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
                 if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
 
-                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg });
+                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg, penaltyCard: 0 });
             }
 
             if (Object.keys(newData).length > 0) {
@@ -1520,7 +1531,7 @@ if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
 document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
 window.showTab(currentTab); window.renderClassSelect(); 
-window.setGroupMode(currentGroupMode); 
+window.setGroupMode(currentGroupMode, true); // 📌 학급 선택 시 고정된 모드 UI 업데이트 적용
 window.updateGroupDrawSelect(); 
 window.renderStudentList(); window.renderGroups(); window.renderStampBoard();
 }
@@ -1577,7 +1588,7 @@ const student = classData[currentClass].find(s => s.no == studentNo);
 if (!student) return;
 window.showModal("학생 정보 삭제", `<span class="font-bold text-red-500">${student.no}번 ${student.name}</span> 학생의 정보를 정말로 삭제하시겠습니까?`, true, () => {
 const idx = classData[currentClass].findIndex(s => s.no == studentNo);
-if (idx > -1) { classData[currentClass].splice(idx, 1); saveData(); window.renderStudentList(); }
+if (idx > -1) { classData[currentClass].splice(idx, 1); saveData(); window.renderStudentList(); window.renderGroups(); }
 }, "삭제");
 }
 
@@ -1808,28 +1819,47 @@ tbody.appendChild(tr);
 if(window.updateDrawStatus) window.updateDrawStatus();
 }
 
-window.setGroupMode = function(mode) {
-currentGroupMode = mode; activeTimers = {}; window.selectedGroupStudent = null;
-['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
-const btn = document.getElementById(`btn-mode-${m}`);
-if (btn) {
-    if (m === mode) {
-        btn.className = "flex-1 sm:flex-none px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition bg-indigo-600 text-white shadow-lg ring-2 ring-indigo-300 ring-offset-1 transform scale-105 whitespace-nowrap z-10";
+// 📌 모둠 편성 모드 변경 및 고정(Pin) 처리 기능
+window.setGroupMode = function(mode, isInit = false) {
+    if (!isInit && currentGroupMode === mode) {
+        if (localStorage.getItem('pinnedGroupMode') === mode) {
+            localStorage.removeItem('pinnedGroupMode');
+        } else {
+            localStorage.setItem('pinnedGroupMode', mode);
+        }
     } else {
-        btn.className = "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 bg-transparent hover:bg-slate-200 hover:text-slate-800 whitespace-nowrap border border-transparent hover:border-slate-200";
+        currentGroupMode = mode;
     }
-}
-});
 
-const descEl = document.getElementById('group-mode-desc'); const btnText = document.getElementById('generate-btn-text');
+    activeTimers = {}; window.selectedGroupStudent = null;
+    
+    const pinned = localStorage.getItem('pinnedGroupMode');
 
-if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
-else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
-else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
-else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+    ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
+        const btn = document.getElementById(`btn-mode-${m}`);
+        if (btn) {
+            if (m === currentGroupMode) {
+                if (m === pinned) {
+                    btn.className = "flex-1 sm:flex-none px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition bg-indigo-600 text-white shadow-[0_0_12px_rgba(250,204,21,0.8)] ring-4 ring-yellow-400 transform scale-105 whitespace-nowrap z-10";
+                } else {
+                    btn.className = "flex-1 sm:flex-none px-4 py-2 sm:py-2.5 rounded-xl font-black text-xs sm:text-sm transition bg-indigo-600 text-white shadow-lg ring-2 ring-indigo-300 ring-offset-1 transform scale-105 whitespace-nowrap z-10";
+                }
+            } else {
+                btn.className = "flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm transition text-slate-500 bg-transparent hover:bg-slate-200 hover:text-slate-800 whitespace-nowrap border border-transparent hover:border-slate-200";
+            }
+        }
+    });
 
-window.updateGroupDrawSelect(); 
-window.renderStudentList(); window.renderGroups();
+    const descEl = document.getElementById('group-mode-desc'); const btnText = document.getElementById('generate-btn-text');
+
+    if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
+    else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
+    else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
+    else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+
+    window.updateGroupDrawSelect(); 
+    if(!isInit) window.renderStudentList();
+    window.renderGroups();
 }
 
 window.resetCurrentGroup = function() {
@@ -1989,7 +2019,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         window.renderGroups();
     }
 
-    // 모둠별 열(Column) 및 미편성 영역 렌더링
+    // 📌 모둠별 열(Column) 및 미편성 영역 렌더링
     window.renderGroups = function() {
         const container = document.getElementById('group-result'); if (!container) return;
         if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -1997,15 +2027,15 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
         
-        // 두꺼운 구분선을 포함하는 동적 그리드 설정
         container.className = 'grid gap-x-1 sm:gap-x-2 gap-y-3 p-1 w-full items-stretch relative';
         let colsPattern = "1fr";
         for(let j=1; j<numGroups; j++) colsPattern += " 3px 1fr";
         container.style.gridTemplateColumns = colsPattern;
         
         const students = classData[currentClass];
-        const presentStudents = students.filter(s => s.attendance);
         
+        // 참석 여부 상관없이 일단 데이터 분리
+        const presentStudents = students.filter(s => s.attendance);
         let validRecordsAll = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
         let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
         let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
@@ -2023,9 +2053,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         }
 
         for (let i = 1; i <= numGroups; i++) {
-            const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance);
+            // 📌 불참 학생도 해당 모둠에 속해있다면 표시하도록 필터링 수정
+            const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
             groupStudents.sort((a, b) => a.no - b.no);
             
+            let presentBoys = groupStudents.filter(s => s.gender === '남' && s.attendance).length;
+            let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
+            let presentTotal = presentBoys + presentGirls;
+
             const color = colors[(i-1) % colors.length];
             let gScore = 0;
             if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) {
@@ -2056,15 +2091,19 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                  ondrop="window.handleDropOnGroup(event, ${i})" 
                  onclick="window.handleGroupAreaClick(${i})">
                 
-                <div class="${color.header} px-1 py-1 sm:px-4 sm:py-3 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
+                <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
                     <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 text-center">
                         <span>${i}모둠</span>
                     </h3>
-                    <div class="flex items-center gap-1 mt-1 sm:mt-0">
-                        <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-75 sm:scale-100 transform origin-center">
-                            <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-10 sm:h-10 text-sm sm:text-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
-                            <span class="w-6 sm:w-12 text-center font-black text-sm sm:text-xl ${color.text}">${gScore}</span>
-                            <button onclick="window.updateGroupScore(${i}, 1)" class="w-6 h-6 sm:w-10 sm:h-10 text-sm sm:text-xl font-bold ${color.btn} text-white transition">+</button>
+                    
+                    <div class="flex items-center gap-1 mt-1 sm:mt-0 flex-wrap justify-end">
+                        <div class="text-[9px] sm:text-[10px] text-slate-600 bg-white/70 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 mr-1 whitespace-nowrap">
+                            참석 <span class="font-bold">${presentTotal}</span>명 <span class="text-slate-400 mx-0.5">|</span> 남 ${presentBoys} 여 ${presentGirls}
+                        </div>
+                        <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-75 sm:scale-100 transform origin-right">
+                            <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
+                            <span class="w-6 sm:w-10 text-center font-black text-sm sm:text-lg ${color.text}">${gScore}</span>
+                            <button onclick="window.updateGroupScore(${i}, 1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold ${color.btn} text-white transition">+</button>
                         </div>
                     </div>
                 </div>
@@ -2075,7 +2114,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
                         
                         let rankStr = "";
-                        if (s.recordMs > 0) {
+                        if (s.recordMs > 0 && s.attendance) {
                             let rank;
                             let rankPrefix = "";
                             if (currentGroupMode === 'gender') {
@@ -2088,12 +2127,33 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         }
                         
                         let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
-                        let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
+                        
+                        // 📌 불참 시 카드 디자인 스타일
+                        let badgeColor = '';
+                        if (!s.attendance) {
+                            badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
+                        } else {
+                            badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
+                        }
+
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                        
+                        // 📌 체육부장(주장 완장 C) 표시 및 패널티 카드 표시
                         let isCaptain = s[`captain_${currentGroupMode}`];
-                        let captainBadge = isCaptain ? '<span class="absolute -top-2 -right-2 text-lg drop-shadow-sm z-20">👑</span>' : '';
+                        let captainBadge = (isCaptain && s.attendance) ? '<div class="absolute bottom-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded border border-yellow-600 shadow-sm z-20 flex items-center justify-center">C</div>' : '';
                         let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
+
+                        let pCard = s.penaltyCard || 0;
+                        let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
+                        let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
+                        
+                        let penaltyCardsHtml = `
+                            <div class="flex gap-0.5 ml-1 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
+                                <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card1} rounded-[1px] transition-colors duration-200"></div>
+                                <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card2} rounded-[1px] transition-colors duration-200"></div>
+                            </div>
+                        `;
 
                         return `
                         <div draggable="true" data-student-no="${s.no}" 
@@ -2106,10 +2166,19 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                              ontouchend="window.handleTouchEnd(event)"
                              onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                              class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                            
+                            <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
+                            
+                            <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] font-black rounded hover:bg-slate-200 text-slate-400 transition z-20" title="체육부장(주장) 지정/해제">c</button>
+
                             ${captainBadge}
                             ${memberDrawnBadge}
-                            <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
-                            <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                            
+                            <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
+                                <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                                ${penaltyCardsHtml}
+                            </div>
+
                             <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
                                 <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
                                 <div class="flex flex-col items-center justify-center w-full mt-0.5">
@@ -2138,14 +2207,13 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 </div>
             </div>`;
             
-            // 모둠 영역 사이에 수직 구분선 추가
             if (i < numGroups) {
                 html += `<div class="bg-slate-400/80 rounded-full w-full h-auto my-2 sm:my-4 shadow-[inset_0_0_2px_rgba(0,0,0,0.3)]"></div>`;
             }
         }
 
         // --- 🎲 미편성 영역 ---
-        const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`] && s.attendance);
+        const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`]);
         unassignedStudents.sort((a, b) => a.no - b.no);
 
         html += `
@@ -2169,7 +2237,7 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
                     
                     let rankStr = "";
-                    if (s.recordMs > 0) {
+                    if (s.recordMs > 0 && s.attendance) {
                         let rank;
                         let rankPrefix = "";
                         if (currentGroupMode === 'gender') {
@@ -2182,12 +2250,31 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     }
                     
                     let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
-                    let badgeColor = s.gender === '남' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-pink-100 text-pink-700 border-pink-200';
+                    
+                    let badgeColor = '';
+                    if (!s.attendance) {
+                        badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
+                    } else {
+                        badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
+                    }
+
                     let isSelected = window.selectedGroupStudent === s.no;
                     let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
-                    let isCaptain = s[`captain_${currentGroupMode}`];
-                    let captainBadge = isCaptain ? '<span class="absolute -top-2 -right-2 text-lg drop-shadow-sm z-20">👑</span>' : '';
                     
+                    let isCaptain = s[`captain_${currentGroupMode}`];
+                    let captainBadge = (isCaptain && s.attendance) ? '<div class="absolute bottom-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded border border-yellow-600 shadow-sm z-20 flex items-center justify-center">C</div>' : '';
+                    
+                    let pCard = s.penaltyCard || 0;
+                    let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
+                    let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
+                    
+                    let penaltyCardsHtml = `
+                        <div class="flex gap-0.5 ml-1 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
+                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card1} rounded-[1px] transition-colors duration-200"></div>
+                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card2} rounded-[1px] transition-colors duration-200"></div>
+                        </div>
+                    `;
+
                     return `
                     <div draggable="true" data-student-no="${s.no}" 
                          ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
@@ -2199,9 +2286,17 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                          class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                        
+                        <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
+                        <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] font-black rounded hover:bg-slate-200 text-slate-400 transition z-20" title="체육부장(주장) 지정/해제">c</button>
+
                         ${captainBadge}
-                        <span class="text-[8px] sm:text-[10px] font-bold opacity-60 w-full text-left leading-none absolute top-0.5 left-1">${s.no}</span>
-                        <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1 sm:mt-0" onclick="event.stopPropagation(); window.toggleCaptain(${s.no})">${s.name}</span>
+                        
+                        <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
+                            <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                            ${penaltyCardsHtml}
+                        </div>
+
                         <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
                             <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
                             <div class="flex flex-col items-center justify-center w-full mt-0.5">
@@ -2362,7 +2457,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         });
     }
 
-    // 출석부 탭의 개인 뽑기 로직
     window.updateDrawStatus = function() {
         if (!currentClass || !classData[currentClass]) return;
         const target = document.getElementById('draw-target').value;
@@ -2493,7 +2587,8 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         group_mixed2: group, 
                         group_mixed3: group, 
                         group_mixed4: group, 
-                        group_gender: group 
+                        group_gender: group,
+                        penaltyCard: 0
                     };
 
                     if (existingIdx > -1) {
