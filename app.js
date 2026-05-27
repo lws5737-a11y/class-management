@@ -414,7 +414,7 @@ window.handleClassTouchStart = function(e, cls) {
         target.style.opacity = '0.3';
         window.activeClassTouchElement = target;
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 300);
+    }, 500);
 };
 
 window.handleClassTouchMove = function(e) {
@@ -551,7 +551,7 @@ window.handleTouchStart = function(e, studentNo) {
         window.showFloatingUnassigned();
 
         if (navigator.vibrate) navigator.vibrate(50);
-    }, 300);
+    }, 500);
 };
 
 window.handleTouchMove = function(e) {
