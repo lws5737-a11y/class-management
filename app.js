@@ -44,6 +44,33 @@ return audioCtx;
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
+// 📌 옐로우 / 레드 카드 효과음 추가
+window.playYellowCardSound = function() {
+    try {
+        const ctx = initAudio();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'square'; osc.frequency.setValueAtTime(800, ctx.currentTime);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
+    } catch(e) {}
+};
+
+window.playRedCardSound = function() {
+    try {
+        const ctx = initAudio();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sawtooth'; 
+        osc.frequency.setValueAtTime(300, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+};
+
 window.playCoinSound = function() {
 try {
 const ctx = initAudio();
@@ -275,10 +302,10 @@ let currentClass = "";
 let classData = {};
 let groupScores = {};
 let groupRecords = {}; 
+let groupPenalties = {}; // 📌 모둠 경고 데이터를 저장하는 객체 추가
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
 
-// 📌 저장된 그룹 모드가 있다면 불러오기 (없으면 mixed4 기본값)
 let currentGroupMode = localStorage.getItem('pinnedGroupMode') || 'mixed4'; 
 let currentTab = 'student'; 
 
@@ -895,7 +922,7 @@ onAuthStateChanged(auth, (user) => {
         if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {};
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {};
         currentClass = ""; window.renderClassSelect();
     }
 });
@@ -912,7 +939,12 @@ if (isDebouncing) return;
 if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
 if (docSnap.exists()) {
 const data = docSnap.data();
-classData = data.data || {}; groupScores = data.scores || {}; groupRecords = data.records || {}; classStamps = data.stamps || {};
+classData = data.data || {}; 
+groupScores = data.scores || {}; 
+groupRecords = data.records || {}; 
+classStamps = data.stamps || {};
+groupPenalties = data.penalties || {}; // 📌 모둠 페널티 연동
+
 if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
 migrateData();
 }
@@ -935,7 +967,7 @@ if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex
 
 function saveData() {
 if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
-if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""];
+if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""]; if ("" in groupPenalties) delete groupPenalties[""];
 
 if (userId && db) {
 isDebouncing = true; 
@@ -943,7 +975,7 @@ const syncIcon = document.getElementById('sync-status');
 if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
 
 const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage }, { merge: true })
+setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties }, { merge: true })
 .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
 .catch((error) => { 
     console.error("클라우드 자동 저장 실패:", error); 
@@ -1114,16 +1146,40 @@ window.updateDismissal = function(studentNo, value) {
     }
 }
 
-// 📌 패널티 카드 사이클 함수 (0 -> 1(노랑) -> 2(빨강))
+// 📌 학생 개인 패널티 카드 처리 (사운드 포함)
 window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
     if (student) {
         student.penaltyCard = ((student.penaltyCard || 0) + 1) % 3;
+        
+        if (student.penaltyCard === 1) window.playYellowCardSound();
+        else if (student.penaltyCard === 2) window.playRedCardSound();
+        else window.playEraseSound();
+        
         saveData();
         window.renderGroups();
     }
 };
+
+// 📌 모둠 전체 패널티 카드 처리 (사운드 포함)
+window.cycleGroupPenalty = function(groupId) {
+    if (!currentClass) return;
+    if (!groupPenalties[currentClass]) groupPenalties[currentClass] = {};
+    if (!groupPenalties[currentClass][currentGroupMode]) groupPenalties[currentClass][currentGroupMode] = {};
+    
+    let currentVal = groupPenalties[currentClass][currentGroupMode][groupId] || 0;
+    let nextVal = (currentVal + 1) % 3;
+    groupPenalties[currentClass][currentGroupMode][groupId] = nextVal;
+    
+    if (nextVal === 1) window.playYellowCardSound();
+    else if (nextVal === 2) window.playRedCardSound();
+    else window.playEraseSound();
+    
+    saveData();
+    window.renderGroups();
+};
+
 
 // ==========================================
 // 6. 타이머, 모달, 리스트 렌더링 등 코어 로직
@@ -1244,6 +1300,8 @@ groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: 
 }
 if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
 if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
+if (!groupPenalties[className]) groupPenalties[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+
 classData[className].forEach(s => {
 if (s.handSense !== undefined || s.footSense !== undefined) {
 let h = parseInt(s.handSense) || 0; let f = parseInt(s.footSense) || 0; let maxSense = Math.max(h, f);
@@ -1273,7 +1331,7 @@ if (s.running !== undefined) { delete s.running; }
 if (s.memo === undefined) s.memo = "";
 if (s.dismissalInfo === undefined) s.dismissalInfo = "";
 if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
-if (s.penaltyCard === undefined) s.penaltyCard = 0; // 패널티 카드 추가 마이그레이션
+if (s.penaltyCard === undefined) s.penaltyCard = 0; 
 
 delete s.group_partner;
 delete s.agility;
@@ -1312,6 +1370,7 @@ classData[newClassName] = [];
 groupScores[newClassName] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
 groupRecords[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
 classStamps[newClassName] = Array(TOTAL_STAMP_CELLS).fill(false);
+groupPenalties[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
 
 window.saveClassVisibility(newClassName, true);
 
@@ -1326,7 +1385,7 @@ function normalizeClassName(name) {
 window.deleteCurrentClass = function() {
 if (!currentClass) return;
 window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
-delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass];
+delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass]; delete groupPenalties[currentClass];
 saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -1337,7 +1396,7 @@ window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공�
 
 window.deleteAllClasses = function() {
 window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
-classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
+classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
 document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
 document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
 ['student-management', 'group-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1413,7 +1472,7 @@ window.handleAllCSVUpload = function(event) {
         if (!header[0].includes('학급')) { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); event.target.value = ''; return; }
 
         window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
-            const newData = {}; const newGroupScores = {}; const newGroupRecords = {};
+            const newData = {}; const newGroupScores = {}; const newGroupRecords = {}; const newGroupPenalties = {};
             let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
             let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); 
             
@@ -1439,6 +1498,7 @@ window.handleAllCSVUpload = function(event) {
                     newData[className] = [];
                     newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
                     newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+                    newGroupPenalties[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
                     if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
                 }
 
@@ -1480,7 +1540,7 @@ window.handleAllCSVUpload = function(event) {
             }
 
             if (Object.keys(newData).length > 0) {
-                classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords;
+                classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords; groupPenalties = newGroupPenalties;
                 activeTimers = {}; window.selectedGroupStudent = null;
                 window.renderClassSelect();
                 if (currentClass && !classData[currentClass]) {
@@ -1493,7 +1553,7 @@ window.handleAllCSVUpload = function(event) {
                     isDebouncing = true;
                     try {
                         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage }, { merge: true });
+                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties }, { merge: true });
                     } catch (error) { 
                         console.error("즉시 저장 실패:", error); 
                         window.showModal("저장 실패", "네트워크 또는 용량 문제로 클라우드 저장에 실패했습니다.");
@@ -1531,7 +1591,7 @@ if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
 document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
 window.showTab(currentTab); window.renderClassSelect(); 
-window.setGroupMode(currentGroupMode, true); // 📌 학급 선택 시 고정된 모드 UI 업데이트 적용
+window.setGroupMode(currentGroupMode, true); 
 window.updateGroupDrawSelect(); 
 window.renderStudentList(); window.renderGroups(); window.renderStampBoard();
 }
@@ -1870,9 +1930,12 @@ window.showModal("모둠 초기화", `정말 현재 학급의 <b>${modeName}</b>
 classData[currentClass].forEach(student => { 
     student[`group_${currentGroupMode}`] = null; 
     student[`captain_${currentGroupMode}`] = false;
+    student.penaltyCard = 0; // 초기화 시 패널티 카드 리셋
 });
 if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
 if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
+if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) groupPenalties[currentClass][currentGroupMode] = {};
+
 activeTimers = {}; window.selectedGroupStudent = null; saveData(); window.renderStudentList(); window.renderGroups();
 window.showModal("완료", `${modeName} 편성이 초기화되었습니다.`);
 });
@@ -1899,9 +1962,13 @@ else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback
             if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) {
                 groupRecords[currentClass][currentGroupMode].drawnGroups = [];
             }
+            if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) {
+                groupPenalties[currentClass][currentGroupMode] = {}; // 편성 시 모둠 경고 리셋
+            }
             classData[currentClass].forEach(s => {
                 s.groupMemberDrawn = false;
                 s[`captain_${currentGroupMode}`] = false;
+                s.penaltyCard = 0; // 편성 시 개인 경고 리셋
             });
 
             callback(); 
@@ -2034,7 +2101,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         
         const students = classData[currentClass];
         
-        // 참석 여부 상관없이 일단 데이터 분리
         const presentStudents = students.filter(s => s.attendance);
         let validRecordsAll = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
         let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
@@ -2053,7 +2119,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         }
 
         for (let i = 1; i <= numGroups; i++) {
-            // 📌 불참 학생도 해당 모둠에 속해있다면 표시하도록 필터링 수정
             const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
             groupStudents.sort((a, b) => a.no - b.no);
             
@@ -2082,6 +2147,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
             
             const isGroupDrawn = drawnGroupIds.includes(i);
             const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
+            
+            // 📌 모둠 경고 카드 데이터 불러오기
+            let gp = 0;
+            if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) {
+                gp = groupPenalties[currentClass][currentGroupMode][i] || 0;
+            }
+            let gCard1 = gp >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-white/50 border-slate-300';
+            let gCard2 = gp >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-white/50 border-slate-300';
 
             html += `
             <div class="${color.bg} border sm:border-2 ${color.border} rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
@@ -2092,8 +2165,14 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                  onclick="window.handleGroupAreaClick(${i})">
                 
                 <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
-                    <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 text-center">
+                    
+                    <!-- 📌 1모둠 텍스트 가로 고정 및 모둠 전체 경고 버튼 추가 -->
+                    <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                         <span>${i}모둠</span>
+                        <div class="flex gap-0.5 ml-0.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cycleGroupPenalty(${i})" title="모둠 전체 경고 부여">
+                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3.5 border ${gCard1} rounded-[1px] transition-colors duration-200"></div>
+                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3.5 border ${gCard2} rounded-[1px] transition-colors duration-200"></div>
+                        </div>
                     </h3>
                     
                     <div class="flex items-center gap-1 mt-1 sm:mt-0 flex-wrap justify-end">
@@ -2128,7 +2207,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         
                         let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
                         
-                        // 📌 불참 시 카드 디자인 스타일
                         let badgeColor = '';
                         if (!s.attendance) {
                             badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
@@ -2139,9 +2217,12 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                         
-                        // 📌 체육부장(주장 완장 C) 표시 및 패널티 카드 표시
+                        // 📌 체육부장(주장 완장 C) 버튼 자체를 뱃지로 활용
                         let isCaptain = s[`captain_${currentGroupMode}`];
-                        let captainBadge = (isCaptain && s.attendance) ? '<div class="absolute bottom-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded border border-yellow-600 shadow-sm z-20 flex items-center justify-center">C</div>' : '';
+                        let captainBtnClass = (isCaptain && s.attendance) 
+                            ? 'bg-yellow-400 text-yellow-900 border border-yellow-600 shadow-sm' 
+                            : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
+
                         let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                         let pCard = s.penaltyCard || 0;
@@ -2169,9 +2250,11 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                             
                             <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
                             
-                            <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] font-black rounded hover:bg-slate-200 text-slate-400 transition z-20" title="체육부장(주장) 지정/해제">c</button>
+                            <!-- 📌 체육부장 토글 버튼 (우측 상단 통합) -->
+                            <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
+                                ${(isCaptain && s.attendance) ? 'C' : 'c'}
+                            </button>
 
-                            ${captainBadge}
                             ${memberDrawnBadge}
                             
                             <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
@@ -2262,7 +2345,9 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                     let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                     
                     let isCaptain = s[`captain_${currentGroupMode}`];
-                    let captainBadge = (isCaptain && s.attendance) ? '<div class="absolute bottom-1 right-1 bg-yellow-400 text-yellow-900 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded border border-yellow-600 shadow-sm z-20 flex items-center justify-center">C</div>' : '';
+                    let captainBtnClass = (isCaptain && s.attendance) 
+                        ? 'bg-yellow-400 text-yellow-900 border border-yellow-600 shadow-sm' 
+                        : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
                     
                     let pCard = s.penaltyCard || 0;
                     let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
@@ -2288,9 +2373,9 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                          class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                         
                         <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
-                        <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] font-black rounded hover:bg-slate-200 text-slate-400 transition z-20" title="체육부장(주장) 지정/해제">c</button>
-
-                        ${captainBadge}
+                        <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
+                            ${(isCaptain && s.attendance) ? 'C' : 'c'}
+                        </button>
                         
                         <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
                             <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
