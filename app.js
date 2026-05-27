@@ -302,7 +302,7 @@ let currentClass = "";
 let classData = {};
 let groupScores = {};
 let groupRecords = {}; 
-let groupPenalties = {}; // 📌 모둠 경고 데이터를 저장하는 객체 추가
+let groupPenalties = {}; // 📌 모둠 경고 데이터를 저장하는 객체
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
 
@@ -943,7 +943,7 @@ classData = data.data || {};
 groupScores = data.scores || {}; 
 groupRecords = data.records || {}; 
 classStamps = data.stamps || {};
-groupPenalties = data.penalties || {}; // 📌 모둠 페널티 연동
+groupPenalties = data.penalties || {};
 
 if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
 migrateData();
@@ -2094,10 +2094,15 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
         let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
         let html = '';
         
-        container.className = 'grid gap-x-1 sm:gap-x-2 gap-y-3 p-1 w-full items-stretch relative';
-        let colsPattern = "1fr";
-        for(let j=1; j<numGroups; j++) colsPattern += " 3px 1fr";
-        container.style.gridTemplateColumns = colsPattern;
+        // --- 🌟 모바일 세로 모드 2x2 배치를 위한 그리드 수정 🌟 ---
+        let gridCols = "grid-cols-1";
+        if (numGroups === 2) gridCols = "grid-cols-2";
+        else if (numGroups === 3) gridCols = "grid-cols-3"; // 3팀은 3열 유지
+        else if (numGroups === 4) gridCols = "grid-cols-2 md:grid-cols-4"; // 4팀은 모바일 2열, PC 4열
+
+        container.className = `grid gap-2 sm:gap-3 p-1 w-full items-stretch relative ${gridCols}`;
+        container.style.gridTemplateColumns = ""; // 강제 인라인 스타일 제거 (공간 확보)
+        // -------------------------------------------------------------
         
         const students = classData[currentClass];
         
@@ -2166,7 +2171,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                 
                 <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
                     
-                    <!-- 📌 1모둠 텍스트 가로 고정 및 모둠 전체 경고 버튼 추가 -->
                     <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                         <span>${i}모둠</span>
                         <div class="flex gap-0.5 ml-0.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cycleGroupPenalty(${i})" title="모둠 전체 경고 부여">
@@ -2217,7 +2221,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                         let isSelected = window.selectedGroupStudent === s.no;
                         let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                         
-                        // 📌 체육부장(주장 완장 C) 버튼 자체를 뱃지로 활용
                         let isCaptain = s[`captain_${currentGroupMode}`];
                         let captainBtnClass = (isCaptain && s.attendance) 
                             ? 'bg-yellow-400 text-yellow-900 border border-yellow-600 shadow-sm' 
@@ -2250,7 +2253,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                             
                             <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
                             
-                            <!-- 📌 체육부장 토글 버튼 (우측 상단 통합) -->
                             <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
                                 ${(isCaptain && s.attendance) ? 'C' : 'c'}
                             </button>
@@ -2289,10 +2291,6 @@ const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
                      </div>
                 </div>
             </div>`;
-            
-            if (i < numGroups) {
-                html += `<div class="bg-slate-400/80 rounded-full w-full h-auto my-2 sm:my-4 shadow-[inset_0_0_2px_rgba(0,0,0,0.3)]"></div>`;
-            }
         }
 
         // --- 🎲 미편성 영역 ---
