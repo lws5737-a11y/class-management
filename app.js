@@ -37,29 +37,39 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
+// 🌟 옐로카드 (삑! 휘슬소리 1번)
 window.playYellowCardSound = function() {
     try {
-        const ctx = initAudio();
+        const ctx = initAudio(); const now = ctx.currentTime;
         const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(800, ctx.currentTime);
-        gain.gain.setValueAtTime(0.05, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.type = 'triangle'; 
+        osc.frequency.setValueAtTime(2400, now); 
+        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.15);
+        gain.gain.setValueAtTime(0, now); 
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.02); 
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
     } catch(e) {}
 };
 
+// 🌟 레드카드 (삐삑! 휘슬소리 2번)
 window.playRedCardSound = function() {
     try {
-        const ctx = initAudio();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'sawtooth'; 
-        osc.frequency.setValueAtTime(300, ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.4);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+        const ctx = initAudio(); const now = ctx.currentTime;
+        const playBlast = (time) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(2400, time); 
+            osc.frequency.exponentialRampToValueAtTime(1800, time + 0.12);
+            gain.gain.setValueAtTime(0, time); 
+            gain.gain.linearRampToValueAtTime(0.3, time + 0.02); 
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(time); osc.stop(time + 0.12);
+        };
+        playBlast(now);
+        playBlast(now + 0.18); 
     } catch(e) {}
 };
 
@@ -267,7 +277,6 @@ window.closeStampSelectModal = function() {
 window.selectStamp = function(path) {
     globalStampImage = path;
     localStorage.setItem('customStamp', globalStampImage);
-    document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; });
     saveData();
     window.renderStampBoard();
     window.closeStampSelectModal();
@@ -335,8 +344,8 @@ window.startAutoScroll = function() {
             return;
         }
         if (window.currentDragY !== -1) {
-            const threshold = 120; // 화면 위아래 120px 이내 접근 시 스크롤 시작
-            const speed = 12; // 스크롤 속도
+            const threshold = 120;
+            const speed = 12; 
             if (window.currentDragY < threshold) {
                 window.scrollBy(0, -speed);
             } else if (window.innerHeight - window.currentDragY < threshold) {
@@ -362,9 +371,6 @@ document.addEventListener('dragover', function(e) {
     }
 });
 
-// ==========================================
-// --- 미편성 영역 플로팅 창 전환 함수 ---
-// ==========================================
 window.showFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
@@ -391,9 +397,6 @@ window.hideFloatingUnassigned = function() {
     }
 };
 
-// ==========================================
-// --- 학급 버튼 전용 드래그 앤 드롭 로직 ---
-// ==========================================
 window.draggedClass = null;
 let classTouchTimeout;
 window.classTouchClone = null;
@@ -577,9 +580,6 @@ window.processClassDrop = function(draggedCls, targetCls, targetZone) {
     window.renderClassSelect();
 }
 
-// ==========================================
-// --- 학생 드래그 앤 드롭 및 터치 이동 통합 로직 ---
-// ==========================================
 let touchTimeout;
 window.touchClone = null;
 window.activeTouchElement = null;
@@ -846,9 +846,6 @@ window.closeManageModal = function() {
     document.getElementById('manage-modal').classList.remove('flex');
 }
 
-// ==========================================
-// --- 학급 버튼 렌더링 화면 업데이트 ---
-// ==========================================
 window.renderClassSelect = function() {
     const listEl = document.getElementById('modal-class-list');
     const displayBtn = document.getElementById('current-class-display');
@@ -1004,7 +1001,7 @@ function setupFirestoreListener() {
             classStamps = data.stamps || {};
             groupPenalties = data.penalties || {};
 
-            if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); document.querySelectorAll('.stamp-img').forEach(img => { img.src = globalStampImage; }); }
+            if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); }
             migrateData();
         }
         window.renderClassSelect();
@@ -1046,27 +1043,84 @@ function saveData() {
 }
 
 // ==========================================
-// 5. 도장판, 스톱워치 등 기존 공통 로직
+// 🌟 도장판 대형 화면 렌더링 로직 (새롭게 추가됨)
 // ==========================================
 window.renderStampBoard = () => {
-    const board = document.getElementById('stampBoard'); if (!board) return;
     const titleEl = document.getElementById('stamp-class-title');
+    if (!titleEl) return;
 
-    if (!currentClass) { titleEl.innerText = "학급을 선택해주세요"; board.innerHTML = ""; return; }
-    titleEl.innerText = `${currentClass} 도장판`;
+    if (!currentClass) { 
+        titleEl.innerHTML = `학급을 선택해주세요 <span class="text-xs text-slate-400">▼</span>`; 
+        return; 
+    }
+    titleEl.innerHTML = `${currentClass} 도장판 <span class="text-xs text-slate-400">▼</span>`;
+    
     if (!classStamps[currentClass]) classStamps[currentClass] = Array(TOTAL_STAMP_CELLS).fill(false);
 
-    board.innerHTML = ''; let stampedCount = 0;
-    classStamps[currentClass].forEach((isStamped, i) => {
-        if (isStamped) stampedCount++;
-        const cell = document.createElement('div');
-        cell.className = `stamp-cell w-full aspect-square border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-white hover:bg-green-50 ${isStamped ? 'stamped' : ''}`;
-        cell.innerHTML = `<span class="cell-number font-bold">${i + 1}</span><img src="${globalStampImage}" class="stamp-img w-full h-full object-cover rounded-full ${isStamped ? '' : 'hidden'}">`;
-        cell.onclick = () => window.toggleStamp(i, cell);
-        board.appendChild(cell);
-    });
-    document.getElementById('progressCount').innerText = stampedCount;
-    window.checkMissionComplete(false);
+    let stampedCount = classStamps[currentClass].filter(Boolean).length;
+    
+    const countEl = document.getElementById('big-stamp-count');
+    const placeholder = document.getElementById('stamp-placeholder');
+    const bigImg = document.getElementById('big-stamp-img');
+    const badge = document.getElementById('missionBadgeContainer');
+
+    if (countEl) countEl.innerText = `X ${stampedCount}`;
+
+    if (stampedCount === 0) {
+        bigImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        badge.classList.add('hidden');
+    } else if (stampedCount >= TOTAL_STAMP_CELLS) {
+        bigImg.src = 'images/stamps/complete01.jpg'; // 미션 완료 이미지
+        bigImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        badge.classList.remove('hidden');
+        badge.classList.add('badge-animate');
+    } else {
+        bigImg.src = globalStampImage;
+        bigImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        badge.classList.add('hidden');
+    }
+};
+
+window.addOneStamp = () => {
+    if (!currentClass || !classStamps[currentClass]) {
+        window.showModal("알림", "학급을 먼저 선택해주세요.");
+        return;
+    }
+    let currentCount = classStamps[currentClass].filter(Boolean).length;
+    
+    if (currentCount < TOTAL_STAMP_CELLS) {
+        classStamps[currentClass][currentCount] = true;
+        
+        const img = document.getElementById('big-stamp-img');
+        if(img) {
+            img.classList.remove('animate-pop-in');
+            void img.offsetWidth; // 애니메이션 초기화를 위한 트릭
+            img.classList.add('animate-pop-in');
+        }
+        
+        window.playStampSound();
+        saveData();
+        window.renderStampBoard();
+        
+        if (currentCount + 1 === TOTAL_STAMP_CELLS) {
+            setTimeout(() => window.playOlympicFanfare(), 300);
+            window.fireConfetti();
+        }
+    }
+};
+
+window.removeOneStamp = () => {
+    if (!currentClass || !classStamps[currentClass]) return;
+    let currentCount = classStamps[currentClass].filter(Boolean).length;
+    if (currentCount > 0) {
+        classStamps[currentClass][currentCount - 1] = false;
+        window.playEraseSound();
+        saveData();
+        window.renderStampBoard();
+    }
 };
 
 window.toggleStampDropdown = function(e) {
@@ -1108,26 +1162,6 @@ document.addEventListener('click', (e) => {
         menu.classList.remove('flex');
     }
 });
-
-window.toggleStamp = (index, cellElement) => {
-    if (!currentClass) return;
-    const isStamped = !classStamps[currentClass][index]; classStamps[currentClass][index] = isStamped;
-    if (isStamped) { cellElement.classList.add('stamped'); cellElement.querySelector('.stamp-img').classList.remove('hidden'); window.playStampSound(); } 
-    else { cellElement.classList.remove('stamped'); cellElement.querySelector('.stamp-img').classList.add('hidden'); window.playEraseSound(); }
-    document.getElementById('progressCount').innerText = classStamps[currentClass].filter(Boolean).length;
-    saveData(); window.checkMissionComplete(true);
-};
-
-window.checkMissionComplete = (playEffect) => {
-    const isComplete = classStamps[currentClass]?.every(s => s === true);
-    const badge = document.getElementById('missionBadgeContainer');
-    if (isComplete) { 
-        badge.classList.remove('hidden'); 
-        badge.classList.add('badge-animate'); 
-        if (playEffect) window.playOlympicFanfare(); 
-    } 
-    else { badge.classList.add('hidden'); }
-};
 
 window.resetStampBoard = () => {
     if (confirm("기록을 모두 초기화하시겠습니까?")) { classStamps[currentClass] = Array(TOTAL_STAMP_CELLS).fill(false); saveData(); window.renderStampBoard(); }
@@ -1750,6 +1784,7 @@ function updateSortIcons() {
     });
 }
 
+// 🌟 1. 출석부 학생 이름 세로 정렬 방지 적용
 window.renderStudentList = function() {
     const tbody = document.getElementById('student-list-body'); if (!tbody) return;
     tbody.innerHTML = "";
@@ -1856,9 +1891,9 @@ window.renderStudentList = function() {
                 </button>
             </td>
             
-            <td class="px-0.5 py-1 sm:p-2 font-black text-center whitespace-normal break-words leading-tight min-w-[36px]">
+            <td class="px-2 py-1 sm:p-2 font-black text-center whitespace-nowrap min-w-[70px]">
                 <div class="flex items-center justify-center gap-1.5">
-                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
+                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
                         ${s.name}${drawnBadge}
                     </button>
                     <button onclick="event.stopPropagation(); window.openMemoModal(${s.no}, '${s.name}')" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">📝</button>
@@ -1899,8 +1934,6 @@ window.renderStudentList = function() {
     });
 
     if(window.updateDrawStatus) window.updateDrawStatus();
-    
-    // 🌟 렌더링 끝날 때마다 플로팅 버튼(다중 스톱워치) 상태 업데이트 🌟
     window.updateFloatingStopwatchBtn();
 }
 
@@ -2108,6 +2141,7 @@ window.generateGenderGroups = function() {
     window.renderGroups();
 }
 
+// 🌟 2. 모둠 화면 체육부장 시인성 강화 (전체 노란색 배경)
 window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -2229,8 +2263,13 @@ window.renderGroups = function() {
                     
                     let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
                     
+                    let isCaptain = s[`captain_${currentGroupMode}`];
                     let badgeColor = '';
-                    if (!s.attendance) {
+                    
+                    // 체육부장은 카드를 완전한 노란색으로 강조
+                    if (isCaptain && s.attendance) {
+                        badgeColor = 'bg-yellow-200 text-yellow-900 border-yellow-400 ring-2 ring-yellow-400 shadow-md';
+                    } else if (!s.attendance) {
                         badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
                     } else {
                         badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
@@ -2239,9 +2278,8 @@ window.renderGroups = function() {
                     let isSelected = window.selectedGroupStudent === s.no;
                     let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                     
-                    let isCaptain = s[`captain_${currentGroupMode}`];
                     let captainBtnClass = (isCaptain && s.attendance) 
-                        ? 'bg-yellow-400 text-yellow-900 border border-yellow-600 shadow-sm' 
+                        ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
                         : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
 
                     let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
@@ -2267,7 +2305,7 @@ window.renderGroups = function() {
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                         class="student-card relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                         class="student-card relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                         
                         <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
                         
@@ -2282,10 +2320,10 @@ window.renderGroups = function() {
                             ${penaltyCardsHtml}
                         </div>
 
-                        <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
-                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                        <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
+                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
                             <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
                                 ${rankStr}
                             </div>
                         </div>
@@ -2349,8 +2387,12 @@ window.renderGroups = function() {
                 
                 let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
                 
+                let isCaptain = s[`captain_${currentGroupMode}`];
                 let badgeColor = '';
-                if (!s.attendance) {
+                
+                if (isCaptain && s.attendance) {
+                    badgeColor = 'bg-yellow-200 text-yellow-900 border-yellow-400 ring-2 ring-yellow-400 shadow-md';
+                } else if (!s.attendance) {
                     badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
                 } else {
                     badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
@@ -2359,9 +2401,8 @@ window.renderGroups = function() {
                 let isSelected = window.selectedGroupStudent === s.no;
                 let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                 
-                let isCaptain = s[`captain_${currentGroupMode}`];
                 let captainBtnClass = (isCaptain && s.attendance) 
-                    ? 'bg-yellow-400 text-yellow-900 border border-yellow-600 shadow-sm' 
+                    ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
                     : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
                 
                 let pCard = s.penaltyCard || 0;
@@ -2385,7 +2426,7 @@ window.renderGroups = function() {
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                     class="student-card w-20 sm:w-28 relative bg-white border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                     class="student-card w-20 sm:w-28 relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                     
                     <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
                     <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
@@ -2397,10 +2438,10 @@ window.renderGroups = function() {
                         ${penaltyCardsHtml}
                     </div>
 
-                    <div class="flex flex-col items-center w-full bg-slate-50/80 rounded px-1 py-0.5 border border-slate-100 mt-1">
-                        <span class="text-[8px] sm:text-[10px] font-bold text-slate-500 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                    <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
+                        <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
                         <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
                             ${rankStr}
                         </div>
                     </div>
@@ -2427,7 +2468,7 @@ window.renderGroups = function() {
     }, 10);
 }
 
-// 엑셀 내보내기/가져오기 기능
+// 엑셀 관련 기능
 window.importFromExcel = function() {
     const input = document.getElementById('excel-input').value.trim();
     if (!input) { window.showModal("알림", "입력된 데이터가 없습니다."); return; }
@@ -2479,7 +2520,7 @@ window.importFromExcel = function() {
 }
 
 // ==========================================
-// ⏱️ 다중 스톱워치 로직 (새롭게 추가된 부분)
+// ⏱️ 다중 스톱워치 로직
 // ==========================================
 window.openGroupStopwatch = function() {
     if(!currentClass || !classData[currentClass]) return;
