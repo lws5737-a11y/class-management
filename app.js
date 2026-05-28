@@ -14,19 +14,8 @@ let groupStops = [];
 let groupLoopId = null; 
 
 // ==========================================
-// 1. 헤더 슬라이드 및 탭 텍스트 처리 / 오디오 초기화
+// 1. 오디오 초기화 및 재생
 // ==========================================
-
-document.addEventListener("DOMContentLoaded", () => {
-    const tabStudent = document.getElementById('tab-student');
-    if(tabStudent) tabStudent.innerText = '출석부';
-    
-    const tabGroup = document.getElementById('tab-group');
-    if(tabGroup) tabGroup.innerText = '모둠';
-    
-    const tabStamp = document.getElementById('tab-stamp');
-    if(tabStamp) tabStamp.innerText = '도장판';
-});
 
 let audioCtx;
 function initAudio() {
@@ -37,40 +26,32 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
-// 🌟 옐로카드 (삑! 휘슬소리 1번)
-window.playYellowCardSound = function() {
+// 🌟 공통 옐로/레드카드 및 호루라기 재생
+window.showPenaltyCard = function(type) {
+    const overlay = document.getElementById('card-overlay');
+    const img = document.getElementById('card-image');
+    
+    // 파일명에 띄어쓰기가 있으므로 브라우저가 인식하도록 처리
+    img.src = type === 'yellow' ? 'images/yellow card.png' : 'images/red card.png';
+    
+    // 🎧 호루라기 소리 재생
     try {
-        const ctx = initAudio(); const now = ctx.currentTime;
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'triangle'; 
-        osc.frequency.setValueAtTime(2400, now); 
-        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.15);
-        gain.gain.setValueAtTime(0, now); 
-        gain.gain.linearRampToValueAtTime(0.3, now + 0.02); 
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.15);
+        const audio = new Audio('sound/referee-whistle01.mp3');
+        audio.play().catch(e => console.log('호루라기 오디오 재생 막힘:', e));
     } catch(e) {}
+
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    img.classList.remove('animate-slide-tilt');
+    void img.offsetWidth; // DOM Reflow (애니메이션 재시작 트릭)
+    img.classList.add('animate-slide-tilt');
 };
 
-// 🌟 레드카드 (삐삑! 휘슬소리 2번)
-window.playRedCardSound = function() {
-    try {
-        const ctx = initAudio(); const now = ctx.currentTime;
-        const playBlast = (time) => {
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(2400, time); 
-            osc.frequency.exponentialRampToValueAtTime(1800, time + 0.12);
-            gain.gain.setValueAtTime(0, time); 
-            gain.gain.linearRampToValueAtTime(0.3, time + 0.02); 
-            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.start(time); osc.stop(time + 0.12);
-        };
-        playBlast(now);
-        playBlast(now + 0.18); 
-    } catch(e) {}
+window.closeCardOverlay = function() {
+    const overlay = document.getElementById('card-overlay');
+    overlay.classList.add('hidden');
+    overlay.classList.remove('flex');
 };
 
 window.playCoinSound = function() {
@@ -96,44 +77,6 @@ window.playBumpSound = function() {
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
         osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
-    } catch(e) {}
-}
-
-window.playDrumRoll = function() {
-    try {
-        const ctx = initAudio();
-        for (let i = 0; i < 20; i++) {
-            setTimeout(() => {
-                const osc = ctx.createOscillator(); const gain = ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100 + Math.random() * 50, ctx.currentTime);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.start(); osc.stop(ctx.currentTime + 0.1);
-            }, i * 100);
-        }
-    } catch(e) {}
-}
-
-window.playGrandFanfare = function() {
-    try {
-        const ctx = initAudio();
-        const playChord = (freqs, t, d) => {
-            freqs.forEach(f => {
-                const osc = ctx.createOscillator(); const gain = ctx.createGain();
-                osc.type = 'square'; osc.frequency.value = f;
-                gain.gain.setValueAtTime(0.15, ctx.currentTime + t);
-                gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + t + d);
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + d);
-            });
-        };
-        playChord([440, 554.37, 659.25], 0, 0.2); 
-        playChord([440, 554.37, 659.25], 0.2, 0.2);
-        playChord([440, 554.37, 659.25], 0.4, 0.2);
-        playChord([493.88, 587.33, 739.99], 0.6, 0.4); 
-        playChord([523.25, 659.25, 783.99, 1046.50], 1.0, 1.5); 
     } catch(e) {}
 }
 
@@ -307,7 +250,7 @@ let groupPenalties = {};
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
 
-let currentGroupMode = localStorage.getItem('pinnedGroupMode') || 'mixed4'; 
+let currentGroupMode = 'mixed4'; 
 let currentTab = 'student'; 
 
 let activeTimers = {}; 
@@ -329,9 +272,6 @@ const getGroupsCycle = () => {
     const cycle = [null]; for(let i=1; i<=max; i++) cycle.push(i); return cycle;
 };
 
-// ==========================================
-// 🌟 드래그 시 자동 스크롤(Auto Scroll) 기능 🌟
-// ==========================================
 window.currentDragY = -1;
 window.autoScrollRaf = null;
 
@@ -906,7 +846,7 @@ window.renderClassSelect = function() {
     if (currentClass && classes.includes(currentClass)) {
         if(displayBtn) displayBtn.innerHTML = `<span>⚙️ ${currentClass}</span>`;
     } else { 
-        if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 학급 선택</span>";
+        if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 설정 및 시작</span>";
     }
 }
 
@@ -965,9 +905,12 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('app-container').classList.remove('hidden');
         
         const emailEl = document.getElementById('user-email');
-        if(emailEl) {
-            emailEl.innerText = user.email.split('@')[0];
-        }
+        if(emailEl) emailEl.innerText = user.email.split('@')[0];
+        
+        // 로그인 성공 시 탭과 로그아웃 버튼 활성화
+        document.getElementById('tab-navigation').classList.remove('hidden');
+        document.getElementById('tab-navigation').classList.add('flex');
+        document.getElementById('logout-btn').classList.remove('hidden');
         
         setupFirestoreListener();
         if (!currentClass) {
@@ -978,6 +921,10 @@ onAuthStateChanged(auth, (user) => {
         if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
+        document.getElementById('tab-navigation').classList.add('hidden');
+        document.getElementById('tab-navigation').classList.remove('flex');
+        document.getElementById('logout-btn').classList.add('hidden');
+        
         classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {};
         currentClass = ""; window.renderClassSelect();
     }
@@ -1013,7 +960,7 @@ function setupFirestoreListener() {
             currentClass = "";
             const display = document.getElementById('current-class-display');
             if (display) display.innerHTML = "<span>⚙️ 설정 및 시작</span>";
-            ['tab-navigation', 'student-management', 'group-section', 'stamp-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+            ['student-management', 'group-section', 'stamp-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
         }
     }, (error) => {
         console.error("데이터 동기화 오류:", error);
@@ -1043,7 +990,7 @@ function saveData() {
 }
 
 // ==========================================
-// 🌟 도장판 대형 화면 렌더링 로직 (새롭게 추가됨)
+// 도장판 렌더링
 // ==========================================
 window.renderStampBoard = () => {
     const titleEl = document.getElementById('stamp-class-title');
@@ -1069,11 +1016,11 @@ window.renderStampBoard = () => {
         bigImg.classList.add('hidden');
         placeholder.classList.remove('hidden');
     } else if (stampedCount >= TOTAL_STAMP_CELLS) {
-        bigImg.src = 'images/stamps/complete01.jpg'; // 20개 완료 시 오직 이 이미지만 출력
+        bigImg.src = 'images/stamps/complete01.jpg';
         bigImg.classList.remove('hidden');
         placeholder.classList.add('hidden');
     } else {
-        bigImg.src = globalStampImage; // 평소에는 선택한 도장 이미지 출력
+        bigImg.src = globalStampImage;
         bigImg.classList.remove('hidden');
         placeholder.classList.add('hidden');
     }
@@ -1092,7 +1039,7 @@ window.addOneStamp = () => {
         const img = document.getElementById('big-stamp-img');
         if(img) {
             img.classList.remove('animate-pop-in');
-            void img.offsetWidth; // 애니메이션 초기화를 위한 트릭
+            void img.offsetWidth; 
             img.classList.add('animate-pop-in');
         }
         
@@ -1234,13 +1181,14 @@ window.updateDismissal = function(studentNo, value) {
     }
 }
 
+// 🌟 패널티 부여 시 카드 팝업 호출
 window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
     if (student) {
         student.penaltyCard = ((student.penaltyCard || 0) + 1) % 3;
-        if (student.penaltyCard === 1) window.playYellowCardSound();
-        else if (student.penaltyCard === 2) window.playRedCardSound();
+        if (student.penaltyCard === 1) window.showPenaltyCard('yellow');
+        else if (student.penaltyCard === 2) window.showPenaltyCard('red');
         else window.playEraseSound();
         saveData();
         window.renderGroups();
@@ -1256,8 +1204,8 @@ window.cycleGroupPenalty = function(groupId) {
     let nextVal = (currentVal + 1) % 3;
     groupPenalties[currentClass][currentGroupMode][groupId] = nextVal;
     
-    if (nextVal === 1) window.playYellowCardSound();
-    else if (nextVal === 2) window.playRedCardSound();
+    if (nextVal === 1) window.showPenaltyCard('yellow');
+    else if (nextVal === 2) window.showPenaltyCard('red');
     else window.playEraseSound();
     
     saveData();
@@ -1674,6 +1622,10 @@ window.selectClass = function(className) {
     const displayBtn = document.getElementById('current-class-display');
     if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
+    // 🌟 4. 학급별 고정 모둠(Pinned Group Mode) 로드
+    let pinnedKey = `pinnedGroupMode_${currentClass}`;
+    currentGroupMode = localStorage.getItem(pinnedKey) || 'mixed4';
+
     document.getElementById('tab-navigation').classList.remove('hidden'); document.getElementById('tab-navigation').classList.add('flex');
     window.showTab(currentTab); window.renderClassSelect(); 
     window.setGroupMode(currentGroupMode, true); 
@@ -1687,7 +1639,7 @@ window.showTab = function(tabName) {
 
     ['student', 'group', 'stamp'].forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
-        if(btn) btn.className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
+        if(btn) btn.className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
     });
 
     const mainContainer = document.getElementById('main-container');
@@ -1698,14 +1650,14 @@ window.showTab = function(tabName) {
 
     if (tabName === 'student') {
         document.getElementById('student-management').classList.remove('hidden');
-        document.getElementById('tab-student').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-blue-600 shadow-md border border-blue-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+        document.getElementById('tab-student').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-blue-600 shadow-md border border-blue-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
     } else if (tabName === 'group') {
         document.getElementById('group-section').classList.remove('hidden');
-        document.getElementById('tab-group').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-indigo-600 shadow-md border border-indigo-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+        document.getElementById('tab-group').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-indigo-600 shadow-md border border-indigo-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
         window.renderGroups(); 
     } else if (tabName === 'stamp') {
         document.getElementById('stamp-section').classList.remove('hidden');
-        document.getElementById('tab-stamp').className = "flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+        document.getElementById('tab-stamp').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
         window.renderStampBoard();
     }
 }
@@ -1779,7 +1731,6 @@ function updateSortIcons() {
     });
 }
 
-// 🌟 1. 출석부 학생 이름 세로 정렬 방지 적용
 window.renderStudentList = function() {
     const tbody = document.getElementById('student-list-body'); if (!tbody) return;
     tbody.innerHTML = "";
@@ -1932,19 +1883,24 @@ window.renderStudentList = function() {
     window.updateFloatingStopwatchBtn();
 }
 
+// 🌟 4. 학급별 모둠 고정(Pin) 로직 
 window.setGroupMode = function(mode, isInit = false) {
+    if (!currentClass) return;
+    
+    let pinnedKey = `pinnedGroupMode_${currentClass}`;
+    
     if (!isInit && currentGroupMode === mode) {
-        if (localStorage.getItem('pinnedGroupMode') === mode) {
-            localStorage.removeItem('pinnedGroupMode');
+        if (localStorage.getItem(pinnedKey) === mode) {
+            localStorage.removeItem(pinnedKey);
         } else {
-            localStorage.setItem('pinnedGroupMode', mode);
+            localStorage.setItem(pinnedKey, mode);
         }
     } else {
         currentGroupMode = mode;
     }
 
     activeTimers = {}; window.selectedGroupStudent = null;
-    const pinned = localStorage.getItem('pinnedGroupMode');
+    const pinned = localStorage.getItem(pinnedKey);
 
     ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(m => {
         const btn = document.getElementById(`btn-mode-${m}`);
@@ -2136,7 +2092,6 @@ window.generateGenderGroups = function() {
     window.renderGroups();
 }
 
-// 🌟 2. 모둠 화면 체육부장 시인성 강화 (전체 노란색 배경)
 window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -2261,7 +2216,6 @@ window.renderGroups = function() {
                     let isCaptain = s[`captain_${currentGroupMode}`];
                     let badgeColor = '';
                     
-                    // 체육부장은 카드를 완전한 노란색으로 강조
                     if (isCaptain && s.attendance) {
                         badgeColor = 'bg-yellow-200 text-yellow-900 border-yellow-400 ring-2 ring-yellow-400 shadow-md';
                     } else if (!s.attendance) {
