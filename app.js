@@ -1062,25 +1062,20 @@ window.renderStampBoard = () => {
     const countEl = document.getElementById('big-stamp-count');
     const placeholder = document.getElementById('stamp-placeholder');
     const bigImg = document.getElementById('big-stamp-img');
-    const badge = document.getElementById('missionBadgeContainer');
 
     if (countEl) countEl.innerText = `X ${stampedCount}`;
 
     if (stampedCount === 0) {
         bigImg.classList.add('hidden');
         placeholder.classList.remove('hidden');
-        badge.classList.add('hidden');
     } else if (stampedCount >= TOTAL_STAMP_CELLS) {
-        bigImg.src = 'images/stamps/complete01.jpg'; // 미션 완료 이미지
+        bigImg.src = 'images/stamps/complete01.jpg'; // 20개 완료 시 오직 이 이미지만 출력
         bigImg.classList.remove('hidden');
         placeholder.classList.add('hidden');
-        badge.classList.remove('hidden');
-        badge.classList.add('badge-animate');
     } else {
-        bigImg.src = globalStampImage;
+        bigImg.src = globalStampImage; // 평소에는 선택한 도장 이미지 출력
         bigImg.classList.remove('hidden');
         placeholder.classList.add('hidden');
-        badge.classList.add('hidden');
     }
 };
 
