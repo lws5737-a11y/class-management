@@ -26,7 +26,7 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
-// 🌟 공통 옐로/레드카드 및 호루라기 재생
+// 🌟 공통 옐로/레드카드 및 호루라기 재생 (레드카드 효과음 수정 반영)
 window.showPenaltyCard = function(type) {
     const overlay = document.getElementById('card-overlay');
     const img = document.getElementById('card-image');
@@ -34,9 +34,10 @@ window.showPenaltyCard = function(type) {
     // 파일명에 띄어쓰기가 있으므로 브라우저가 인식하도록 처리
     img.src = type === 'yellow' ? 'images/yellow card.png' : 'images/red card.png';
     
-    // 🎧 호루라기 소리 재생
+    // 🎧 호루라기 소리 재생 (옐로/레드 구분)
     try {
-        const audio = new Audio('sound/referee-whistle01.mp3');
+        const soundFile = type === 'yellow' ? 'sound/referee-whistle01.mp3' : 'sound/referee-whistle02.mp3';
+        const audio = new Audio(soundFile);
         audio.play().catch(e => console.log('호루라기 오디오 재생 막힘:', e));
     } catch(e) {}
 
@@ -569,6 +570,7 @@ window.handleTouchStart = function(e, studentNo) {
     }, 500); 
 };
 
+// 🌟 0번 학생 드래그 버그 수정 반영
 window.handleTouchMove = function(e) {
     if (!window.touchClone) { clearTimeout(touchTimeout); return; }
     e.preventDefault(); 
@@ -590,7 +592,8 @@ window.handleTouchMove = function(e) {
         const groupArea = elemBelow.closest('.group-area');
         if (studentCard) {
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            if (targetNo && targetNo !== window.draggedStudentNo) {
+            // 💡 0번도 통과할 수 있도록 숫자 여부(!isNaN)로 체크 로직 변경
+            if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
                 studentCard.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400');
             }
         } else if (groupArea) {
@@ -599,6 +602,7 @@ window.handleTouchMove = function(e) {
     }
 };
 
+// 🌟 0번 학생 드래그 버그 수정 반영
 window.handleTouchEnd = function(e) {
     clearTimeout(touchTimeout);
     if (!window.touchClone) return;
@@ -618,7 +622,8 @@ window.handleTouchEnd = function(e) {
         const groupArea = elemBelow.closest('.group-area');
         if (studentCard) {
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            if (targetNo && targetNo !== window.draggedStudentNo) {
+            // 💡 0번도 드롭 가능하도록 숫자 여부(!isNaN)로 체크 로직 변경
+            if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
                 window.handleDropLogic(window.draggedStudentNo, targetNo, null);
             }
         } else if (groupArea) {
@@ -641,8 +646,11 @@ window.handleTouchEnd = function(e) {
     setTimeout(() => { window.isTouchDragging = false; }, 10);
 };
 
+// 🌟 0번 학생 드래그 버그 수정 반영
 window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
-    if (!draggedNo) return;
+    // 💡 0번 학생이 '거짓(false)'으로 처리되어 무시되는 것을 방지하기 위해 null 확인으로 변경
+    if (draggedNo === null || draggedNo === undefined) return;
+    
     const students = classData[currentClass];
     const draggedIndex = students.findIndex(s => s.no === draggedNo);
     if (draggedIndex === -1) return;
