@@ -26,15 +26,13 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
-// 🌟 공통 옐로/레드카드 및 호루라기 재생 (레드카드 효과음 수정 반영)
+// 공통 옐로/레드카드 및 호루라기 재생
 window.showPenaltyCard = function(type) {
     const overlay = document.getElementById('card-overlay');
     const img = document.getElementById('card-image');
     
-    // 파일명에 띄어쓰기가 있으므로 브라우저가 인식하도록 처리
     img.src = type === 'yellow' ? 'images/yellow card.png' : 'images/red card.png';
     
-    // 🎧 호루라기 소리 재생 (옐로/레드 구분)
     try {
         const soundFile = type === 'yellow' ? 'sound/referee-whistle01.mp3' : 'sound/referee-whistle02.mp3';
         const audio = new Audio(soundFile);
@@ -45,7 +43,7 @@ window.showPenaltyCard = function(type) {
     overlay.classList.add('flex');
     
     img.classList.remove('animate-slide-tilt');
-    void img.offsetWidth; // DOM Reflow (애니메이션 재시작 트릭)
+    void img.offsetWidth; 
     img.classList.add('animate-slide-tilt');
 };
 
@@ -312,16 +310,25 @@ document.addEventListener('dragover', function(e) {
     }
 });
 
+// 🌟 2. 미편성 영역 드래그 중 크기 최소화 처리 (가로 일렬 축소 및 타이틀 숨김)
 window.showFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
         el.classList.remove('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
         el.classList.add(
-            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-50', 
-            'bg-slate-50', 'shadow-[0_-10px_40px_rgba(0,0,0,0.2)]', 
-            'border-t-4', 'border-amber-400', 'rounded-t-3xl', 
-            'max-h-[45vh]', 'overflow-y-auto', 'm-0', 'border-x-0', 'border-b-0'
+            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
+            'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
+            'border-t-2', 'border-amber-400', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
+        
+        const titleCont = el.querySelector('div.flex.items-center');
+        if (titleCont) titleCont.classList.add('hidden');
+        
+        const innerCont = el.querySelector('div.flex.flex-wrap, div.flex-wrap');
+        if (innerCont) {
+            innerCont.classList.remove('flex-wrap');
+            innerCont.classList.add('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[80px]', 'py-1');
+        }
     }
 };
 
@@ -330,11 +337,19 @@ window.hideFloatingUnassigned = function() {
     if (el) {
         el.classList.add('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
         el.classList.remove(
-            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-50', 
-            'bg-slate-50', 'shadow-[0_-10px_40px_rgba(0,0,0,0.2)]', 
-            'border-t-4', 'border-amber-400', 'rounded-t-3xl', 
-            'max-h-[45vh]', 'overflow-y-auto', 'm-0', 'border-x-0', 'border-b-0'
+            'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
+            'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
+            'border-t-2', 'border-amber-400', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
+        
+        const titleCont = el.querySelector('div.flex.items-center');
+        if (titleCont) titleCont.classList.remove('hidden');
+        
+        const innerCont = el.querySelector('div.flex.flex-row, div.flex-row');
+        if (innerCont) {
+            innerCont.classList.remove('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[80px]', 'py-1');
+            innerCont.classList.add('flex-wrap');
+        }
     }
 };
 
@@ -542,7 +557,7 @@ window.handleTouchStart = function(e, studentNo) {
         window.currentDragY = touch.clientY;
         window.startAutoScroll();
 
-        document.querySelectorAll('.student-card').forEach(card => card.classList.remove('ring-4', 'ring-yellow-400'));
+        document.querySelectorAll('.student-card').forEach(card => card.classList.remove('ring-4', 'ring-red-500'));
 
         const clone = target.cloneNode(true);
         const rect = target.getBoundingClientRect();
@@ -570,7 +585,7 @@ window.handleTouchStart = function(e, studentNo) {
     }, 500); 
 };
 
-// 🌟 0번 학생 드래그 버그 수정 반영
+// 0번 학생 드래그 버그 수정 반영
 window.handleTouchMove = function(e) {
     if (!window.touchClone) { clearTimeout(touchTimeout); return; }
     e.preventDefault(); 
@@ -584,7 +599,7 @@ window.handleTouchMove = function(e) {
 
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
     document.querySelectorAll('.drop-target-active').forEach(el => {
-        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     });
 
     if (elemBelow) {
@@ -592,17 +607,15 @@ window.handleTouchMove = function(e) {
         const groupArea = elemBelow.closest('.group-area');
         if (studentCard) {
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            // 💡 0번도 통과할 수 있도록 숫자 여부(!isNaN)로 체크 로직 변경
             if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
-                studentCard.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400');
+                studentCard.classList.add('drop-target-active', 'ring-4', 'ring-red-500');
             }
         } else if (groupArea) {
-            groupArea.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+            groupArea.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
         }
     }
 };
 
-// 🌟 0번 학생 드래그 버그 수정 반영
 window.handleTouchEnd = function(e) {
     clearTimeout(touchTimeout);
     if (!window.touchClone) return;
@@ -622,7 +635,6 @@ window.handleTouchEnd = function(e) {
         const groupArea = elemBelow.closest('.group-area');
         if (studentCard) {
             const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            // 💡 0번도 드롭 가능하도록 숫자 여부(!isNaN)로 체크 로직 변경
             if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
                 window.handleDropLogic(window.draggedStudentNo, targetNo, null);
             }
@@ -635,7 +647,7 @@ window.handleTouchEnd = function(e) {
     }
 
     document.querySelectorAll('.drop-target-active').forEach(el => {
-        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     });
     
     window.touchClone.remove();
@@ -646,9 +658,7 @@ window.handleTouchEnd = function(e) {
     setTimeout(() => { window.isTouchDragging = false; }, 10);
 };
 
-// 🌟 0번 학생 드래그 버그 수정 반영
 window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
-    // 💡 0번 학생이 '거짓(false)'으로 처리되어 무시되는 것을 방지하기 위해 null 확인으로 변경
     if (draggedNo === null || draggedNo === undefined) return;
     
     const students = classData[currentClass];
@@ -659,7 +669,7 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     let changed = false;
 
     document.querySelectorAll('.drop-target-active').forEach(el => {
-        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     });
 
     if (targetNo !== null && targetNo !== draggedNo) {
@@ -709,29 +719,29 @@ window.handleDragStart = function(e, studentNo) {
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
     window.stopAutoScroll();
-    e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
     window.hideFloatingUnassigned();
+    e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
     document.querySelectorAll('.drop-target-active').forEach(el => {
-        el.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+        el.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     });
 };
 
 window.handleDragOverGroup = function(e) { 
     e.preventDefault(); e.dataTransfer.dropEffect = 'move'; 
-    e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
 };
 window.handleDragLeaveGroup = function(e) {
-    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400', 'ring-inset', 'bg-yellow-50');
+    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
 };
 
 window.handleDragOverStudent = function(e, studentNo) {
     e.preventDefault(); e.dataTransfer.dropEffect = 'move';
     if (studentNo !== window.draggedStudentNo) {
-        e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-yellow-400');
+        e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500');
     }
 };
 window.handleDragLeaveStudent = function(e) {
-    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-yellow-400');
+    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500');
 };
 
 window.handleDropOnStudent = function(e, targetStudentNo) {
@@ -746,26 +756,14 @@ window.handleDropOnGroup = function(e, targetGroupId) {
     window.draggedStudentNo = null;
 };
 
+// 🌟 1 & 3. 터치/클릭 이동 기능 완전 차단 및 다중 스톱워치 선택(빨간 하이라이트)으로 변경
 window.handleStudentCardClick = function(studentNo) {
     if (window.isTouchDragging) { window.isTouchDragging = false; return; } 
-    
-    if (window.selectedGroupStudent === null) {
-        window.selectedGroupStudent = studentNo;
-    } else if (window.selectedGroupStudent === studentNo) {
-        window.selectedGroupStudent = null; 
-    } else {
-        window.handleDropLogic(window.selectedGroupStudent, studentNo, null);
-        window.selectedGroupStudent = null;
-    }
-    window.renderGroups();
+    window.toggleSelection(studentNo); 
 };
 
 window.handleGroupAreaClick = function(groupId) {
-    if (window.isTouchDragging) return;
-    if (window.selectedGroupStudent !== null) {
-        window.handleDropLogic(window.selectedGroupStudent, null, groupId);
-        window.selectedGroupStudent = null;
-    }
+    // 터치/클릭 이동 제거로 작동 안 함
 };
 
 window.saveClassVisibility = function(className, isVisible) {
@@ -915,7 +913,6 @@ onAuthStateChanged(auth, (user) => {
         const emailEl = document.getElementById('user-email');
         if(emailEl) emailEl.innerText = user.email.split('@')[0];
         
-        // 로그인 성공 시 탭과 로그아웃 버튼 활성화
         document.getElementById('tab-navigation').classList.remove('hidden');
         document.getElementById('tab-navigation').classList.add('flex');
         document.getElementById('logout-btn').classList.remove('hidden');
@@ -1189,7 +1186,7 @@ window.updateDismissal = function(studentNo, value) {
     }
 }
 
-// 🌟 패널티 부여 시 카드 팝업 호출
+// 패널티 부여 시 카드 팝업 호출
 window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
@@ -1425,7 +1422,7 @@ function normalizeClassName(name) {
 
 window.deleteCurrentClass = function() {
     if (!currentClass) return;
-    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br>모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.`, true, () => {
+    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
         delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass]; delete groupPenalties[currentClass];
         saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
@@ -1630,7 +1627,6 @@ window.selectClass = function(className) {
     const displayBtn = document.getElementById('current-class-display');
     if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
 
-    // 🌟 4. 학급별 고정 모둠(Pinned Group Mode) 로드
     let pinnedKey = `pinnedGroupMode_${currentClass}`;
     currentGroupMode = localStorage.getItem(pinnedKey) || 'mixed4';
 
@@ -1694,6 +1690,7 @@ window.toggleCaptain = function(studentNo) {
     }
 }
 
+// 🌟 1 & 3. 선택 로직 통합 관리 (출석부/모둠 화면 연동 동시 갱신)
 window.toggleSelection = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no == studentNo);
@@ -1701,6 +1698,7 @@ window.toggleSelection = function(studentNo) {
         student.selected = !student.selected;
         saveData();
         window.renderStudentList();
+        window.renderGroups(); 
     }
 }
 
@@ -1804,8 +1802,9 @@ window.renderStudentList = function() {
             }
         } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
 
+        // 🌟 1. 출석부 목록 선택 하이라이트도 통일감 있게 부드러운 빨간색 디자인 반영
         if (s.selected) {
-            rowBgClass = "bg-yellow-100 hover:bg-yellow-200 shadow-[inset_0_0_0_2px_#fde047] z-10 relative";
+            rowBgClass = "bg-red-50 hover:bg-red-100 shadow-[inset_0_0_0_2px_#ef4444] z-10 relative";
         }
 
         const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 student-row transition " + rowBgClass;
@@ -1847,7 +1846,7 @@ window.renderStudentList = function() {
             
             <td class="px-2 py-1 sm:p-2 font-black text-center whitespace-nowrap min-w-[70px]">
                 <div class="flex items-center justify-center gap-1.5">
-                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
+                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-red-500 text-white shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
                         ${s.name}${drawnBadge}
                     </button>
                     <button onclick="event.stopPropagation(); window.openMemoModal(${s.no}, '${s.name}')" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">📝</button>
@@ -1891,7 +1890,6 @@ window.renderStudentList = function() {
     window.updateFloatingStopwatchBtn();
 }
 
-// 🌟 4. 학급별 모둠 고정(Pin) 로직 
 window.setGroupMode = function(mode, isInit = false) {
     if (!currentClass) return;
     
@@ -2104,15 +2102,11 @@ window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
     
-    let numGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+    let numGroups = currentGroupMode === 'mixed2' ? 'grid-cols-2' : (currentGroupMode === 'mixed3' ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4');
+    let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
     let html = '';
     
-    let gridCols = "grid-cols-1";
-    if (numGroups === 2) gridCols = "grid-cols-2";
-    else if (numGroups === 3) gridCols = "grid-cols-3"; 
-    else if (numGroups === 4) gridCols = "grid-cols-2 md:grid-cols-4"; 
-
-    container.className = `grid gap-2 sm:gap-3 p-1 w-full items-stretch relative ${gridCols}`;
+    container.className = `grid gap-2 sm:gap-3 p-1 w-full items-stretch relative ${numGroups}`;
     container.style.gridTemplateColumns = ""; 
     
     const students = classData[currentClass];
@@ -2134,7 +2128,7 @@ window.renderGroups = function() {
         drawnGroupIds = groupRecords[currentClass][currentGroupMode].drawnGroups;
     }
 
-    for (let i = 1; i <= numGroups; i++) {
+    for (let i = 1; i <= maxGroups; i++) {
         const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
         groupStudents.sort((a, b) => a.no - b.no);
         
@@ -2232,8 +2226,9 @@ window.renderGroups = function() {
                         badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
                     }
 
-                    let isSelected = window.selectedGroupStudent === s.no;
-                    let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                    // 🌟 1. 모둠 화면 학생 버튼 선택 시 노란색 대신 직관적인 빨간색 테두리(`ring-red-500`) 디자인 반영
+                    let isSelected = s.selected;
+                    let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                     
                     let captainBtnClass = (isCaptain && s.attendance) 
                         ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
@@ -2355,8 +2350,9 @@ window.renderGroups = function() {
                     badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
                 }
 
-                let isSelected = window.selectedGroupStudent === s.no;
-                let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                // 🌟 1. 미편성 영역도 선택 시 노란색 대신 직관적인 빨간색 테두리 반영
+                let isSelected = s.selected;
+                let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                 
                 let captainBtnClass = (isCaptain && s.attendance) 
                     ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
