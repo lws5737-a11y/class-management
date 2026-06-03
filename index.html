@@ -116,34 +116,24 @@
                 </div>
             </div>
 
-            <div id="stamp-section" class="hidden">
-                <div class="bg-white p-4 sm:p-8 rounded-3xl shadow-sm border border-slate-200 mb-6 relative min-h-[60vh] flex flex-col items-center justify-center">
+            <div id="stamp-section" class="hidden h-full flex-col">
+                <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 mb-6 overflow-hidden flex flex-col items-center justify-between pb-6 sm:pb-8 max-w-md sm:max-w-lg w-full mx-auto relative">
                     
-                    <div class="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
-                        <div class="relative">
-                            <h2 id="stamp-class-title" onclick="window.toggleStampDropdown(event)" class="text-lg sm:text-2xl font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-green-600 transition bg-slate-50 px-3 sm:px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                학급 도장판 <span class="text-xs text-slate-400">▼</span>
-                            </h2>
-                            <div id="stamp-dropdown-menu" class="hidden absolute top-full left-0 mt-2 bg-white border border-slate-200 shadow-xl rounded-2xl flex-col min-w-[200px] z-50 overflow-hidden max-h-60 overflow-y-auto"></div>
-                        </div>
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <button onclick="window.openStampSelectModal()" class="bg-slate-100 hover:bg-green-100 text-slate-500 hover:text-green-700 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border border-slate-200 shadow-sm flex items-center gap-1">🎨 디자인</button>
-                            <button onclick="window.resetStampBoard()" class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition border border-slate-200 shadow-sm" title="초기화">↻</button>
-                        </div>
+                    <div class="w-full aspect-square border-b border-slate-100 flex items-center justify-center bg-slate-50 cursor-pointer group select-none relative overflow-hidden" onclick="window.addOneStamp()">
+                        <span id="stamp-placeholder" class="text-slate-300 text-3xl sm:text-5xl font-black absolute pointer-events-none">터치해서 찍기</span>
+                        <img id="big-stamp-img" src="" class="w-full h-full object-cover z-10 hidden transform transition-transform group-active:scale-95 pointer-events-none">
                     </div>
 
-                    <div class="flex flex-col items-center justify-center mt-16 w-full">
-                        <div class="relative w-64 h-64 sm:w-80 sm:h-80 border-4 border-dashed border-slate-300 rounded-[2.5rem] flex items-center justify-center bg-slate-50 cursor-pointer shadow-inner hover:bg-slate-100 transition-colors group select-none" onclick="window.addOneStamp()">
-                            <span id="stamp-placeholder" class="text-slate-300 text-3xl sm:text-5xl font-black absolute pointer-events-none">터치해서 찍기</span>
-                            <img id="big-stamp-img" src="" class="w-full h-full object-cover p-2 rounded-[2.5rem] z-10 hidden transform transition-transform group-active:scale-95 pointer-events-none">
-                        </div>
-
-                        <div class="mt-10 flex items-center gap-4 sm:gap-8 bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-3xl shadow-sm border border-slate-100">
-                            <button onclick="window.removeOneStamp()" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-red-100 hover:text-red-500 transition shadow-sm flex items-center justify-center active:scale-90">-</button>
-                            <div class="text-5xl sm:text-6xl font-black text-slate-800 tracking-tighter w-24 sm:w-40 text-center" id="big-stamp-count">X 0</div>
-                            <button onclick="window.addOneStamp()" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-green-100 hover:text-green-500 transition shadow-sm flex items-center justify-center active:scale-90">+</button>
-                        </div>
-                        <div class="mt-3 text-slate-400 font-bold text-sm">목표: 20개</div>
+                    <div class="mt-6 flex items-center justify-center gap-4 sm:gap-8 bg-white px-4 sm:px-6 w-full">
+                        <button onclick="window.removeOneStamp()" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-red-100 hover:text-red-500 transition shadow-sm flex items-center justify-center active:scale-90">-</button>
+                        <div class="text-6xl sm:text-7xl font-black text-slate-800 tracking-tighter w-24 sm:w-32 text-center" id="big-stamp-count">X 0</div>
+                        <button onclick="window.addOneStamp()" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-green-100 hover:text-green-500 transition shadow-sm flex items-center justify-center active:scale-90">+</button>
+                    </div>
+                    <div class="mt-2 text-slate-400 font-bold text-sm">목표: 20개</div>
+                    
+                    <div class="flex items-center justify-center gap-3 mt-8 w-full px-4 sm:px-6">
+                        <button onclick="window.openStampSelectModal()" class="flex-1 bg-slate-100 hover:bg-green-100 text-slate-600 hover:text-green-700 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition border border-slate-200 shadow-sm flex items-center justify-center gap-2">🎨 디자인 변경</button>
+                        <button onclick="window.resetStampBoard()" class="flex-1 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition border border-slate-200 shadow-sm flex items-center justify-center gap-2">↻ 기록 초기화</button>
                     </div>
                 </div>
             </div>
@@ -178,8 +168,8 @@
         </div>
     </div>
 
-    <div id="card-overlay" class="fixed inset-0 z-[500] hidden items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer" onclick="window.closeCardOverlay()">
-        <img id="card-image" src="" class="w-[90%] max-w-[400px] max-h-[90%] object-contain drop-shadow-2xl" alt="Penalty Card">
+    <div id="card-overlay" class="fixed inset-0 z-[500] hidden items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer p-4 sm:p-8" onclick="window.closeCardOverlay()">
+        <img id="card-image" src="" class="w-full h-full object-contain drop-shadow-2xl" alt="Penalty Card">
     </div>
 
     <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
