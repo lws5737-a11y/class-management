@@ -310,15 +310,14 @@ document.addEventListener('dragover', function(e) {
     }
 });
 
-// 🌟 2. 미편성 영역 드래그 중 크기 최소화 처리 (가로 일렬 축소 및 타이틀 숨김)
 window.showFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
-        el.classList.remove('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
+        el.classList.remove('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-900', 'rounded-2xl');
         el.classList.add(
             'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
             'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
-            'border-t-2', 'border-amber-400', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
+            'border-t-[3px]', 'border-slate-900', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
         
         const titleCont = el.querySelector('div.flex.items-center');
@@ -335,11 +334,11 @@ window.showFloatingUnassigned = function() {
 window.hideFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
-        el.classList.add('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-300', 'rounded-xl');
+        el.classList.add('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-900', 'rounded-2xl');
         el.classList.remove(
             'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
             'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
-            'border-t-2', 'border-amber-400', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
+            'border-t-[3px]', 'border-slate-900', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
         
         const titleCont = el.querySelector('div.flex.items-center');
@@ -585,7 +584,7 @@ window.handleTouchStart = function(e, studentNo) {
     }, 500); 
 };
 
-// 0번 학생 드래그 버그 수정 반영
+// 🌟 1. 터치 이동 시 목표 모둠 영역 전체 하이라이트 되도록 반영
 window.handleTouchMove = function(e) {
     if (!window.touchClone) { clearTimeout(touchTimeout); return; }
     e.preventDefault(); 
@@ -598,19 +597,15 @@ window.handleTouchMove = function(e) {
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
 
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     });
 
     if (elemBelow) {
-        const studentCard = elemBelow.closest('.student-card');
+        // 학생 위를 지나가더라도 해당 학생이 속한 모둠 전체(groupArea)를 하이라이트
         const groupArea = elemBelow.closest('.group-area');
-        if (studentCard) {
-            const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
-                studentCard.classList.add('drop-target-active', 'ring-4', 'ring-red-500');
-            }
-        } else if (groupArea) {
+        if (groupArea) {
             groupArea.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
         }
     }
@@ -731,17 +726,22 @@ window.handleDragOverGroup = function(e) {
     e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
 };
 window.handleDragLeaveGroup = function(e) {
-    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
+    // 자식(학생) 요소 간 이동 시 깜빡이는 현상 방지
+    if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) {
+        e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
+    }
 };
 
+// 🌟 1. 마우스 드래그 시 학생 위를 지나가더라도 모둠 전체(groupArea) 하이라이트 반영
 window.handleDragOverStudent = function(e, studentNo) {
     e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    if (studentNo !== window.draggedStudentNo) {
-        e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500');
+    const groupArea = e.currentTarget.closest('.group-area');
+    if (groupArea) {
+        groupArea.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'ring-inset', 'bg-yellow-50');
     }
 };
 window.handleDragLeaveStudent = function(e) {
-    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500');
+    // 부모 그룹 영역에서 처리되므로 이곳에선 추가 조작 안 함
 };
 
 window.handleDropOnStudent = function(e, targetStudentNo) {
@@ -756,14 +756,12 @@ window.handleDropOnGroup = function(e, targetGroupId) {
     window.draggedStudentNo = null;
 };
 
-// 🌟 1 & 3. 터치/클릭 이동 기능 완전 차단 및 다중 스톱워치 선택(빨간 하이라이트)으로 변경
 window.handleStudentCardClick = function(studentNo) {
     if (window.isTouchDragging) { window.isTouchDragging = false; return; } 
     window.toggleSelection(studentNo); 
 };
 
 window.handleGroupAreaClick = function(groupId) {
-    // 터치/클릭 이동 제거로 작동 안 함
 };
 
 window.saveClassVisibility = function(className, isVisible) {
@@ -1684,13 +1682,26 @@ window.toggleCaptain = function(studentNo) {
     const student = classData[currentClass].find(s => s.no == studentNo);
     if (student && student.attendance) { 
         const captainProp = 'captain_' + currentGroupMode;
-        student[captainProp] = !student[captainProp]; 
+        const isTurningOn = !student[captainProp];
+
+        // 🌟 3. 한 모둠 체육부장 1명 제한 (해당 학생이 활성화될 때 같은 모둠의 다른 학생들 체육부장 해제)
+        if (isTurningOn) {
+            const groupId = student[`group_${currentGroupMode}`];
+            if (groupId !== null && groupId !== undefined) {
+                classData[currentClass].forEach(s => {
+                    if (s[`group_${currentGroupMode}`] === groupId) {
+                        s[captainProp] = false;
+                    }
+                });
+            }
+        }
+
+        student[captainProp] = isTurningOn; 
         saveData(); 
         window.renderGroups(); 
     }
 }
 
-// 🌟 1 & 3. 선택 로직 통합 관리 (출석부/모둠 화면 연동 동시 갱신)
 window.toggleSelection = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no == studentNo);
@@ -1802,7 +1813,6 @@ window.renderStudentList = function() {
             }
         } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
 
-        // 🌟 1. 출석부 목록 선택 하이라이트도 통일감 있게 부드러운 빨간색 디자인 반영
         if (s.selected) {
             rowBgClass = "bg-red-50 hover:bg-red-100 shadow-[inset_0_0_0_2px_#ef4444] z-10 relative";
         }
@@ -2117,10 +2127,10 @@ window.renderGroups = function() {
     let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
 
     const colors = [
-        { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
-        { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', text: 'text-fuchsia-800', header: 'bg-fuchsia-100', btn: 'bg-fuchsia-500 hover:bg-fuchsia-600', ring: 'ring-fuchsia-300' },
-        { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-800', header: 'bg-cyan-100', btn: 'bg-cyan-500 hover:bg-cyan-600', ring: 'ring-cyan-300' },
-        { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', header: 'bg-amber-100', btn: 'bg-amber-500 hover:bg-amber-600', ring: 'ring-amber-300' }
+        { bg: 'bg-indigo-50', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
+        { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800', header: 'bg-fuchsia-100', btn: 'bg-fuchsia-500 hover:bg-fuchsia-600', ring: 'ring-fuchsia-300' },
+        { bg: 'bg-cyan-50', text: 'text-cyan-800', header: 'bg-cyan-100', btn: 'bg-cyan-500 hover:bg-cyan-600', ring: 'ring-cyan-300' },
+        { bg: 'bg-amber-50', text: 'text-amber-800', header: 'bg-amber-100', btn: 'bg-amber-500 hover:bg-amber-600', ring: 'ring-amber-300' }
     ];
 
     let drawnGroupIds = [];
@@ -2165,15 +2175,16 @@ window.renderGroups = function() {
         let gCard1 = gp >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-white/50 border-slate-300';
         let gCard2 = gp >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-white/50 border-slate-300';
 
+        // 🌟 2. 각 모둠 영역에 굵은 검은색 테두리 적용 (border-[3px] border-slate-900)
         html += `
-        <div class="${color.bg} border sm:border-2 ${color.border} rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
+        <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
              data-group-id="${i}" 
              ondragover="window.handleDragOverGroup(event)" 
              ondragleave="window.handleDragLeaveGroup(event)"
              ondrop="window.handleDropOnGroup(event, ${i})" 
              onclick="window.handleGroupAreaClick(${i})">
             
-            <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b ${color.border}">
+            <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b-[3px] border-slate-900">
                 
                 <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
                     <span>${i}모둠</span>
@@ -2226,7 +2237,6 @@ window.renderGroups = function() {
                         badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
                     }
 
-                    // 🌟 1. 모둠 화면 학생 버튼 선택 시 노란색 대신 직관적인 빨간색 테두리(`ring-red-500`) 디자인 반영
                     let isSelected = s.selected;
                     let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                     
@@ -2284,7 +2294,7 @@ window.renderGroups = function() {
                 }).join('')}
             </div>
 
-            <div class="bg-white/50 border-t ${color.border} p-1 flex flex-col justify-center items-center gap-1 print-hide">
+            <div class="bg-white/50 border-t-[3px] border-slate-900 p-1 flex flex-col justify-center items-center gap-1 print-hide">
                  <div class="w-full flex justify-between items-center gap-0.5 sm:gap-1 overflow-hidden">
                      <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-sm hover:scale-110 transition bg-white w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
                          ${t.mode === 'stopwatch' ? '⏱️' : '⏳'}
@@ -2304,8 +2314,9 @@ window.renderGroups = function() {
     const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`]);
     unassignedStudents.sort((a, b) => a.no - b.no);
 
+    // 🌟 2. 미편성 영역도 동일하게 굵은 검은색 테두리 적용
     html += `
-    <div id="unassigned-area" class="col-span-full mt-2 bg-slate-100/80 border-2 border-dashed border-slate-300 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
+    <div id="unassigned-area" class="col-span-full mt-2 bg-slate-100/80 border-[3px] border-dashed border-slate-900 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
          data-group-id="0" 
          ondragover="window.handleDragOverGroup(event)" 
          ondragleave="window.handleDragLeaveGroup(event)"
@@ -2350,7 +2361,6 @@ window.renderGroups = function() {
                     badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
                 }
 
-                // 🌟 1. 미편성 영역도 선택 시 노란색 대신 직관적인 빨간색 테두리 반영
                 let isSelected = s.selected;
                 let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                 
@@ -2478,7 +2488,7 @@ window.importFromExcel = function() {
 window.openGroupStopwatch = function() {
     if(!currentClass || !classData[currentClass]) return;
     groupStudents = classData[currentClass].filter(s => s.selected && s.attendance);
-    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 이름을 터치해 노란색으로 선택해주세요.");
+    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 이름을 터치해 빨간색으로 선택해주세요.");
 
     let n = groupStudents.length;
     groupStarts = new Array(n).fill(null);
