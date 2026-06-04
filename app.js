@@ -9,8 +9,8 @@ window.selectedGroupStudent = null;
 // ⏱️ 다중 스톱워치 상태 및 변수 선언
 // ==========================================
 let groupStudents = []; 
-let groupStarts = [];   
-let groupStops = [];    
+let groupStarts = Array(10).fill(null);   
+let groupStops = Array(10).fill(null);    
 let groupLoopId = null; 
 
 // ==========================================
@@ -584,7 +584,6 @@ window.handleTouchStart = function(e, studentNo) {
         target.style.opacity = '0.3';
         window.activeTouchElement = target;
         
-        // 🌟 수정: 모둠에 속한 학생을 드래그할 때만 '미편성 영역' 플로팅 바 활성화
         const student = classData[currentClass]?.find(s => s.no === studentNo);
         if (student && student[`group_${currentGroupMode}`] !== null && student[`group_${currentGroupMode}`] !== undefined) {
             window.showFloatingUnassigned();
@@ -714,8 +713,6 @@ window.handleDragStart = function(e, studentNo) {
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
     
-    // 🌟 수정: 미편성 학생을 마우스로 드래그할 때 부모 레이아웃이 Fixed로 변하며 
-    // 브라우저 드래그가 끊기는 현상 방지. 모둠 소속 학생일 때만 하단 플로팅 바 활성화.
     const student = classData[currentClass]?.find(s => s.no === studentNo);
     if (student && student[`group_${currentGroupMode}`] !== null && student[`group_${currentGroupMode}`] !== undefined) {
         window.showFloatingUnassigned();
@@ -1008,7 +1005,7 @@ function saveData() {
 }
 
 // ==========================================
-// 🌟 3. 최적화된 도장판 렌더링 로직
+// 3. 최적화된 도장판 렌더링 로직
 // ==========================================
 window.renderStampBoard = () => {
     if (!currentClass) return; 
@@ -1676,7 +1673,7 @@ window.toggleSelection = function(studentNo) {
         student.selected = !student.selected;
         saveData();
         window.renderStudentList();
-        window.renderGroups(); 
+        window.updateFloatingStopwatchBtn();
     }
 }
 
@@ -1921,6 +1918,7 @@ window.resetCurrentGroup = function() {
             student[`group_${currentGroupMode}`] = null; 
             student[`captain_${currentGroupMode}`] = false;
             student.penaltyCard = 0; 
+            student.groupMemberDrawn = false;
         });
         if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) groupScores[currentClass][currentGroupMode] = {};
         if (groupRecords[currentClass] && groupRecords[currentClass][currentGroupMode]) groupRecords[currentClass][currentGroupMode] = {};
@@ -2075,6 +2073,105 @@ window.generateGenderGroups = function() {
     window.renderGroups();
 }
 
+// ==========================================
+// 🎲 랜덤 뽑기 비즈니스 로직 연동
+// ==========================================
+window.resetGroupDraws = function(silent = false) {
+    if (!currentClass || !classData[currentClass]) return;
+    classData[currentClass].forEach(s => s.groupMemberDrawn = false);
+    saveData();
+    window.renderGroups();
+    const summaryEl = document.getElementById('draw-result-summary');
+    if (summaryEl) summaryEl.innerHTML = `📢 모든 당첨 마크가 깔끔하게 초기화되었습니다.`;
+    if (!silent) window.playEraseSound();
+};
+
+window.drawFromClass = function() {
+    if (!currentClass || !classData[currentClass]) { alert("학급 데이터가 유효하지 않습니다."); return; }
+    const students = classData[currentClass];
+    const presentStudents = students.filter(s => s.attendance);
+    if (presentStudents.length === 0) { alert("출석 처리된 학생이 없습니다."); return; }
+
+    const requestedCount = parseInt(document.getElementById('draw-class-count').value) || 4;
+    const finalCount = Math.min(requestedCount, presentStudents.length);
+
+    // 기존 당첨 기록 완전 초기화
+    students.forEach(s => s.groupMemberDrawn = false);
+
+    const boys = presentStudents.filter(s => s.gender === '남');
+    const girls = presentStudents.filter(s => s.gender === '여');
+
+    let targetBoys = 0; let targetGirls = 0;
+
+    if (boys.length === 0) { targetGirls = finalCount; } 
+    else if (girls.length === 0) { targetBoys = finalCount; } 
+    else {
+        // 남녀 비율 비례 연산 고도화
+        targetBoys = Math.round(finalCount * boys.length / presentStudents.length);
+        targetGirls = finalCount - targetBoys;
+
+        if (targetBoys > boys.length) { targetBoys = boys.length; targetGirls = finalCount - targetBoys; } 
+        else if (targetGirls > girls.length) { targetGirls = girls.length; targetBoys = finalCount - targetGirls; }
+    }
+
+    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+    const pickedBoys = shuffle(boys).slice(0, targetBoys);
+    const pickedGirls = shuffle(girls).slice(0, targetGirls);
+    const totalPicked = [...pickedBoys, ...pickedGirls];
+
+    totalPicked.forEach(p => {
+        const targetStudent = students.find(s => s.no === p.no);
+        if (targetStudent) targetStudent.groupMemberDrawn = true;
+    });
+
+    saveData();
+    window.renderGroups();
+    window.playCasinoJackpot();
+    window.fireConfetti();
+
+    const summaryEl = document.getElementById('draw-result-summary');
+    if (summaryEl) {
+        const names = totalPicked.map(p => p.name).join(', ');
+        summaryEl.innerHTML = `🎉 학급 비례 당첨(<span class="text-blue-600 font-black">${totalPicked.length}명</span>): <b class="text-slate-800">${names}</b>`;
+    }
+};
+
+window.drawFromEachGroup = function() {
+    if (!currentClass || !classData[currentClass]) return;
+    const students = classData[currentClass];
+
+    // 기존 당첨 기록 초기화
+    students.forEach(s => s.groupMemberDrawn = false);
+
+    let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+    const perGroupCount = parseInt(document.getElementById('draw-group-count').value) || 1;
+    let totalPickedCount = 0;
+
+    for (let i = 1; i <= maxGroups; i++) {
+        const groupPresentStudents = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance);
+        if (groupPresentStudents.length > 0) {
+            const shuffled = [...groupPresentStudents].sort(() => Math.random() - 0.5);
+            const chosen = shuffled.slice(0, Math.min(perGroupCount, groupPresentStudents.length));
+            chosen.forEach(p => {
+                p.groupMemberDrawn = true;
+                totalPickedCount++;
+            });
+        }
+    }
+
+    if (totalPickedCount === 0) { alert("모둠에 편성된 출석 학생이 한 명도 없습니다."); return; }
+
+    saveData();
+    window.renderGroups();
+    window.playCasinoJackpot();
+    window.fireConfetti();
+
+    const summaryEl = document.getElementById('draw-result-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPickedCount}명</span>이 당첨되었습니다.`;
+    }
+};
+
 window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -2179,8 +2276,7 @@ window.renderGroups = function() {
                     
                     let rankStr = "";
                     if (s.recordMs > 0 && s.attendance) {
-                        let rank;
-                        let rankPrefix = "";
+                        let rank; let rankPrefix = "";
                         if (currentGroupMode === 'gender') {
                             rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
                             rankPrefix = s.gender;
@@ -2191,7 +2287,6 @@ window.renderGroups = function() {
                     }
                     
                     let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
-                    
                     let isCaptain = s[`captain_${currentGroupMode}`];
                     let badgeColor = '';
                     
@@ -2205,11 +2300,9 @@ window.renderGroups = function() {
 
                     let isSelected = s.selected;
                     let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
-                    
-                    let captainBtnClass = (isCaptain && s.attendance) 
-                        ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
-                        : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
+                    let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
 
+                    // 🎲 랜덤 뽑기 당첨 마크 배지 컴포넌트 연동
                     let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                     let pCard = s.penaltyCard || 0;
@@ -2236,7 +2329,6 @@ window.renderGroups = function() {
                          class="student-card relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                         
                         <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
-                        
                         <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
                             ${(isCaptain && s.attendance) ? 'C' : 'c'}
                         </button>
@@ -2249,9 +2341,9 @@ window.renderGroups = function() {
                         </div>
 
                         <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
-                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight">볼센스: ${bsEmoji}</span>
                             <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none">⚡${recText}</span>
                                 ${rankStr}
                             </div>
                         </div>
@@ -2262,10 +2354,10 @@ window.renderGroups = function() {
 
             <div class="bg-white/50 border-t-[3px] border-slate-900 p-1 flex flex-col justify-center items-center gap-1 print-hide">
                  <div class="w-full flex justify-between items-center gap-0.5 sm:gap-1 overflow-hidden">
-                     <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-sm hover:scale-110 transition bg-white w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full shadow-sm flex items-center justify-center border border-slate-200" title="스톱워치/타이머 전환">
+                     <button id="mode-icon-${i}" onclick="window.toggleTimerMode(${i})" class="text-[10px] sm:text-sm hover:scale-110 transition bg-white w-5 h-5 sm:w-8 sm:h-8 shrink-0 rounded-full shadow-sm flex items-center justify-center border border-slate-200">
                          ${t.mode === 'stopwatch' ? '⏱️' : '⏳'}
                      </button>
-                     <div class="flex-1 min-w-0 mx-0.5 bg-white border border-slate-200 rounded text-center cursor-pointer shadow-inner px-1 overflow-hidden flex items-center justify-center h-5 sm:h-8" onclick="window.manualTimeEdit(${i})" title="터치하여 시간 직접 입력">
+                     <div class="flex-1 min-w-0 mx-0.5 bg-white border border-slate-200 rounded text-center cursor-pointer shadow-inner px-1 overflow-hidden flex items-center justify-center h-5 sm:h-8" onclick="window.manualTimeEdit(${i})">
                          <span id="time-display-${i}" class="font-mono text-[9px] sm:text-sm font-black tracking-tighter truncate ${timeColorClass} block w-full">${timerDisplayVal}</span>
                      </div>
                      <div class="flex gap-0.5 shrink-0">
@@ -2299,11 +2391,9 @@ window.renderGroups = function() {
             ${unassignedStudents.length === 0 ? `<div class="w-full flex items-center justify-center text-slate-400 font-bold text-xs sm:text-sm py-4 pointer-events-none">모든 학생이 편성되었습니다.</div>` : ''}
             ${unassignedStudents.map(s => {
                 let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
-                
                 let rankStr = "";
                 if (s.recordMs > 0 && s.attendance) {
-                    let rank;
-                    let rankPrefix = "";
+                    let rank; let rankPrefix = "";
                     if (currentGroupMode === 'gender') {
                         rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
                         rankPrefix = s.gender;
@@ -2314,7 +2404,6 @@ window.renderGroups = function() {
                 }
                 
                 let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
-                
                 let isCaptain = s[`captain_${currentGroupMode}`];
                 let badgeColor = '';
                 
@@ -2328,10 +2417,7 @@ window.renderGroups = function() {
 
                 let isSelected = s.selected;
                 let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
-                
-                let captainBtnClass = (isCaptain && s.attendance) 
-                    ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' 
-                    : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
+                let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
                 
                 let pCard = s.penaltyCard || 0;
                 let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
@@ -2356,8 +2442,8 @@ window.renderGroups = function() {
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                      class="student-card w-20 sm:w-28 relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
                     
-                    <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
-                    <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
+                    <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20">${s.no}</button>
+                    <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}">
                         ${(isCaptain && s.attendance) ? 'C' : 'c'}
                     </button>
                     
@@ -2367,9 +2453,9 @@ window.renderGroups = function() {
                     </div>
 
                     <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
-                        <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight" title="볼센스">볼센스: ${bsEmoji}</span>
+                        <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight">볼센스: ${bsEmoji}</span>
                         <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none" title="순발력">⚡${recText}</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none">⚡${recText}</span>
                             ${rankStr}
                         </div>
                     </div>
@@ -2380,27 +2466,13 @@ window.renderGroups = function() {
     </div>`;
     
     container.innerHTML = html;
-
-    setTimeout(() => {
-        const groupResult = document.getElementById('group-result');
-        const drawTarget = document.getElementById('group-draw-target');
-        if (groupResult && drawTarget) {
-            let drawContainer = drawTarget;
-            while (drawContainer.parentElement && drawContainer.parentElement.id !== 'group-section') {
-                drawContainer = drawContainer.parentElement;
-            }
-            if (drawContainer && drawContainer.id !== 'group-result') {
-                document.getElementById('group-section').appendChild(drawContainer);
-            }
-        }
-    }, 10);
 }
 
-// 엑셀 관련 기능
+// 엑셀 명단 파싱 및 등록 기능
 window.importFromExcel = function() {
     const input = document.getElementById('excel-input').value.trim();
     if (!input) { window.showModal("알림", "입력된 데이터가 없습니다."); return; }
-    if (!currentClass) { window.showModal("알림", "먼저 추가할 학급을 선택하거나 새 학급을 생성해주세요."); return; }
+    if (!currentClass) { window.showModal("알림", "먼저 학급을 선택하거나 생성해주세요."); return; }
 
     const lines = input.split('\n'); let addedCount = 0; let currentStudents = classData[currentClass] || [];
 
@@ -2441,19 +2513,17 @@ window.importFromExcel = function() {
     if (addedCount > 0) {
         classData[currentClass] = currentStudents; saveData(); window.renderStudentList();
         document.getElementById('excel-input').value = "";
-        window.showModal("등록 완료", `${addedCount}명의 학생이 성공적으로 등록/수정되었습니다.`);
-    } else {
-        window.showModal("알림", "올바른 형식의 데이터를 찾을 수 없습니다. (번호 이름 성별 순서)");
+        window.showModal("등록 완료", `${addedCount}명의 학생이 성공적으로 등록되었습니다.`);
     }
 }
 
 // ==========================================
-// ⏱️ 다중 스톱워치 로직
+// ⏱️ 다중 스톱워치 코어 엔진
 // ==========================================
 window.openGroupStopwatch = function() {
     if(!currentClass || !classData[currentClass]) return;
     groupStudents = classData[currentClass].filter(s => s.selected && s.attendance);
-    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 이름을 터치해 빨간색으로 선택해주세요.");
+    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 출석부나 모둠원 이름을 터치해 빨간색 선택 상태로 만들어주세요.");
 
     let n = groupStudents.length;
     groupStarts = new Array(n).fill(null);
@@ -2471,7 +2541,7 @@ window.closeGroupStopwatch = function() {
 }
 
 window.resetGroupAction = function() {
-    if(confirm("현재 측정을 취소하고 처음부터 다시 시작하시겠습니까?")) {
+    if(confirm("측정을 초기화하고 다시 처음부터 재시작하겠습니까?")) {
         let n = groupStudents.length;
         groupStarts = new Array(n).fill(null);
         groupStops = new Array(n).fill(null);
