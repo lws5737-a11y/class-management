@@ -6,7 +6,7 @@
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=400;700;900&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
         
         /* 스크롤바 숨기기 (모바일 헤더 및 미편성 최소화용) */
@@ -112,7 +112,67 @@
                             <button onclick="window.generateCurrentGroup()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black px-4 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1"><span id="generate-btn-text">편성하기</span> 🎲</button>
                         </div>
                     </div>
+                    
                     <div id="group-result"></div>
+                    
+                    <div id="random-draw-box" class="mt-6 bg-slate-50 border-[3px] border-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm">
+                        <h3 class="font-black text-sm sm:text-base text-slate-800 mb-3 flex items-center gap-2">
+                            🎲 모둠 화면 랜덤 뽑기 Helper
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <h4 class="font-bold text-xs sm:text-sm text-slate-700 mb-1">🏃‍♂️ 학급 전체에서 뽑기 (남녀 비율 반영)</h4>
+                                    <p class="text-[11px] text-slate-400 mb-2 leading-tight">출석 학생 중 남녀 성비를 계산해 공정하고 골고루 선발합니다.</p>
+                                </div>
+                                <div class="flex items-center gap-1.5 mt-2">
+                                    <select id="draw-class-count" class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="1">1명</option>
+                                        <option value="2">2명</option>
+                                        <option value="3">3명</option>
+                                        <option value="4" selected>4명</option>
+                                        <option value="5">5명</option>
+                                        <option value="6">6명</option>
+                                        <option value="7">7명</option>
+                                        <option value="8">8명</option>
+                                        <option value="9">9명</option>
+                                        <option value="10">10명</option>
+                                    </select>
+                                    <button onclick="window.drawFromClass()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">
+                                        🎯 학급에서 뽑기
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <h4 class="font-bold text-xs sm:text-sm text-indigo-800 mb-1">👥 각 모둠에서 똑같이 뽑기</h4>
+                                    <p class="text-[11px] text-slate-400 mb-2 leading-tight">현재 가동 중인 각 모둠별로 지정한 인원씩 각각 선발합니다.</p>
+                                </div>
+                                <div class="flex items-center gap-1.5 mt-2">
+                                    <select id="draw-group-count" class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="1" selected>1명씩</option>
+                                        <option value="2">2명씩</option>
+                                        <option value="3">3명씩</option>
+                                        <option value="4">4명씩</option>
+                                    </select>
+                                    <button onclick="window.drawFromEachGroup()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">
+                                        🎯 모둠별 뽑기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 pt-2 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2">
+                            <div id="draw-result-summary" class="text-[11px] sm:text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-100 w-full sm:w-auto text-center sm:text-left truncate">
+                                📢 선발을 진행하면 모둠 카드 내 이름 오른쪽에 <span class="bg-fuchsia-500 text-white px-1 py-0.5 rounded text-[9px] font-bold">당첨</span> 마크가 표시됩니다.
+                            </div>
+                            <button onclick="window.resetGroupDraws()" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-sm whitespace-nowrap">
+                                ↻ 당첨 마크 모두 초기화
+                            </button>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
 
