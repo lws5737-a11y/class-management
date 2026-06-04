@@ -542,7 +542,6 @@ window.touchStartX = 0;
 window.touchStartY = 0;
 window.isTouchDragging = false;
 
-// 🌟 1. 드래그 하이라이트 클래스 일괄 정리 함수
 const clearDropStyles = () => {
     document.querySelectorAll('.drop-target-active').forEach(el => {
         el.classList.remove('drop-target-active', 'ring-[5px]', 'ring-red-500', 'shadow-[0_0_20px_rgba(239,68,68,0.6)]', 'scale-[1.02]', 'z-20', 'ring-4', 'scale-110', 'z-30');
@@ -585,7 +584,11 @@ window.handleTouchStart = function(e, studentNo) {
         target.style.opacity = '0.3';
         window.activeTouchElement = target;
         
-        window.showFloatingUnassigned();
+        // 🌟 수정: 모둠에 속한 학생을 드래그할 때만 '미편성 영역' 플로팅 바 활성화
+        const student = classData[currentClass]?.find(s => s.no === studentNo);
+        if (student && student[`group_${currentGroupMode}`] !== null && student[`group_${currentGroupMode}`] !== undefined) {
+            window.showFloatingUnassigned();
+        }
 
         if (navigator.vibrate) navigator.vibrate(50);
     }, 500); 
@@ -710,7 +713,13 @@ window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
-    window.showFloatingUnassigned();
+    
+    // 🌟 수정: 미편성 학생을 마우스로 드래그할 때 부모 레이아웃이 Fixed로 변하며 
+    // 브라우저 드래그가 끊기는 현상 방지. 모둠 소속 학생일 때만 하단 플로팅 바 활성화.
+    const student = classData[currentClass]?.find(s => s.no === studentNo);
+    if (student && student[`group_${currentGroupMode}`] !== null && student[`group_${currentGroupMode}`] !== undefined) {
+        window.showFloatingUnassigned();
+    }
     
     window.currentDragY = e.clientY;
     window.startAutoScroll();
@@ -1379,7 +1388,7 @@ function normalizeClassName(name) {
 
 window.deleteCurrentClass = function() {
     if (!currentClass) return;
-    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 정 없습니다.</span>`, true, () => {
+    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
         delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass]; delete groupPenalties[currentClass];
         saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
