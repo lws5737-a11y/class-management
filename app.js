@@ -2074,8 +2074,45 @@ window.generateGenderGroups = function() {
 }
 
 // ==========================================
-// 🎲 랜덤 뽑기 비즈니스 로직 연동
+// 🎲 랜덤 뽑기 비즈니스 로직 및 팝업 연동
 // ==========================================
+
+// 당첨 결과 팝업 표시 함수
+window.showDrawResultModal = function(title, students) {
+    document.getElementById('draw-modal-title').innerHTML = `🎉 ${title} 🎉`;
+    const content = document.getElementById('draw-result-content');
+    
+    if (!students || students.length === 0) {
+        content.innerHTML = '<div class="text-slate-400 font-bold p-4 text-center w-full">당첨자가 없습니다.</div>';
+    } else {
+        let html = '';
+        students.sort((a, b) => a.no - b.no); // 번호순 정렬
+        students.forEach(s => {
+            let groupInfo = s[`group_${currentGroupMode}`] ? `${s[`group_${currentGroupMode}`]}모둠` : '미편성';
+            html += `
+                <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-3 sm:p-4 shadow-md flex flex-col items-center justify-center w-[100px] sm:w-[130px] transform hover:scale-105 transition-transform animate-pop-in" style="animation-delay: ${Math.random() * 0.2}s">
+                    <span class="text-[10px] sm:text-xs font-bold text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full mb-1.5 shadow-sm border border-fuchsia-100">${groupInfo}</span>
+                    <span class="font-black text-xl sm:text-2xl text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1">${s.name}</span>
+                    <span class="text-[11px] sm:text-xs text-slate-400 font-bold mt-1.5">${s.no}번 / ${s.gender}</span>
+                </div>
+            `;
+        });
+        content.innerHTML = html;
+    }
+
+    const modal = document.getElementById('draw-result-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+};
+
+// 당첨 결과 팝업 닫기 함수
+window.closeDrawResultModal = function() {
+    const modal = document.getElementById('draw-result-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+};
+
+
 window.resetGroupDraws = function(silent = false) {
     if (!currentClass || !classData[currentClass]) return;
     classData[currentClass].forEach(s => s.groupMemberDrawn = false);
@@ -2106,7 +2143,7 @@ window.drawFromClass = function() {
     if (boys.length === 0) { targetGirls = finalCount; } 
     else if (girls.length === 0) { targetBoys = finalCount; } 
     else {
-        // 남녀 비율 비례 연산 고도화
+        // 남녀 비율 비례 연산
         targetBoys = Math.round(finalCount * boys.length / presentStudents.length);
         targetGirls = finalCount - targetBoys;
 
@@ -2128,6 +2165,9 @@ window.drawFromClass = function() {
     window.renderGroups();
     window.playCasinoJackpot();
     window.fireConfetti();
+    
+    // 팝업 호출
+    window.showDrawResultModal("학급 랜덤 선발 결과", totalPicked);
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
@@ -2145,7 +2185,7 @@ window.drawFromEachGroup = function() {
 
     let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
     const perGroupCount = parseInt(document.getElementById('draw-group-count').value) || 1;
-    let totalPickedCount = 0;
+    let totalPicked = [];
 
     for (let i = 1; i <= maxGroups; i++) {
         const groupPresentStudents = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance);
@@ -2154,21 +2194,24 @@ window.drawFromEachGroup = function() {
             const chosen = shuffled.slice(0, Math.min(perGroupCount, groupPresentStudents.length));
             chosen.forEach(p => {
                 p.groupMemberDrawn = true;
-                totalPickedCount++;
+                totalPicked.push(p);
             });
         }
     }
 
-    if (totalPickedCount === 0) { alert("모둠에 편성된 출석 학생이 한 명도 없습니다."); return; }
+    if (totalPicked.length === 0) { alert("모둠에 편성된 출석 학생이 한 명도 없습니다."); return; }
 
     saveData();
     window.renderGroups();
     window.playCasinoJackpot();
     window.fireConfetti();
+    
+    // 팝업 호출
+    window.showDrawResultModal("모둠별 선발 결과", totalPicked);
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
-        summaryEl.innerHTML = `🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPickedCount}명</span>이 당첨되었습니다.`;
+        summaryEl.innerHTML = `🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPicked.length}명</span>이 당첨되었습니다.`;
     }
 };
 
@@ -2302,7 +2345,6 @@ window.renderGroups = function() {
                     let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                     let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
 
-                    // 🎲 랜덤 뽑기 당첨 마크 배지 컴포넌트 연동
                     let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                     let pCard = s.penaltyCard || 0;
@@ -2419,6 +2461,8 @@ window.renderGroups = function() {
                 let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                 let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
                 
+                let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
+
                 let pCard = s.penaltyCard || 0;
                 let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
                 let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
@@ -2446,6 +2490,8 @@ window.renderGroups = function() {
                     <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}">
                         ${(isCaptain && s.attendance) ? 'C' : 'c'}
                     </button>
+
+                    ${memberDrawnBadge}
                     
                     <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
                         <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
