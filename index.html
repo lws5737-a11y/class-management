@@ -34,6 +34,7 @@
 </head>
 <body class="text-slate-800 overscroll-y-none select-none">
 
+    <!-- 로그인 화면 -->
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-slate-100 z-50">
         <div class="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
             <h1 class="text-3xl font-black text-blue-600 mb-2">🏃‍♂️ 스마트 체육</h1>
@@ -42,8 +43,10 @@
         </div>
     </div>
 
+    <!-- 앱 메인 화면 -->
     <div id="app-container" class="hidden min-h-screen flex flex-col relative pb-20">
         
+        <!-- 헤더 레이아웃 (학급선택 > 탭3개 > 로그아웃) -->
         <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
             <div id="header-inner-container" class="max-w-4xl mx-auto px-2 sm:px-4 py-2">
                 <div class="flex items-center gap-1.5 sm:gap-2 w-full overflow-x-auto no-scrollbar scroll-smooth">
@@ -72,6 +75,7 @@
 
         <div id="main-container" class="flex-1 max-w-4xl mx-auto w-full p-2 sm:p-4">
             
+            <!-- 1. 출석부 탭 -->
             <div id="student-management" class="hidden space-y-4">
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-2">
@@ -97,6 +101,7 @@
                 </div>
             </div>
 
+            <!-- 2. 모둠 탭 -->
             <div id="group-section" class="hidden space-y-4">
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 mb-3">
@@ -113,13 +118,16 @@
                         </div>
                     </div>
                     
+                    <!-- 모둠별 및 미편성 영역 배치 결과판 -->
                     <div id="group-result"></div>
                     
+                    <!-- 🎲 3번 요구사항: 미편성영역 아래쪽에 랜덤 뽑기 기능 배치 -->
                     <div id="random-draw-box" class="mt-6 bg-slate-50 border-[3px] border-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm">
                         <h3 class="font-black text-sm sm:text-base text-slate-800 mb-3 flex items-center gap-2">
                             🎲 모둠 화면 랜덤 뽑기 Helper
                         </h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- 1번 요구사항: 학급에서 랜덤 뽑기 (남녀 비율 고려) -->
                             <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                                 <div>
                                     <h4 class="font-bold text-xs sm:text-sm text-slate-700 mb-1">🏃‍♂️ 학급 전체에서 뽑기 (남녀 비율 반영)</h4>
@@ -144,6 +152,7 @@
                                 </div>
                             </div>
                             
+                            <!-- 2번 요구사항: 각 모둠에서 랜덤 뽑기 -->
                             <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                                 <div>
                                     <h4 class="font-bold text-xs sm:text-sm text-indigo-800 mb-1">👥 각 모둠에서 똑같이 뽑기</h4>
@@ -163,6 +172,7 @@
                             </div>
                         </div>
                         
+                        <!-- 결과 안내 및 마크 제거 -->
                         <div class="mt-3 pt-2 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2">
                             <div id="draw-result-summary" class="text-[11px] sm:text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-100 w-full sm:w-auto text-center sm:text-left truncate">
                                 📢 선발을 진행하면 모둠 카드 내 이름 오른쪽에 <span class="bg-fuchsia-500 text-white px-1 py-0.5 rounded text-[9px] font-bold">당첨</span> 마크가 표시됩니다.
@@ -176,6 +186,7 @@
                 </div>
             </div>
 
+            <!-- 3. 도장판 탭 -->
             <div id="stamp-section" class="hidden h-full flex-col">
                 <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 mb-6 overflow-hidden flex flex-col items-center justify-between pb-6 sm:pb-8 max-w-md sm:max-w-lg w-full mx-auto relative">
                     
@@ -201,12 +212,31 @@
         </div>
     </div>
 
+    <!-- 랜덤 뽑기 결과 팝업 -->
+    <div id="draw-result-modal" class="fixed inset-0 bg-slate-900/70 z-[140] hidden flex-col items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden border-[4px] border-fuchsia-400 transform scale-95 animate-pop-in relative">
+            <div class="bg-gradient-to-r from-fuchsia-500 to-purple-600 p-4 sm:p-5 text-center shadow-md">
+                <h2 id="draw-modal-title" class="text-xl sm:text-2xl font-black text-white tracking-wider flex items-center justify-center gap-2">🎉 당첨자 발표 🎉</h2>
+            </div>
+            <div class="p-4 sm:p-8 bg-slate-50/80 min-h-[150px] max-h-[60vh] overflow-y-auto">
+                <div id="draw-result-content" class="flex flex-wrap justify-center gap-3 sm:gap-4">
+                    <!-- 당첨자 카드 동적 생성 영역 -->
+                </div>
+            </div>
+            <div class="p-4 bg-white border-t border-slate-100 text-center flex justify-center">
+                <button onclick="window.closeDrawResultModal()" class="w-full sm:w-1/2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-3 px-8 rounded-xl transition shadow-sm text-sm sm:text-base">확인 (닫기)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 다중 스톱워치 플로팅 버튼 -->
     <div id="floating-group-btn-container" class="fixed top-20 sm:top-24 left-1/2 transform -translate-x-1/2 z-[100] hidden pointer-events-none transition-all">
         <button onclick="window.openGroupStopwatch()" class="pointer-events-auto bg-yellow-400 text-yellow-900 border-4 border-yellow-500 px-6 sm:px-8 py-3 rounded-full shadow-2xl font-black text-sm sm:text-base hover:bg-yellow-500 hover:scale-105 active:scale-95 transition-transform animate-bounce flex items-center gap-2">
             ⏱️ 다중 스톱워치 시작 <span id="float-group-count" class="bg-white text-yellow-900 px-2.5 py-1 rounded-lg text-xs sm:text-sm shadow-inner font-bold">0명</span>
         </button>
     </div>
 
+    <!-- 다중 스톱워치 모달 -->
     <div id="group-stopwatch-modal" class="fixed inset-0 bg-slate-900/95 z-[400] hidden flex flex-col items-center justify-center p-4 backdrop-blur-md transition-all">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 flex flex-col max-h-[95vh] h-full relative">
             <div class="p-4 bg-yellow-400 text-yellow-900 flex justify-between items-center shadow-md z-10">
@@ -228,10 +258,12 @@
         </div>
     </div>
 
+    <!-- 옐로/레드 카드 팝업 오버레이 -->
     <div id="card-overlay" class="fixed inset-0 z-[500] hidden items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer p-4 sm:p-8" onclick="window.closeCardOverlay()">
         <img id="card-image" src="" class="w-full h-full object-contain drop-shadow-2xl" alt="Penalty Card">
     </div>
 
+    <!-- 유틸리티 모달들 -->
     <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
