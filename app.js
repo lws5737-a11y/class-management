@@ -6,12 +6,19 @@ window.isDraggingCard = false;
 window.selectedGroupStudent = null; 
 
 // ==========================================
-// ⏱️ 다중 스톱워치 상태 및 변수 선언
+// ⏱️ 다중 스톱워치 상태 및 8자 줄넘기 변수
 // ==========================================
 let groupStudents = []; 
 let groupStarts = Array(10).fill(null);   
 let groupStops = Array(10).fill(null);    
 let groupLoopId = null; 
+
+// 8자 줄넘기 상태
+let jumpRopeData = {}; 
+let jumpRopeTimerMs = 0;
+let jumpRopeTimerStart = 0;
+let jumpRopeInterval = null;
+let jumpRopeCount = 0;
 
 // ==========================================
 // 1. 오디오 초기화 및 재생
@@ -940,7 +947,7 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('tab-navigation').classList.remove('flex');
         document.getElementById('logout-btn').classList.add('hidden');
         
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {};
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {};
         currentClass = ""; window.renderClassSelect();
     }
 });
@@ -962,6 +969,7 @@ function setupFirestoreListener() {
             groupRecords = data.records || {}; 
             classStamps = data.stamps || {};
             groupPenalties = data.penalties || {};
+            jumpRopeData = data.jumpRope || {};
 
             if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); }
             migrateData();
@@ -971,11 +979,12 @@ function setupFirestoreListener() {
             window.renderStudentList();
             if(typeof window.renderGroups === 'function') window.renderGroups();
             if(typeof window.renderStampBoard === 'function') window.renderStampBoard();
+            if(currentTab === 'jumprope' && typeof window.renderJumpRopeTab === 'function') window.renderJumpRopeTab();
         } else if (currentClass && !classData[currentClass]) {
             currentClass = "";
             const display = document.getElementById('current-class-display');
             if (display) display.innerHTML = "<span>⚙️ 설정 및 시작</span>";
-            ['student-management', 'group-section', 'stamp-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+            ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
         }
     }, (error) => {
         console.error("데이터 동기화 오류:", error);
@@ -993,16 +1002,182 @@ function saveData() {
         if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
 
         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-        setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties }, { merge: true })
+        setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData }, { merge: true })
         .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
         .catch((error) => { 
             console.error("클라우드 자동 저장 실패:", error); 
             isDebouncing = false; 
             if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } 
-            window.showModal("저장 실패", "네트워크 문제 또는 도장 이미지 용량이 너무 커서 저장에 실패했습니다.");
+            window.showModal("저장 실패", "네트워크 문제 또는 데이터 용량 문제로 저장에 실패했습니다.");
         });
     }
 }
+
+// ==========================================
+// 8자 줄넘기 기능 구현 (신규 탭)
+// ==========================================
+function initJumpRopeWeeks() {
+    const select = document.getElementById('jumprope-week-select');
+    if (!select) return;
+    let html = '';
+    for(let m = 3; m <= 12; m++) {
+        if(m === 8) continue; 
+        let term = m <= 7 ? '1학기' : '2학기';
+        for(let w = 1; w <= 5; w++) {
+            let val = `${m}월 ${w}주차`;
+            html += `<option value="${val}">${term} ${val}</option>`;
+        }
+    }
+    select.innerHTML = html;
+    
+    const now = new Date();
+    let currentMonth = now.getMonth() + 1;
+    let targetMonth = currentMonth < 3 ? 3 : (currentMonth > 12 ? 12 : currentMonth);
+    let opt = Array.from(select.options).find(o => o.value.startsWith(`${targetMonth}월`));
+    if(opt) opt.selected = true;
+}
+document.addEventListener('DOMContentLoaded', initJumpRopeWeeks);
+
+window.renderJumpRopeTab = function() {
+    if (!currentClass) return;
+    const week = document.getElementById('jumprope-week-select').value;
+    
+    let match = currentClass.match(/^(\d+)/);
+    let currentGradeStr = match ? match[1] : null;
+    const badge = document.getElementById('jumprope-grade-badge');
+    if (badge) {
+        if (currentGradeStr) { badge.innerText = `${currentGradeStr}학년`; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
+    }
+
+    if (!jumpRopeData[week]) jumpRopeData[week] = {};
+    if (!jumpRopeData[week][currentClass]) jumpRopeData[week][currentClass] = { male: null, female: null };
+
+    document.getElementById('jumprope-male-input').value = jumpRopeData[week][currentClass].male !== null ? jumpRopeData[week][currentClass].male : '';
+    document.getElementById('jumprope-female-input').value = jumpRopeData[week][currentClass].female !== null ? jumpRopeData[week][currentClass].female : '';
+
+    const maleRanking = [];
+    const femaleRanking = [];
+
+    if (currentGradeStr) {
+        Object.keys(jumpRopeData[week]).forEach(cls => {
+            let m = cls.match(/^(\d+)/);
+            if (m && m[1] === currentGradeStr) {
+                let d = jumpRopeData[week][cls];
+                if (d.male !== null && d.male > 0) maleRanking.push({ cls, score: d.male });
+                if (d.female !== null && d.female > 0) femaleRanking.push({ cls, score: d.female });
+            }
+        });
+    } else {
+        let d = jumpRopeData[week][currentClass];
+        if (d.male !== null && d.male > 0) maleRanking.push({ cls: currentClass, score: d.male });
+        if (d.female !== null && d.female > 0) femaleRanking.push({ cls: currentClass, score: d.female });
+    }
+
+    maleRanking.sort((a, b) => b.score - a.score);
+    femaleRanking.sort((a, b) => b.score - a.score);
+
+    const renderList = (arr, listId) => {
+        const ul = document.getElementById(listId);
+        if (arr.length === 0) { ul.innerHTML = '<li class="text-slate-400 text-[11px] text-center py-2">아직 기록된 반이 없습니다.</li>'; return; }
+        
+        let html = '';
+        arr.forEach((item, idx) => {
+            let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `<span class="text-slate-400 font-normal ml-1 mr-1.5">${idx+1}</span>`));
+            let highlight = item.cls === currentClass ? 'bg-yellow-100 font-black text-yellow-800 rounded' : 'text-slate-700';
+            html += `
+                <li class="flex justify-between items-center px-2 py-1 ${highlight}">
+                    <div class="flex items-center gap-1"><span>${medal}</span> <span>${item.cls}</span></div>
+                    <span class="font-black">${item.score}개</span>
+                </li>`;
+        });
+        ul.innerHTML = html;
+    };
+
+    renderList(maleRanking, 'jumprope-male-ranking');
+    renderList(femaleRanking, 'jumprope-female-ranking');
+};
+
+window.saveJumpRopeRecord = function() {
+    if (!currentClass) return;
+    const week = document.getElementById('jumprope-week-select').value;
+    const mVal = parseInt(document.getElementById('jumprope-male-input').value);
+    const fVal = parseInt(document.getElementById('jumprope-female-input').value);
+
+    if (!jumpRopeData[week]) jumpRopeData[week] = {};
+    if (!jumpRopeData[week][currentClass]) jumpRopeData[week][currentClass] = { male: null, female: null };
+
+    jumpRopeData[week][currentClass].male = isNaN(mVal) ? null : mVal;
+    jumpRopeData[week][currentClass].female = isNaN(fVal) ? null : fVal;
+
+    saveData();
+    window.renderJumpRopeTab();
+    window.playCoinSound();
+    window.showModal("저장 완료", `<b>${week}</b> 기록이 성공적으로 저장되었습니다.`);
+};
+
+function jumpRopeTimerLoop() {
+    if(jumpRopeInterval) {
+        jumpRopeTimerMs = Date.now() - jumpRopeTimerStart;
+        document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
+        requestAnimationFrame(jumpRopeTimerLoop);
+    }
+}
+
+window.toggleJumpRopeTimer = function() {
+    const btn = document.getElementById('jumprope-timer-btn');
+    if (jumpRopeInterval) {
+        jumpRopeInterval = false;
+        btn.innerText = '시작';
+        btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
+    } else {
+        jumpRopeInterval = true;
+        jumpRopeTimerStart = Date.now() - jumpRopeTimerMs;
+        requestAnimationFrame(jumpRopeTimerLoop);
+        btn.innerText = '일시정지';
+        btn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
+    }
+};
+
+window.resetJumpRopeTimer = function() {
+    jumpRopeInterval = false;
+    jumpRopeTimerMs = 0;
+    document.getElementById('jumprope-timer-display').innerText = '00:00.00';
+    const btn = document.getElementById('jumprope-timer-btn');
+    btn.innerText = '시작';
+    btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
+};
+
+window.updateJumpRopeCountUI = function() {
+    document.getElementById('jumprope-counter-value').innerText = jumpRopeCount;
+    document.getElementById('jumprope-counter-display').classList.remove('scale-95');
+    void document.getElementById('jumprope-counter-display').offsetWidth;
+    document.getElementById('jumprope-counter-display').classList.add('scale-95');
+    setTimeout(() => { document.getElementById('jumprope-counter-display').classList.remove('scale-95'); }, 100);
+}
+
+window.incrementJumpRopeCount = function() {
+    jumpRopeCount++;
+    window.updateJumpRopeCountUI();
+    try {
+        const ctx = initAudio();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1);
+    } catch(e) {}
+};
+
+window.decrementJumpRopeCount = function() {
+    if (jumpRopeCount > 0) { jumpRopeCount--; window.updateJumpRopeCountUI(); }
+};
+
+window.resetJumpRopeCount = function() {
+    jumpRopeCount = 0; window.updateJumpRopeCountUI();
+};
+
 
 // ==========================================
 // 3. 최적화된 도장판 렌더링 로직
@@ -1163,23 +1338,6 @@ window.cyclePenaltyCard = function(studentNo) {
     }
 };
 
-window.cycleGroupPenalty = function(groupId) {
-    if (!currentClass) return;
-    if (!groupPenalties[currentClass]) groupPenalties[currentClass] = {};
-    if (!groupPenalties[currentClass][currentGroupMode]) groupPenalties[currentClass][currentGroupMode] = {};
-    
-    let currentVal = groupPenalties[currentClass][currentGroupMode][groupId] || 0;
-    let nextVal = (currentVal + 1) % 3;
-    groupPenalties[currentClass][currentGroupMode][groupId] = nextVal;
-    
-    if (nextVal === 1) window.showPenaltyCard('yellow');
-    else if (nextVal === 2) window.showPenaltyCard('red');
-    else window.playEraseSound();
-    
-    saveData();
-    window.renderGroups();
-};
-
 
 // ==========================================
 // 6. 타이머, 모달, 리스트 렌더링 등 코어 로직
@@ -1282,14 +1440,8 @@ window.manualTimeEdit = function(groupId) {
 }
 
 window.updateGroupDrawSelect = function() {
-    const sel = document.getElementById('group-draw-target');
+    const sel = document.getElementById('draw-group-count');
     if(!sel) return;
-    let maxGroup = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
-    let html = '<option value="all">전체 모둠</option>';
-    for(let i=1; i<=maxGroup; i++) {
-        html += `<option value="${i}">${i}모둠</option>`;
-    }
-    sel.innerHTML = html;
 }
 
 function migrateData() {
@@ -1390,17 +1542,17 @@ window.deleteCurrentClass = function() {
         saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
-        ['student-management', 'group-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
         window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공적으로 삭제되었습니다.");
     }, "삭제");
 }
 
 window.deleteAllClasses = function() {
     window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
-        ['student-management', 'group-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
         window.renderClassSelect(); window.showModal("삭제 완료", "모든 학급 데이터가 안전하게 삭제되었습니다.");
     }, "전체 삭제");
 }
@@ -1547,14 +1699,14 @@ window.handleAllCSVUpload = function(event) {
                 if (currentClass && !classData[currentClass]) {
                     currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
                     document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
-                    ['student-management', 'group-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                    ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 }
 
                 if (userId && db) {
                     isDebouncing = true;
                     try {
                         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties }, { merge: true });
+                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData }, { merge: true });
                     } catch (error) { 
                         console.error("즉시 저장 실패:", error); 
                         window.showModal("저장 실패", "네트워크 또는 용량 문제로 클라우드 저장에 실패했습니다.");
@@ -1562,7 +1714,7 @@ window.handleAllCSVUpload = function(event) {
                     finally { isDebouncing = false; }
                 }
 
-                if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); }
+                if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
                 window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
             document.getElementById('csv-all-file-input').value = ''; 
@@ -1598,13 +1750,14 @@ window.selectClass = function(className) {
     window.setGroupMode(currentGroupMode, true); 
     window.updateGroupDrawSelect(); 
     window.renderStudentList(); window.renderGroups(); window.renderStampBoard();
+    if(currentTab === 'jumprope') window.renderJumpRopeTab();
 }
 
 window.showTab = function(tabName) {
     currentTab = tabName; window.selectedGroupStudent = null;
-    ['student-management', 'group-section', 'stamp-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
 
-    ['student', 'group', 'stamp'].forEach(t => {
+    ['student', 'group', 'stamp', 'jumprope'].forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         if(btn) btn.className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap";
     });
@@ -1626,6 +1779,11 @@ window.showTab = function(tabName) {
         document.getElementById('stamp-section').classList.remove('hidden');
         document.getElementById('tab-stamp').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-green-600 shadow-md border border-green-600 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
         window.renderStampBoard();
+    } else if (tabName === 'jumprope') {
+        document.getElementById('jumprope-section').classList.remove('hidden');
+        document.getElementById('jumprope-section').classList.add('flex');
+        document.getElementById('tab-jumprope').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-amber-500 shadow-md border border-amber-500 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
+        window.renderJumpRopeTab();
     }
 }
 
@@ -1673,6 +1831,7 @@ window.toggleSelection = function(studentNo) {
         student.selected = !student.selected;
         saveData();
         window.renderStudentList();
+        window.renderGroups();
         window.updateFloatingStopwatchBtn();
     }
 }
@@ -1778,7 +1937,7 @@ window.renderStudentList = function() {
         } else { rowBgClass = "bg-red-50/40 text-slate-400 italic"; }
 
         if (s.selected) {
-            rowBgClass = "bg-red-50 hover:bg-red-100 shadow-[inset_0_0_0_2px_#ef4444] z-10 relative";
+            rowBgClass = "bg-yellow-50 hover:bg-yellow-100 shadow-[inset_0_0_0_2px_#facc15] z-10 relative";
         }
 
         const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 student-row transition " + rowBgClass;
@@ -1820,7 +1979,7 @@ window.renderStudentList = function() {
             
             <td class="px-2 py-1 sm:p-2 font-black text-center whitespace-nowrap min-w-[70px]">
                 <div class="flex items-center justify-center gap-1.5">
-                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-red-500 text-white shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
+                    <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
                         ${s.name}${drawnBadge}
                     </button>
                     <button onclick="event.stopPropagation(); window.openMemoModal(${s.no}, '${s.name}')" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">📝</button>
@@ -2086,7 +2245,7 @@ window.showDrawResultModal = function(title, students) {
         content.innerHTML = '<div class="text-slate-400 font-bold p-4 text-center w-full">당첨자가 없습니다.</div>';
     } else {
         let html = '';
-        students.sort((a, b) => a.no - b.no); // 번호순 정렬
+        students.sort((a, b) => a.no - b.no); 
         students.forEach(s => {
             let groupInfo = s[`group_${currentGroupMode}`] ? `${s[`group_${currentGroupMode}`]}모둠` : '미편성';
             html += `
@@ -2253,6 +2412,9 @@ window.renderGroups = function() {
         let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
         let presentTotal = presentBoys + presentGirls;
 
+        // 그룹 내 체육부장이 있는지 확인 (출석한 학생 중)
+        let groupHasCaptain = groupStudents.some(st => st[`captain_${currentGroupMode}`] && st.attendance);
+
         const color = colors[(i-1) % colors.length];
         let gScore = 0;
         if (groupScores[currentClass] && groupScores[currentClass][currentGroupMode]) {
@@ -2275,13 +2437,6 @@ window.renderGroups = function() {
         const isGroupDrawn = drawnGroupIds.includes(i);
         const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
         
-        let gp = 0;
-        if (groupPenalties[currentClass] && groupPenalties[currentClass][currentGroupMode]) {
-            gp = groupPenalties[currentClass][currentGroupMode][i] || 0;
-        }
-        let gCard1 = gp >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-white/50 border-slate-300';
-        let gCard2 = gp >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-white/50 border-slate-300';
-
         html += `
         <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
              data-group-id="${i}" 
@@ -2290,29 +2445,25 @@ window.renderGroups = function() {
              ondrop="window.handleDropOnGroup(event, ${i})" 
              onclick="window.handleGroupAreaClick(${i})">
             
-            <div class="${color.header} px-1 py-1 sm:px-3 sm:py-2 flex flex-col sm:flex-row justify-between items-center border-b-[3px] border-slate-900">
+            <div class="${color.header} px-2 py-2 sm:px-3 sm:py-3 flex flex-col sm:flex-row justify-between items-center border-b-[3px] border-slate-900 gap-1 sm:gap-0">
                 
-                <h3 class="font-black text-sm sm:text-xl ${color.text} flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
+                <h3 class="font-black text-base sm:text-xl ${color.text} flex items-center gap-2 whitespace-nowrap">
                     <span>${i}모둠</span>
-                    <div class="flex gap-0.5 ml-0.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cycleGroupPenalty(${i})" title="모둠 전체 경고 부여">
-                        <div class="w-1.5 h-2.5 sm:w-2 sm:h-3.5 border ${gCard1} rounded-[1px] transition-colors duration-200"></div>
-                        <div class="w-1.5 h-2.5 sm:w-2 sm:h-3.5 border ${gCard2} rounded-[1px] transition-colors duration-200"></div>
-                    </div>
-                </h3>
-                
-                <div class="flex items-center gap-1 mt-1 sm:mt-0 flex-wrap justify-end">
-                    <div class="text-[9px] sm:text-[10px] text-slate-600 bg-white/70 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 mr-1 whitespace-nowrap">
-                        참석 <span class="font-bold">${presentTotal}</span>명 <span class="text-slate-400 mx-0.5">|</span> 남 ${presentBoys} 여 ${presentGirls}
-                    </div>
-                    <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-75 sm:scale-100 transform origin-right">
+                    <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-90 sm:scale-100">
                         <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
                         <span class="w-6 sm:w-10 text-center font-black text-sm sm:text-lg ${color.text}">${gScore}</span>
                         <button onclick="window.updateGroupScore(${i}, 1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold ${color.btn} text-white transition">+</button>
                     </div>
+                </h3>
+                
+                <div class="flex items-center mt-1 sm:mt-0">
+                    <div class="text-xs sm:text-sm text-slate-700 bg-white/70 px-2 py-1 rounded shadow-sm border border-slate-200 whitespace-nowrap">
+                        참석 <span class="font-bold text-blue-600">${presentTotal}</span>명 <span class="text-slate-400 mx-1">|</span> 남 ${presentBoys} 여 ${presentGirls}
+                    </div>
                 </div>
             </div>
             
-            <div class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1 sm:gap-2 items-stretch relative">
+            <div class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1.5 sm:gap-2 items-stretch relative">
                 ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                 ${groupStudents.map(s => {
                     let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
@@ -2326,10 +2477,11 @@ window.renderGroups = function() {
                         } else {
                             rank = validRecordsAll.indexOf(s.recordMs) + 1;
                         }
-                        rankStr = `<span class="text-blue-600 font-black text-[9px] leading-tight">(${rankPrefix}${rank}위)</span>`;
+                        rankStr = `<span class="text-blue-600 font-black text-[9px] sm:text-[10px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                     }
                     
                     let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
+                    
                     let isCaptain = s[`captain_${currentGroupMode}`];
                     let badgeColor = '';
                     
@@ -2342,19 +2494,31 @@ window.renderGroups = function() {
                     }
 
                     let isSelected = s.selected;
-                    let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
-                    let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
+                    let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 bg-yellow-100 transform scale-105 z-10 shadow-lg' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                    if (isSelected) badgeColor = 'text-yellow-800 border-yellow-300';
 
-                    let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
+                    let captainBtnHtml = '';
+                    if (isCaptain && s.attendance) {
+                        captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-500 text-white border-yellow-600 shadow-sm" title="체육부장 해제">C</button>`;
+                    } else if (!groupHasCaptain && s.attendance) {
+                        captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
+                    }
+
+                    // 출석/불참 O/X 버튼
+                    let attText = s.attendance ? 'O' : 'X';
+                    let attColor = s.attendance ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-red-500 bg-red-100 border-red-300';
+                    let attendanceBtnHtml = `<button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-1 left-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[10px] sm:text-xs font-black rounded-full border shadow-sm z-20 ${attColor}" title="출석/불참 토글">${attText}</button>`;
+
+                    let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                     let pCard = s.penaltyCard || 0;
                     let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
                     let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
                     
                     let penaltyCardsHtml = `
-                        <div class="flex gap-0.5 ml-1 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
-                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card1} rounded-[1px] transition-colors duration-200"></div>
-                            <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card2} rounded-[1px] transition-colors duration-200"></div>
+                        <div class="flex gap-0.5 ml-1.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
+                            <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card1} rounded-[2px] transition-colors duration-200"></div>
+                            <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card2} rounded-[2px] transition-colors duration-200"></div>
                         </div>
                     `;
 
@@ -2368,24 +2532,24 @@ window.renderGroups = function() {
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                         class="student-card relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                         class="student-card relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[55px] sm:min-h-[65px]">
                         
-                        <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20" title="출석/불참 전환">${s.no}</button>
-                        <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}" title="체육부장(주장) 지정/해제">
-                            ${(isCaptain && s.attendance) ? 'C' : 'c'}
-                        </button>
-
+                        ${attendanceBtnHtml}
+                        ${captainBtnHtml}
                         ${memberDrawnBadge}
                         
                         <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                            <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
                             ${penaltyCardsHtml}
                         </div>
 
-                        <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
-                            <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight">볼센스: ${bsEmoji}</span>
-                            <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none">⚡${recText}</span>
+                        <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
+                            <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
+                                볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
+                            </span>
+                            <span class="text-slate-300 text-[10px]">|</span>
+                            <div class="flex items-center justify-center gap-0.5">
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">⚡${recText}</span>
                                 ${rankStr}
                             </div>
                         </div>
@@ -2442,7 +2606,7 @@ window.renderGroups = function() {
                     } else {
                         rank = validRecordsAll.indexOf(s.recordMs) + 1;
                     }
-                    rankStr = `<span class="text-blue-600 font-black text-[9px] leading-tight">(${rankPrefix}${rank}위)</span>`;
+                    rankStr = `<span class="text-blue-600 font-black text-[9px] sm:text-[10px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                 }
                 
                 let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
@@ -2458,19 +2622,24 @@ window.renderGroups = function() {
                 }
 
                 let isSelected = s.selected;
-                let selectedStyle = isSelected ? 'ring-4 ring-red-500 transform scale-105 z-10 shadow-md' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
-                let captainBtnClass = (isCaptain && s.attendance) ? 'bg-yellow-500 text-white border-yellow-600 shadow-sm' : 'hover:bg-slate-200 text-slate-400 bg-slate-100/50';
+                let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 bg-yellow-100 transform scale-105 z-10 shadow-lg' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
+                if (isSelected) badgeColor = 'text-yellow-800 border-yellow-300';
+
+                // 미편성 영역에서도 O/X 출석버튼 적용
+                let attText = s.attendance ? 'O' : 'X';
+                let attColor = s.attendance ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-red-500 bg-red-100 border-red-300';
+                let attendanceBtnHtml = `<button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-1 left-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[10px] sm:text-xs font-black rounded-full border shadow-sm z-20 ${attColor}" title="출석/불참 토글">${attText}</button>`;
                 
-                let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
+                let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                 let pCard = s.penaltyCard || 0;
                 let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
                 let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
                 
                 let penaltyCardsHtml = `
-                    <div class="flex gap-0.5 ml-1 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
-                        <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card1} rounded-[1px] transition-colors duration-200"></div>
-                        <div class="w-1.5 h-2.5 sm:w-2 sm:h-3 border ${card2} rounded-[1px] transition-colors duration-200"></div>
+                    <div class="flex gap-0.5 ml-1.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card1} rounded-[2px] transition-colors duration-200"></div>
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card2} rounded-[2px] transition-colors duration-200"></div>
                     </div>
                 `;
 
@@ -2484,24 +2653,23 @@ window.renderGroups = function() {
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                     class="student-card w-20 sm:w-28 relative border sm:border-2 ${badgeColor} p-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[50px] sm:min-h-[58px]">
+                     class="student-card w-[110px] sm:w-[140px] relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[55px] sm:min-h-[65px]">
                     
-                    <button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-0.5 left-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition shadow-sm z-20">${s.no}</button>
-                    <button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-0.5 right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[9px] sm:text-[10px] font-black rounded transition z-20 ${captainBtnClass}">
-                        ${(isCaptain && s.attendance) ? 'C' : 'c'}
-                    </button>
-
+                    ${attendanceBtnHtml}
                     ${memberDrawnBadge}
                     
                     <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                        <span class="font-black text-[11px] sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
                         ${penaltyCardsHtml}
                     </div>
 
-                    <div class="flex flex-col items-center w-full bg-white/70 rounded px-1 py-0.5 border border-white/50 mt-1 shadow-inner">
-                        <span class="text-[8px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap leading-tight">볼센스: ${bsEmoji}</span>
-                        <div class="flex flex-col items-center justify-center w-full mt-0.5">
-                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap leading-none">⚡${recText}</span>
+                    <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
+                        <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
+                            볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
+                        </span>
+                        <span class="text-slate-300 text-[10px]">|</span>
+                        <div class="flex items-center justify-center gap-0.5">
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">⚡${recText}</span>
                             ${rankStr}
                         </div>
                     </div>
@@ -2569,7 +2737,7 @@ window.importFromExcel = function() {
 window.openGroupStopwatch = function() {
     if(!currentClass || !classData[currentClass]) return;
     groupStudents = classData[currentClass].filter(s => s.selected && s.attendance);
-    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 출석부나 모둠원 이름을 터치해 빨간색 선택 상태로 만들어주세요.");
+    if(groupStudents.length === 0) return alert("선택된 학생이 없습니다. 출석부나 모둠원 이름을 터치해 선택 상태로 만들어주세요.");
 
     let n = groupStudents.length;
     groupStarts = new Array(n).fill(null);
