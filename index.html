@@ -5,22 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js 라이브러리 추가 (그래프 그리기 용) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=400;700;900&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
         
-        /* 스크롤바 숨기기 (모바일 헤더 및 미편성 최소화용) */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* 애니메이션 효과 모음 */
         @keyframes pop-in { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
         .animate-pop-in { animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         
         @keyframes bounce-slight { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(0); } }
         .badge-animate { animation: bounce-slight 2s infinite; }
 
-        /* 🌟 카드 Slide-In with Tilt 애니메이션 */
         @keyframes slide-in-tilt {
             0% { transform: translateY(150%) rotate(25deg) scale(0.5); opacity: 0; }
             70% { transform: translateY(-5%) rotate(-5deg) scale(1.05); opacity: 1; }
@@ -34,6 +33,7 @@
 </head>
 <body class="text-slate-800 overscroll-y-none select-none">
 
+    <!-- 로그인 화면 -->
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-slate-100 z-50">
         <div class="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
             <h1 class="text-3xl font-black text-blue-600 mb-2">🏃‍♂️ 스마트 체육</h1>
@@ -42,23 +42,21 @@
         </div>
     </div>
 
+    <!-- 앱 메인 화면 -->
     <div id="app-container" class="hidden min-h-screen flex flex-col relative pb-20">
-        
+        <!-- 헤더 -->
         <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
             <div id="header-inner-container" class="max-w-4xl mx-auto px-2 sm:px-4 py-2">
                 <div class="flex items-center gap-1.5 sm:gap-2 w-full overflow-x-auto no-scrollbar scroll-smooth">
-                    
                     <button onclick="window.openManageModal()" id="current-class-display" class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-[11px] sm:text-sm transition shadow-sm border border-slate-200 flex items-center gap-1.5 whitespace-nowrap">
                         <span>⚙️ 설정 및 시작</span>
                     </button>
-                    
                     <div id="tab-navigation" class="hidden flex items-center gap-1 sm:gap-2 shrink-0">
                         <button id="tab-student" onclick="window.showTab('student')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">출석부</button>
                         <button id="tab-group" onclick="window.showTab('group')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">모둠</button>
                         <button id="tab-jumprope" onclick="window.showTab('jumprope')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">8자줄넘기</button>
                         <button id="tab-stamp" onclick="window.showTab('stamp')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">도장판</button>
                     </div>
-
                     <div class="flex items-center gap-1.5 ml-auto shrink-0 pl-2">
                         <div id="sync-status" class="hidden items-center gap-1 text-[9px] sm:text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">
                             <span class="animate-spin">↻</span>
@@ -66,13 +64,13 @@
                         <span id="user-email" class="text-[10px] sm:text-sm font-bold text-slate-500 hidden sm:inline mr-1"></span>
                         <button id="logout-btn" onclick="window.signOutApp()" class="hidden shrink-0 text-[11px] sm:text-sm font-bold text-slate-400 hover:text-red-500 transition px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 shadow-sm whitespace-nowrap">로그아웃</button>
                     </div>
-
                 </div>
             </div>
         </div>
 
         <div id="main-container" class="flex-1 max-w-4xl mx-auto w-full p-2 sm:p-4">
             
+            <!-- 1. 출석부 탭 -->
             <div id="student-management" class="hidden space-y-4">
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-2">
@@ -98,6 +96,7 @@
                 </div>
             </div>
 
+            <!-- 2. 모둠 탭 -->
             <div id="group-section" class="hidden space-y-4">
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 mb-3">
@@ -116,33 +115,27 @@
                     
                     <div id="group-result"></div>
                     
+                    <!-- 랜덤 뽑기 Helper -->
                     <div id="random-draw-box" class="mt-6 bg-slate-50 border-[3px] border-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm">
-                        <h3 class="font-black text-sm sm:text-base text-slate-800 mb-3 flex items-center gap-2">
-                            🎲 랜덤 뽑기 Helper
-                        </h3>
+                        <h3 class="font-black text-sm sm:text-base text-slate-800 mb-3 flex items-center gap-2">🎲 랜덤 뽑기 Helper</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <h4 class="font-bold text-xs sm:text-sm text-slate-700 mb-1">🏃‍♂️ 학급 전체에서 뽑기 (남녀 비율 반영)</h4>
-                                </div>
+                                <div><h4 class="font-bold text-xs sm:text-sm text-slate-700 mb-1">🏃‍♂️ 학급 전체에서 뽑기 (남녀 비율 반영)</h4></div>
                                 <div class="flex items-center gap-1.5 mt-2">
                                     <select id="draw-class-count" class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                         <option value="1">1명</option><option value="2">2명</option><option value="3">3명</option>
                                         <option value="4" selected>4명</option><option value="5">5명</option><option value="6">6명</option>
-                                        <option value="7">7명</option><option value="8">8명</option><option value="9">9명</option><option value="10">10명</option>
                                     </select>
-                                    <button onclick="window.drawFromClass()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">🎯 학급에서 뽑기</button>
+                                    <button onclick="window.drawFromClass()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">🎯 뽑기</button>
                                 </div>
                             </div>
                             <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <h4 class="font-bold text-xs sm:text-sm text-indigo-800 mb-1">👥 각 모둠에서 똑같이 뽑기</h4>
-                                </div>
+                                <div><h4 class="font-bold text-xs sm:text-sm text-indigo-800 mb-1">👥 각 모둠에서 똑같이 뽑기</h4></div>
                                 <div class="flex items-center gap-1.5 mt-2">
                                     <select id="draw-group-count" class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                         <option value="1" selected>1명씩</option><option value="2">2명씩</option><option value="3">3명씩</option><option value="4">4명씩</option>
                                     </select>
-                                    <button onclick="window.drawFromEachGroup()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">🎯 모둠별 뽑기</button>
+                                    <button onclick="window.drawFromEachGroup()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-1.5 px-3 rounded-lg text-xs shadow transition">🎯 뽑기</button>
                                 </div>
                             </div>
                         </div>
@@ -150,19 +143,23 @@
                             <div id="draw-result-summary" class="text-[11px] sm:text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-100 w-full sm:w-auto text-center sm:text-left truncate">
                                 📢 모둠 카드 내 이름 오른쪽에 <span class="bg-fuchsia-500 text-white px-1 py-0.5 rounded text-[9px] font-bold">당첨</span> 마크가 표시됩니다.
                             </div>
-                            <button onclick="window.resetGroupDraws()" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-sm whitespace-nowrap">↻ 당첨 마크 초기화</button>
+                            <button onclick="window.resetGroupDraws()" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-sm whitespace-nowrap">↻ 당첨 초기화</button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ✨ 3. 8자 줄넘기 탭 -->
             <div id="jumprope-section" class="hidden flex-col space-y-4">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h2 class="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">🏅 8자 줄넘기 기록</h2>
+                    
                     <div class="flex flex-col sm:flex-row gap-3 mb-4">
                         <select id="jumprope-week-select" onchange="window.renderJumpRopeTab()" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                            </select>
+                            <!-- JS로 방학 무관 모든 월 동적 생성 -->
+                        </select>
                     </div>
+                    
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-200 flex flex-col items-center">
                             <label class="block text-xs font-black text-blue-800 mb-2">👦 남학생팀 (개수)</label>
@@ -173,36 +170,53 @@
                             <input type="number" id="jumprope-female-input" class="w-full max-w-[120px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-pink-300 focus:border-pink-500 focus:outline-none bg-white shadow-inner text-pink-900" placeholder="0">
                         </div>
                     </div>
+                    
                     <button onclick="window.saveJumpRopeRecord()" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2">
                         💾 현재 학급 기록 저장 및 업데이트
                     </button>
+                    
+                    <!-- 팀별 기록 분석 버튼 & 그래프 영역 -->
+                    <div class="mt-4">
+                        <button onclick="window.toggleJumpRopeAnalysis()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-black py-3 rounded-xl transition border-2 border-slate-200 flex justify-center items-center gap-2 shadow-sm text-sm sm:text-base">
+                            📊 팀별 기록 분석 차트 보기
+                        </button>
+                        <div id="jumprope-analysis-area" class="hidden mt-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div id="jumprope-stats-container"></div>
+                            <div id="jumprope-chart-container" class="w-full h-48 sm:h-64 relative"></div>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- 랭킹판 -->
                 <div class="bg-white p-4 rounded-2xl shadow-sm border-[3px] border-amber-300">
                     <h3 class="text-sm sm:text-base font-black text-slate-800 mb-3 flex items-center gap-2">
                         🏆 동학년 실시간 순위 <span id="jumprope-grade-badge" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] sm:text-xs border border-amber-200 shadow-sm hidden"></span>
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <h4 class="text-xs font-black text-blue-600 mb-2 border-b-2 border-blue-200 pb-1.5 flex items-center justify-between">👦 남학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">선택 주차 기준</span></h4>
+                            <h4 class="text-xs font-black text-blue-600 mb-2 border-b-2 border-blue-200 pb-1.5 flex items-center justify-between">👦 남학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
                             <ul id="jumprope-male-ranking" class="space-y-1.5 text-xs sm:text-sm"></ul>
                         </div>
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <h4 class="text-xs font-black text-pink-600 mb-2 border-b-2 border-pink-200 pb-1.5 flex items-center justify-between">👧 여학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">선택 주차 기준</span></h4>
+                            <h4 class="text-xs font-black text-pink-600 mb-2 border-b-2 border-pink-200 pb-1.5 flex items-center justify-between">👧 여학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
                             <ul id="jumprope-female-ranking" class="space-y-1.5 text-xs sm:text-sm"></ul>
                         </div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="bg-slate-800 p-5 rounded-2xl shadow-lg text-center flex flex-col items-center justify-center border-2 border-slate-700">
-                        <h4 class="text-slate-400 font-black text-xs mb-3 flex items-center gap-1">⏱️ 측정 타이머</h4>
-                        <div id="jumprope-timer-display" class="font-mono text-5xl sm:text-6xl font-black text-white tracking-wider mb-5 drop-shadow-md w-full">00:00.00</div>
+                    <!-- 타이머 & 스톱워치 -->
+                    <div class="bg-slate-800 p-5 rounded-2xl shadow-lg text-center flex flex-col items-center justify-center border-2 border-slate-700 relative">
+                        <button onclick="window.toggleJumpRopeTimerMode()" id="jumprope-mode-icon" class="absolute top-3 left-3 bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold hover:bg-slate-600 transition shadow-inner">⏱️ 스톱워치</button>
+                        
+                        <h4 class="text-slate-400 font-black text-xs mb-3 flex items-center gap-1 mt-4 sm:mt-0">⏱️ 측정 타이머</h4>
+                        <div id="jumprope-timer-display" onclick="window.editJumpRopeTimerTarget()" class="font-mono text-5xl sm:text-6xl font-black text-white tracking-wider mb-5 drop-shadow-md w-full cursor-pointer hover:text-blue-300 transition-colors" title="시간 터치 시 목표 설정">00:00.00</div>
                         <div class="flex gap-2 w-full">
                             <button id="jumprope-timer-btn" onclick="window.toggleJumpRopeTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base">시작</button>
                             <button onclick="window.resetJumpRopeTimer()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold px-4 py-3 rounded-xl transition text-sm sm:text-base">초기화</button>
                         </div>
                     </div>
+                    <!-- 터치 카운터 -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border-[3px] border-indigo-200 text-center flex flex-col items-center">
                         <h4 class="text-indigo-500 font-black text-xs mb-3 flex items-center gap-1">👆 터치 카운터</h4>
                         <div id="jumprope-counter-display" onclick="window.incrementJumpRopeCount()" class="w-full bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 border border-indigo-100 cursor-pointer rounded-xl py-6 transition-colors select-none shadow-inner flex flex-col items-center justify-center">
@@ -217,21 +231,19 @@
                 </div>
             </div>
 
+            <!-- 4. 도장판 탭 -->
             <div id="stamp-section" class="hidden h-full flex-col">
                 <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 mb-6 overflow-hidden flex flex-col items-center justify-between pb-6 sm:pb-8 max-w-md sm:max-w-lg w-full mx-auto relative">
-                    
                     <div class="w-full aspect-square border-b border-slate-100 flex items-center justify-center bg-slate-50 cursor-pointer group select-none relative overflow-hidden" onclick="window.addOneStamp()">
                         <span id="stamp-placeholder" class="text-slate-300 text-3xl sm:text-5xl font-black absolute pointer-events-none">터치해서 찍기</span>
                         <img id="big-stamp-img" src="" class="w-full h-full object-cover z-10 hidden transform transition-transform group-active:scale-95 pointer-events-none">
                     </div>
-
                     <div class="mt-6 flex items-center justify-center gap-4 sm:gap-8 bg-white px-4 sm:px-6 w-full">
                         <button onclick="window.removeOneStamp()" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-red-100 hover:text-red-500 transition shadow-sm flex items-center justify-center active:scale-90">-</button>
                         <div class="text-6xl sm:text-7xl font-black text-slate-800 tracking-tighter w-24 sm:w-32 text-center" id="big-stamp-count">X 0</div>
                         <button onclick="window.addOneStamp()" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 text-slate-500 text-3xl font-black hover:bg-green-100 hover:text-green-500 transition shadow-sm flex items-center justify-center active:scale-90">+</button>
                     </div>
                     <div class="mt-2 text-slate-400 font-bold text-sm">목표: 20개</div>
-                    
                     <div class="flex items-center justify-center gap-3 mt-8 w-full px-4 sm:px-6">
                         <button onclick="window.openStampSelectModal()" class="flex-1 bg-slate-100 hover:bg-green-100 text-slate-600 hover:text-green-700 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition border border-slate-200 shadow-sm flex items-center justify-center gap-2">🎨 디자인 변경</button>
                         <button onclick="window.resetStampBoard()" class="flex-1 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition border border-slate-200 shadow-sm flex items-center justify-center gap-2">↻ 기록 초기화</button>
@@ -242,14 +254,14 @@
         </div>
     </div>
 
+    <!-- 각종 모달 오버레이들 (생략하지 않음) -->
     <div id="draw-result-modal" class="fixed inset-0 bg-slate-900/70 z-[140] hidden flex-col items-center justify-center p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden border-[4px] border-fuchsia-400 transform scale-95 animate-pop-in relative">
             <div class="bg-gradient-to-r from-fuchsia-500 to-purple-600 p-4 sm:p-5 text-center shadow-md">
                 <h2 id="draw-modal-title" class="text-xl sm:text-2xl font-black text-white tracking-wider flex items-center justify-center gap-2">🎉 당첨자 발표 🎉</h2>
             </div>
             <div class="p-4 sm:p-8 bg-slate-50/80 min-h-[150px] max-h-[60vh] overflow-y-auto">
-                <div id="draw-result-content" class="flex flex-wrap justify-center gap-3 sm:gap-4">
-                    </div>
+                <div id="draw-result-content" class="flex flex-wrap justify-center gap-3 sm:gap-4"></div>
             </div>
             <div class="p-4 bg-white border-t border-slate-100 text-center flex justify-center">
                 <button onclick="window.closeDrawResultModal()" class="w-full sm:w-1/2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black py-3 px-8 rounded-xl transition shadow-sm text-sm sm:text-base">확인 (닫기)</button>
@@ -271,15 +283,9 @@
             </div>
             <div class="px-4 py-2 sm:px-5 sm:py-3 flex-1 overflow-y-auto space-y-1.5" id="group-stopwatch-list"></div>
             <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3 z-10 flex flex-col justify-end">
-                <button id="btn-group-start-all" onclick="window.startAllGroupAction()" class="w-full py-2 text-sm sm:text-base font-bold rounded-xl shadow-sm transition-all transform active:scale-95 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100">
-                    🚀 전체 동시 출발
-                </button>
-                <button id="btn-group-action" onclick="window.handleGroupAction()" class="w-full py-6 sm:py-8 text-3xl sm:text-4xl font-black rounded-2xl shadow-xl transition-all transform active:scale-95 bg-blue-600 text-white hover:bg-blue-700 mt-2">
-                    ▶ 1번 출발
-                </button>
-                <button onclick="window.resetGroupAction()" class="w-full py-3 text-sm font-bold rounded-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors">
-                    ↻ 측정 초기화 (다시 시작)
-                </button>
+                <button id="btn-group-start-all" onclick="window.startAllGroupAction()" class="w-full py-2 text-sm sm:text-base font-bold rounded-xl shadow-sm transition-all transform active:scale-95 bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100">🚀 전체 동시 출발</button>
+                <button id="btn-group-action" onclick="window.handleGroupAction()" class="w-full py-6 sm:py-8 text-3xl sm:text-4xl font-black rounded-2xl shadow-xl transition-all transform active:scale-95 bg-blue-600 text-white hover:bg-blue-700 mt-2">▶ 1번 출발</button>
+                <button onclick="window.resetGroupAction()" class="w-full py-3 text-sm font-bold rounded-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors">↻ 측정 초기화 (다시 시작)</button>
             </div>
         </div>
     </div>
@@ -288,6 +294,7 @@
         <img id="card-image" src="" class="w-full h-full object-contain drop-shadow-2xl" alt="Penalty Card">
     </div>
 
+    <!-- 관리용 모달들 -->
     <div id="manage-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
@@ -295,6 +302,7 @@
                 <button onclick="window.closeManageModal()" class="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition">✕</button>
             </div>
             <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+                <!-- 내용 동일 -->
                 <div><h3 class="text-sm font-black text-slate-500 mb-3 ml-1">📂 학급 선택 (드래그하여 순서 변경 및 휴지통 이동 가능)</h3><div id="modal-class-list" class="space-y-3"></div></div>
                 <hr class="border-slate-100">
                 <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
@@ -306,8 +314,8 @@
                 </div>
                 <hr class="border-slate-100">
                 <div class="bg-green-50/50 p-4 rounded-2xl border border-green-100">
-                    <h3 class="text-sm font-black text-green-800 mb-2 flex items-center gap-2">📊 명단 엑셀 일괄 등록 (현재 학급)</h3>
-                    <p class="text-xs text-green-600 mb-3 font-medium leading-relaxed bg-white p-2 rounded-lg border border-green-100">엑셀에서 <b class="text-green-800">[번호] [이름] [성별] [볼센스] [순발력] [조]</b> 순서로 복사하여 붙여넣으세요.<br>(번호, 이름만 필수)</p>
+                    <h3 class="text-sm font-black text-green-800 mb-2 flex items-center gap-2">📊 명단 엑셀 일괄 등록</h3>
+                    <p class="text-xs text-green-600 mb-3 font-medium leading-relaxed bg-white p-2 rounded-lg border border-green-100">엑셀에서 <b class="text-green-800">[번호] [이름] [성별] [볼센스] [순발력] [조]</b> 순서로 복사하여 붙여넣으세요.</p>
                     <textarea id="excel-input" rows="4" class="w-full border border-green-200 p-3 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white shadow-inner font-mono" placeholder="1 홍길동 남 2 15.3 1&#10;2 김철수 남 1 16.2 2"></textarea>
                     <button onclick="window.importFromExcel()" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 sm:py-3 rounded-xl transition shadow-sm">엑셀 텍스트 등록하기</button>
                 </div>
@@ -329,6 +337,7 @@
         </div>
     </div>
 
+    <!-- Alert / Memo 모달 생략 없이 작성 -->
     <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 z-[60] hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center transform transition-all border border-slate-100">
             <h2 id="modal-title" class="text-xl font-black text-slate-800 mb-3"></h2>
