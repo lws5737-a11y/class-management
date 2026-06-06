@@ -19,6 +19,8 @@ let jumpRopeTimerMs = 0;
 let jumpRopeTimerStart = 0;
 let jumpRopeInterval = null;
 let jumpRopeCount = 0;
+let jumpRopeTimerMode = 'stopwatch'; // 'stopwatch' or 'timer'
+let jumpRopeTargetMs = 60000;
 
 // ==========================================
 // 1. 오디오 초기화 및 재생
@@ -33,7 +35,6 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
-// 공통 옐로/레드카드 및 호루라기 재생
 window.showPenaltyCard = function(type) {
     const overlay = document.getElementById('card-overlay');
     const img = document.getElementById('card-image');
@@ -1014,25 +1015,24 @@ function saveData() {
 }
 
 // ==========================================
-// 8자 줄넘기 기능 구현 (신규 탭)
+// 8자 줄넘기 기능 구현 (신규 탭 - 모드 및 그래프 추가)
 // ==========================================
 function initJumpRopeWeeks() {
     const select = document.getElementById('jumprope-week-select');
     if (!select) return;
     let html = '';
-    for(let m = 3; m <= 12; m++) {
-        if(m === 8) continue; 
-        let term = m <= 7 ? '1학기' : '2학기';
+    // 1월부터 12월까지 모든 월 출력 (학기 구분 텍스트 제거)
+    for(let m = 1; m <= 12; m++) {
         for(let w = 1; w <= 5; w++) {
             let val = `${m}월 ${w}주차`;
-            html += `<option value="${val}">${term} ${val}</option>`;
+            html += `<option value="${val}">${val}</option>`;
         }
     }
     select.innerHTML = html;
     
     const now = new Date();
     let currentMonth = now.getMonth() + 1;
-    let targetMonth = currentMonth < 3 ? 3 : (currentMonth > 12 ? 12 : currentMonth);
+    let targetMonth = currentMonth < 1 ? 1 : (currentMonth > 12 ? 12 : currentMonth);
     let opt = Array.from(select.options).find(o => o.value.startsWith(`${targetMonth}월`));
     if(opt) opt.selected = true;
 }
@@ -1085,9 +1085,16 @@ window.renderJumpRopeTab = function() {
         arr.forEach((item, idx) => {
             let medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `<span class="text-slate-400 font-normal ml-1 mr-1.5">${idx+1}</span>`));
             let highlight = item.cls === currentClass ? 'bg-yellow-100 font-black text-yellow-800 rounded' : 'text-slate-700';
+            
+            // 랭킹 보상 도장 아이콘
+            let reward = '';
+            if(idx === 0) reward = '<span class="text-xs ml-1 tracking-tighter">💮💮💮</span>';
+            else if(idx === 1) reward = '<span class="text-xs ml-1 tracking-tighter">💮💮</span>';
+            else if(idx === 2) reward = '<span class="text-xs ml-1 tracking-tighter">💮</span>';
+
             html += `
                 <li class="flex justify-between items-center px-2 py-1 ${highlight}">
-                    <div class="flex items-center gap-1"><span>${medal}</span> <span>${item.cls}</span></div>
+                    <div class="flex items-center gap-1"><span>${medal}</span> <span>${item.cls}</span> ${reward}</div>
                     <span class="font-black">${item.score}개</span>
                 </li>`;
         });
@@ -1096,6 +1103,99 @@ window.renderJumpRopeTab = function() {
 
     renderList(maleRanking, 'jumprope-male-ranking');
     renderList(femaleRanking, 'jumprope-female-ranking');
+
+    window.injectJumpRopeUI();
+};
+
+// 동적 UI 생성(타이머 전환 및 분석 버튼)
+window.injectJumpRopeUI = function() {
+    if (!document.getElementById('jumprope-mode-btn')) {
+        const timerDisplay = document.getElementById('jumprope-timer-display');
+        if(timerDisplay) {
+            const modeBtn = document.createElement('button');
+            modeBtn.id = 'jumprope-mode-btn';
+            modeBtn.className = "text-xl sm:text-2xl hover:scale-110 transition shrink-0 ml-2 bg-slate-100 rounded px-2 py-1 flex items-center justify-center border border-slate-200 shadow-sm";
+            modeBtn.innerText = jumpRopeTimerMode === 'stopwatch' ? '⏱️' : '⏳';
+            modeBtn.onclick = window.toggleJumpRopeTimerMode;
+            timerDisplay.parentNode.insertBefore(modeBtn, timerDisplay.nextSibling);
+        }
+    }
+
+    if (!document.getElementById('jumprope-analysis-btn')) {
+        const maleInput = document.getElementById('jumprope-male-input');
+        if(maleInput) {
+            const wrapper = maleInput.closest('.p-4') || maleInput.parentElement.parentElement;
+            if(wrapper) {
+                const analysisBtn = document.createElement('button');
+                analysisBtn.id = 'jumprope-analysis-btn';
+                analysisBtn.className = "w-full mt-3 bg-indigo-500 hover:bg-indigo-600 text-white font-black py-2.5 rounded-xl transition shadow-md text-sm sm:text-base";
+                analysisBtn.innerHTML = '📊 팀별 기록 분석 보기';
+                analysisBtn.onclick = window.openJumpRopeAnalysisModal;
+                wrapper.appendChild(analysisBtn);
+            }
+        }
+    }
+};
+
+window.openJumpRopeAnalysisModal = function() {
+    if (!currentClass) return window.showModal('알림', '학급을 선택해주세요.');
+    let maleData = []; let femaleData = []; let labels = [];
+    let maxScore = 0; let minScore = Infinity; let hasData = false;
+
+    // 그래프 출력을 위해 1월 1주차부터 순서대로 탐색
+    for(let m=1; m<=12; m++) {
+        for(let w=1; w<=5; w++) {
+            let wk = `${m}월 ${w}주차`;
+            if (jumpRopeData[wk] && jumpRopeData[wk][currentClass]) {
+                let d = jumpRopeData[wk][currentClass];
+                if (d.male !== null || d.female !== null) {
+                    labels.push(wk);
+                    let mScore = d.male || 0; let fScore = d.female || 0;
+                    maleData.push(mScore); femaleData.push(fScore);
+                    if(mScore > 0 || fScore > 0) hasData = true;
+                    if(mScore > maxScore) maxScore = mScore;
+                    if(fScore > maxScore) maxScore = fScore;
+                    if(mScore > 0 && mScore < minScore) minScore = mScore;
+                    if(fScore > 0 && fScore < minScore) minScore = fScore;
+                }
+            }
+        }
+    }
+
+    if (!hasData) return window.showModal('기록 분석', '아직 입력된 줄넘기 기록이 없습니다.');
+    if (minScore === Infinity) minScore = 0;
+
+    let html = `<div class="flex flex-col gap-4 w-full">
+        <div class="flex justify-between bg-slate-100 p-3 rounded-lg text-sm shadow-inner border border-slate-200">
+            <div class="font-bold text-slate-700">🏆 최고 기록: <span class="text-blue-600">${maxScore}개</span></div>
+            <div class="font-bold text-slate-700">📉 최저 기록: <span class="text-red-500">${minScore}개</span></div>
+        </div>
+        <div class="flex items-end gap-3 overflow-x-auto pb-2 h-48 border-b-2 border-slate-300 w-full whitespace-nowrap pt-4">`;
+
+    labels.forEach((w, i) => {
+        let mH = maxScore > 0 ? (maleData[i] / maxScore * 100) : 0;
+        let fH = maxScore > 0 ? (femaleData[i] / maxScore * 100) : 0;
+        html += `<div class="flex flex-col items-center gap-1 min-w-[50px] shrink-0">
+            <div class="flex items-end gap-1 w-full h-36 justify-center">
+                <div class="w-4 bg-blue-400 rounded-t-sm relative group flex items-end justify-center transition-all hover:bg-blue-500" style="height: ${mH}%">
+                    <span class="absolute -top-5 text-[10px] hidden group-hover:block bg-slate-800 text-white px-1 rounded z-10">${maleData[i]}</span>
+                </div>
+                <div class="w-4 bg-pink-400 rounded-t-sm relative group flex items-end justify-center transition-all hover:bg-pink-500" style="height: ${fH}%">
+                    <span class="absolute -top-5 text-[10px] hidden group-hover:block bg-slate-800 text-white px-1 rounded z-10">${femaleData[i]}</span>
+                </div>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 w-full text-center mt-1">${w.replace('주차','')}</span>
+        </div>`;
+    });
+
+    html += `</div>
+        <div class="flex justify-center gap-4 text-xs mt-2 font-bold text-slate-600">
+            <span class="flex items-center gap-1.5"><div class="w-3 h-3 bg-blue-400 rounded-sm shadow-sm"></div> 남학생</span>
+            <span class="flex items-center gap-1.5"><div class="w-3 h-3 bg-pink-400 rounded-sm shadow-sm"></div> 여학생</span>
+        </div>
+    </div>`;
+
+    window.showModal(`📊 ${currentClass} 줄넘기 기록 현황`, html);
 };
 
 window.saveJumpRopeRecord = function() {
@@ -1116,9 +1216,48 @@ window.saveJumpRopeRecord = function() {
     window.showModal("저장 완료", `<b>${week}</b> 기록이 성공적으로 저장되었습니다.`);
 };
 
+window.toggleJumpRopeTimerMode = function() {
+    if (jumpRopeInterval) return; 
+    jumpRopeTimerMode = jumpRopeTimerMode === 'stopwatch' ? 'timer' : 'stopwatch';
+    const modeBtn = document.getElementById('jumprope-mode-btn');
+    if (modeBtn) modeBtn.innerText = jumpRopeTimerMode === 'stopwatch' ? '⏱️' : '⏳';
+
+    if (jumpRopeTimerMode === 'timer') {
+        let input = prompt("타이머 시간을 초 단위 또는 분:초로 입력하세요. (예: 60 또는 1:00)", "60");
+        if (input !== null && input.trim() !== '') {
+            jumpRopeTargetMs = window.parseTime(input);
+            jumpRopeTimerMs = jumpRopeTargetMs;
+        } else {
+            jumpRopeTimerMode = 'stopwatch';
+            if(modeBtn) modeBtn.innerText = '⏱️';
+            jumpRopeTimerMs = 0;
+        }
+    } else {
+        jumpRopeTimerMs = 0;
+    }
+    document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
+};
+
 function jumpRopeTimerLoop() {
     if(jumpRopeInterval) {
-        jumpRopeTimerMs = Date.now() - jumpRopeTimerStart;
+        let elapsed = Date.now() - jumpRopeTimerStart;
+        if (jumpRopeTimerMode === 'timer') {
+            jumpRopeTimerMs = jumpRopeTargetMs - elapsed;
+            if (jumpRopeTimerMs <= 0) {
+                jumpRopeTimerMs = 0;
+                jumpRopeInterval = false;
+                document.getElementById('jumprope-timer-display').innerText = window.formatTime(0);
+                const btn = document.getElementById('jumprope-timer-btn');
+                if (btn) {
+                    btn.innerText = '시작';
+                    btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
+                }
+                try { window.playOlympicFanfare(); } catch(e){}
+                return; 
+            }
+        } else {
+            jumpRopeTimerMs = elapsed;
+        }
         document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
         requestAnimationFrame(jumpRopeTimerLoop);
     }
@@ -1132,7 +1271,12 @@ window.toggleJumpRopeTimer = function() {
         btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
     } else {
         jumpRopeInterval = true;
-        jumpRopeTimerStart = Date.now() - jumpRopeTimerMs;
+        if (jumpRopeTimerMode === 'timer') {
+            if (jumpRopeTimerMs <= 0) jumpRopeTimerMs = jumpRopeTargetMs;
+            jumpRopeTimerStart = Date.now() - (jumpRopeTargetMs - jumpRopeTimerMs);
+        } else {
+            jumpRopeTimerStart = Date.now() - jumpRopeTimerMs;
+        }
         requestAnimationFrame(jumpRopeTimerLoop);
         btn.innerText = '일시정지';
         btn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
@@ -1141,8 +1285,8 @@ window.toggleJumpRopeTimer = function() {
 
 window.resetJumpRopeTimer = function() {
     jumpRopeInterval = false;
-    jumpRopeTimerMs = 0;
-    document.getElementById('jumprope-timer-display').innerText = '00:00.00';
+    jumpRopeTimerMs = jumpRopeTimerMode === 'timer' ? jumpRopeTargetMs : 0;
+    document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
     const btn = document.getElementById('jumprope-timer-btn');
     btn.innerText = '시작';
     btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
@@ -1177,10 +1321,8 @@ window.decrementJumpRopeCount = function() {
 window.resetJumpRopeCount = function() {
     jumpRopeCount = 0; window.updateJumpRopeCountUI();
 };
-
-
 // ==========================================
-// 3. 최적화된 도장판 렌더링 로직
+// 4. 최적화된 도장판 렌더링 로직
 // ==========================================
 window.renderStampBoard = () => {
     if (!currentClass) return; 
@@ -1324,7 +1466,6 @@ window.updateDismissal = function(studentNo, value) {
     }
 }
 
-// 패널티 부여 시 카드 팝업 호출
 window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
@@ -1337,7 +1478,6 @@ window.cyclePenaltyCard = function(studentNo) {
         window.renderGroups();
     }
 };
-
 
 // ==========================================
 // 6. 타이머, 모달, 리스트 렌더링 등 코어 로직
@@ -2232,11 +2372,6 @@ window.generateGenderGroups = function() {
     window.renderGroups();
 }
 
-// ==========================================
-// 🎲 랜덤 뽑기 비즈니스 로직 및 팝업 연동
-// ==========================================
-
-// 당첨 결과 팝업 표시 함수
 window.showDrawResultModal = function(title, students) {
     document.getElementById('draw-modal-title').innerHTML = `🎉 ${title} 🎉`;
     const content = document.getElementById('draw-result-content');
@@ -2264,13 +2399,11 @@ window.showDrawResultModal = function(title, students) {
     modal.classList.add('flex');
 };
 
-// 당첨 결과 팝업 닫기 함수
 window.closeDrawResultModal = function() {
     const modal = document.getElementById('draw-result-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 };
-
 
 window.resetGroupDraws = function(silent = false) {
     if (!currentClass || !classData[currentClass]) return;
@@ -2291,7 +2424,6 @@ window.drawFromClass = function() {
     const requestedCount = parseInt(document.getElementById('draw-class-count').value) || 4;
     const finalCount = Math.min(requestedCount, presentStudents.length);
 
-    // 기존 당첨 기록 완전 초기화
     students.forEach(s => s.groupMemberDrawn = false);
 
     const boys = presentStudents.filter(s => s.gender === '남');
@@ -2302,7 +2434,6 @@ window.drawFromClass = function() {
     if (boys.length === 0) { targetGirls = finalCount; } 
     else if (girls.length === 0) { targetBoys = finalCount; } 
     else {
-        // 남녀 비율 비례 연산
         targetBoys = Math.round(finalCount * boys.length / presentStudents.length);
         targetGirls = finalCount - targetBoys;
 
@@ -2325,7 +2456,6 @@ window.drawFromClass = function() {
     window.playCasinoJackpot();
     window.fireConfetti();
     
-    // 팝업 호출
     window.showDrawResultModal("학급 랜덤 선발 결과", totalPicked);
 
     const summaryEl = document.getElementById('draw-result-summary');
@@ -2339,7 +2469,6 @@ window.drawFromEachGroup = function() {
     if (!currentClass || !classData[currentClass]) return;
     const students = classData[currentClass];
 
-    // 기존 당첨 기록 초기화
     students.forEach(s => s.groupMemberDrawn = false);
 
     let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
@@ -2365,7 +2494,6 @@ window.drawFromEachGroup = function() {
     window.playCasinoJackpot();
     window.fireConfetti();
     
-    // 팝업 호출
     window.showDrawResultModal("모둠별 선발 결과", totalPicked);
 
     const summaryEl = document.getElementById('draw-result-summary');
@@ -2412,7 +2540,6 @@ window.renderGroups = function() {
         let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
         let presentTotal = presentBoys + presentGirls;
 
-        // 그룹 내 체육부장이 있는지 확인 (출석한 학생 중)
         let groupHasCaptain = groupStudents.some(st => st[`captain_${currentGroupMode}`] && st.attendance);
 
         const color = colors[(i-1) % colors.length];
@@ -2485,11 +2612,10 @@ window.renderGroups = function() {
                     let isCaptain = s[`captain_${currentGroupMode}`];
                     let badgeColor = '';
                     
-                    if (isCaptain && s.attendance) {
-                        badgeColor = 'bg-yellow-200 text-yellow-900 border-yellow-400 ring-2 ring-yellow-400 shadow-md';
-                    } else if (!s.attendance) {
+                    if (!s.attendance) {
                         badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
                     } else {
+                        // 성별 기본 배경색으로 설정 (선택 1번 요청사항 반영)
                         badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
                     }
 
@@ -2499,12 +2625,12 @@ window.renderGroups = function() {
 
                     let captainBtnHtml = '';
                     if (isCaptain && s.attendance) {
-                        captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-500 text-white border-yellow-600 shadow-sm" title="체육부장 해제">C</button>`;
+                        // C 버튼만 강력하게 강조 (선택 1번 요청사항 반영)
+                        captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-400 text-white border-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400" title="체육부장 해제">C</button>`;
                     } else if (!groupHasCaptain && s.attendance) {
                         captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
                     }
 
-                    // 출석/불참 O/X 버튼
                     let attText = s.attendance ? 'O' : 'X';
                     let attColor = s.attendance ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-red-500 bg-red-100 border-red-300';
                     let attendanceBtnHtml = `<button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-1 left-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[10px] sm:text-xs font-black rounded-full border shadow-sm z-20 ${attColor}" title="출석/불참 토글">${attText}</button>`;
@@ -2610,12 +2736,9 @@ window.renderGroups = function() {
                 }
                 
                 let recText = s.recordMs > 0 ? (s.recordMs / 1000).toFixed(2) + "초" : '-';
-                let isCaptain = s[`captain_${currentGroupMode}`];
                 let badgeColor = '';
                 
-                if (isCaptain && s.attendance) {
-                    badgeColor = 'bg-yellow-200 text-yellow-900 border-yellow-400 ring-2 ring-yellow-400 shadow-md';
-                } else if (!s.attendance) {
+                if (!s.attendance) {
                     badgeColor = 'bg-slate-100 text-slate-400 border-slate-300 border-dashed opacity-70 grayscale';
                 } else {
                     badgeColor = s.gender === '남' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-pink-50 text-pink-800 border-pink-200';
@@ -2625,7 +2748,6 @@ window.renderGroups = function() {
                 let selectedStyle = isSelected ? 'ring-4 ring-yellow-400 bg-yellow-100 transform scale-105 z-10 shadow-lg' : 'shadow-sm hover:shadow hover:-translate-y-0.5';
                 if (isSelected) badgeColor = 'text-yellow-800 border-yellow-300';
 
-                // 미편성 영역에서도 O/X 출석버튼 적용
                 let attText = s.attendance ? 'O' : 'X';
                 let attColor = s.attendance ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-red-500 bg-red-100 border-red-300';
                 let attendanceBtnHtml = `<button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-1 left-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[10px] sm:text-xs font-black rounded-full border shadow-sm z-20 ${attColor}" title="출석/불참 토글">${attText}</button>`;
