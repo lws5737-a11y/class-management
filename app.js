@@ -2506,7 +2506,7 @@ window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
     
-    let numGroups = currentGroupMode === 'mixed2' ? 'grid-cols-2' : (currentGroupMode === 'mixed3' ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4');
+    let numGroups = currentGroupMode === 'mixed2' ? 'grid-cols-2' : (currentGroupMode === 'mixed3' ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4');
     let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
     let html = '';
     
