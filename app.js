@@ -3044,3 +3044,67 @@ window.updateFloatingStopwatchBtn = function() {
         }
     }
 };
+// ==========================================
+// 🛡️ 오프라인 자동저장 및 백그라운드 데이터 방어 로직
+// ==========================================
+
+// 1. 화면 전환 및 브라우저 종료 시 자동 백업
+document.addEventListener("visibilitychange", function() {
+  if (document.visibilityState === 'hidden') {
+    backupAllDataLocally();
+    
+    // 모바일 사용성을 위해 자동저장 완료 시 짧은 진동 피드백 발송
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+  }
+});
+
+window.addEventListener('beforeunload', function() {
+    backupAllDataLocally();
+});
+
+// 2. 현재 입력 중인 평가 영역(1~3개) 및 기록(Fastest Order) 상태 로컬 임시 저장
+function backupAllDataLocally() {
+  const allInputs = document.querySelectorAll('input, textarea');
+  allInputs.forEach(field => {
+    if(field.id || field.name) {
+       const key = 'smart_run_backup_' + (field.id || field.name);
+       localStorage.setItem(key, field.value);
+    }
+  });
+  
+  // 팀 편성 모드 상태 저장
+  if (typeof currentGroupMode !== 'undefined') {
+      localStorage.setItem('smart_run_group_mode', currentGroupMode);
+  }
+}
+
+// 3. 앱 재실행 시 오프라인/종료 전 데이터 자동 복원
+window.addEventListener('DOMContentLoaded', () => {
+  const allInputs = document.querySelectorAll('input, textarea');
+  allInputs.forEach(field => {
+    const key = 'smart_run_backup_' + (field.id || field.name);
+    const savedValue = localStorage.getItem(key);
+    
+    // 비어있는 칸에만 저장되었던 데이터 복구
+    if (savedValue && !field.value) {
+      field.value = savedValue;
+    }
+  });
+  
+  const savedGroupMode = localStorage.getItem('smart_run_group_mode');
+  if (savedGroupMode && typeof currentGroupMode !== 'undefined') {
+      currentGroupMode = savedGroupMode;
+  }
+});
+
+// 4. 타이핑하는 순간순간마다 즉시 백업 (실시간 반영)
+document.addEventListener('input', function(e) {
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      if(e.target.id || e.target.name) {
+          const key = 'smart_run_backup_' + (e.target.id || e.target.name);
+          localStorage.setItem(key, e.target.value);
+      }
+  }
+});
