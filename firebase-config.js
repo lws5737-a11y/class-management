@@ -6,13 +6,13 @@ import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/
 import { getFirestore, enableMultiTabIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  // 아래 항목들은 기존에 발급받으신 선생님의 프로젝트 정보 그대로 유지해 주세요.
-  apiKey: "본인의_API_KEY",
-  authDomain: "본인의_AUTH_DOMAIN",
-  projectId: "본인의_PROJECT_ID",
-  storageBucket: "본인의_STORAGE_BUCKET",
-  messagingSenderId: "본인의_MESSAGING_SENDER_ID",
-  appId: "본인의_APP_ID"
+  apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
+  authDomain: "lws5737-a6105.firebaseapp.com",
+  projectId: "lws5737-a6105",
+  storageBucket: "lws5737-a6105.firebasestorage.app",
+  messagingSenderId: "729062934950",
+  appId: "1:729062934950:web:615529a26e02081c182767",
+  measurementId: "G-LVB2WTXNGV"
 };
 
 const app = initializeApp(firebaseConfig);
