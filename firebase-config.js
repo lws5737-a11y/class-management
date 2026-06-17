@@ -1,36 +1,31 @@
 // 1. Firebase 핵심 모듈
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-
 // 2. Firebase 인증 모듈 (구글 로그인용)
 import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+// 3. Firestore 모듈 및 오프라인 지속성(자동저장) 모듈 추가
+import { getFirestore, enableMultiTabIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// 3. Firebase 데이터베이스 모듈 (🌟 오프라인 캐시 지원 모듈 포함)
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-// 📌 선생님의 Firebase 프로젝트 환경설정
-// (주의: 이 부분은 선생님의 기존 firebase-config.js에 있던 실제 값으로 꼭 변경해 주세요!)
 const firebaseConfig = {
-    apiKey: "AIzaSyA-vIm-4bfeI73KIBTXfkUCaW2sLu5jRzc",
-    authDomain: "lws5737-a6105.firebaseapp.com",
-    projectId: "lws5737-a6105",
-    storageBucket: "lws5737-a6105.firebasestorage.app",
-    messagingSenderId: "729062934950",
-    appId: "1:729062934950:web:615529a26e02081c182767",
-    measurementId: "G-LVB2WTXNGV"
+  // 아래 항목들은 기존에 발급받으신 선생님의 프로젝트 정보 그대로 유지해 주세요.
+  apiKey: "본인의_API_KEY",
+  authDomain: "본인의_AUTH_DOMAIN",
+  projectId: "본인의_PROJECT_ID",
+  storageBucket: "본인의_STORAGE_BUCKET",
+  messagingSenderId: "본인의_MESSAGING_SENDER_ID",
+  appId: "본인의_APP_ID"
 };
 
-// Firebase 초기화
 const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider();
+export const db = getFirestore(app);
 
-// 인증(Auth) 및 구글 로그인 프로바이더 설정
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
-// 🌟 오프라인 데이터 영구 저장(캐싱)을 적용한 Firestore 초기화 🌟
-// 이제 인터넷이 끊겨도 스마트폰 저장소에 데이터를 안전하게 보관했다가 자동으로 동기화합니다.
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
-
-// app.js에서 사용할 수 있도록 내보내기
-export { auth, db, provider };
+// [추가된 기능] 오프라인 자동저장(지속성) 활성화
+enableMultiTabIndexedDbPersistence(db)
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+      console.warn("여러 탭이 열려 있어 오프라인 모드를 한 탭에서만 활성화할 수 있습니다.");
+    } else if (err.code == 'unimplemented') {
+      console.warn("현재 브라우저가 오프라인 데이터 지속성을 지원하지 않습니다.");
+    }
+  });
