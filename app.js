@@ -3045,15 +3045,15 @@ window.updateFloatingStopwatchBtn = function() {
     }
 };
 // ==========================================
-// 🛡️ 오프라인 자동저장 및 백그라운드 데이터 방어 로직
+// 🛡️ [보완 완료] 오프라인 자동저장 및 선택창(드롭다운) 기억 로직
 // ==========================================
 
-// 1. 화면 전환 및 브라우저 종료 시 자동 백업
+// 1. 화면 전환 및 브라우저 종료 시 자동 백업 (선택창 포함)
 document.addEventListener("visibilitychange", function() {
   if (document.visibilityState === 'hidden') {
     backupAllDataLocally();
     
-    // 모바일 사용성을 위해 자동저장 완료 시 짧은 진동 피드백 발송
+    // 모바일 사용성을 위한 짧은 진동 피드백
     if (navigator.vibrate) {
         navigator.vibrate(50);
     }
@@ -3064,10 +3064,11 @@ window.addEventListener('beforeunload', function() {
     backupAllDataLocally();
 });
 
-// 2. 현재 입력 중인 평가 영역(1~3개) 및 기록(Fastest Order) 상태 로컬 임시 저장
+// 2. 현재 입력값 및 선택창(?월?주차 등) 상태 로컬 임시 저장 함수
 function backupAllDataLocally() {
-  const allInputs = document.querySelectorAll('input, textarea');
-  allInputs.forEach(field => {
+  // input, textarea뿐만 아니라 select(드롭다운)까지 모두 찾아냅니다.
+  const allElements = document.querySelectorAll('input, textarea, select');
+  allElements.forEach(field => {
     if(field.id || field.name) {
        const key = 'smart_run_backup_' + (field.id || field.name);
        localStorage.setItem(key, field.value);
@@ -3080,31 +3081,47 @@ function backupAllDataLocally() {
   }
 }
 
-// 3. 앱 재실행 시 오프라인/종료 전 데이터 자동 복원
+// 3. 앱 재실행 또는 새로고침 시 데이터 및 선택창 상태 자동 복원
 window.addEventListener('DOMContentLoaded', () => {
-  const allInputs = document.querySelectorAll('input, textarea');
-  allInputs.forEach(field => {
-    const key = 'smart_run_backup_' + (field.id || field.name);
-    const savedValue = localStorage.getItem(key);
+  // 페이지가 로드되면 잠시 후(0.1초 뒤) 데이터를 복원하여 브라우저 안정성을 높입니다.
+  setTimeout(() => {
+    const allElements = document.querySelectorAll('input, textarea, select');
+    allElements.forEach(field => {
+      const key = 'smart_run_backup_' + (field.id || field.name);
+      const savedValue = localStorage.getItem(key);
+      
+      if (savedValue) {
+        field.value = savedValue;
+        
+        // 드롭다운 선택창의 경우, 값이 바뀌었다고 앱에 알려주는 신호(이벤트)를 강제로 발생시킵니다.
+        if (field.tagName === 'SELECT') {
+          field.dispatchEvent(new Event('change'));
+        }
+      }
+    });
     
-    // 비어있는 칸에만 저장되었던 데이터 복구
-    if (savedValue && !field.value) {
-      field.value = savedValue;
+    const savedGroupMode = localStorage.getItem('smart_run_group_mode');
+    if (savedGroupMode && typeof currentGroupMode !== 'undefined') {
+        currentGroupMode = savedGroupMode;
     }
-  });
-  
-  const savedGroupMode = localStorage.getItem('smart_run_group_mode');
-  if (savedGroupMode && typeof currentGroupMode !== 'undefined') {
-      currentGroupMode = savedGroupMode;
-  }
+  }, 100);
 });
 
-// 4. 타이핑하는 순간순간마다 즉시 백업 (실시간 반영)
+// 4. 사용자가 무언가를 타이핑하거나 드롭다운을 선택하는 즉시 실시간 백업
 document.addEventListener('input', function(e) {
-  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      if(e.target.id || e.target.name) {
-          const key = 'smart_run_backup_' + (e.target.id || e.target.name);
-          localStorage.setItem(key, e.target.value);
+  saveTargetElement(e.target);
+});
+
+document.addEventListener('change', function(e) {
+  saveTargetElement(e.target);
+});
+
+// 실시간 저장 처리 돕는 함수
+function saveTargetElement(target) {
+  if(['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+      if(target.id || target.name) {
+          const key = 'smart_run_backup_' + (target.id || target.name);
+          localStorage.setItem(key, target.value);
       }
   }
-});
+}
