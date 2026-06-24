@@ -61,16 +61,12 @@ window.closeCardOverlay = function() {
     overlay.classList.remove('flex');
 };
 
+// ▼ 새롭게 바뀐 도장 효과음 코드 ▼
 window.playCoinSound = function() {
     try {
-        const ctx = initAudio();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'sine'; osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(987.77, ctx.currentTime);
-        osc.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+        // sound 폴더 안의 coin03.mp3 파일을 불러와서 재생합니다.
+        const audio = new Audio('sound/coin03.mp3');
+        audio.play().catch(e => console.log('도장 오디오 재생 막힘:', e));
     } catch(e) {}
 }
 
