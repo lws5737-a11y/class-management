@@ -70,16 +70,12 @@ window.playCoinSound = function() {
     } catch(e) {}
 }
 
+// ▼ 새롭게 바뀐 도장 효과음 코드 ▼
 window.playBumpSound = function() {
     try {
-        const ctx = initAudio();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = 'triangle'; osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(150, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+        // sound 폴더 안의 coin03.mp3 파일을 불러와서 재생합니다.
+        const audio = new Audio('sound/coin03.mp3');
+        audio.play().catch(e => console.log('도장 오디오 재생 막힘:', e));
     } catch(e) {}
 }
 
