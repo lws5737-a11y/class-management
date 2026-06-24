@@ -5,7 +5,7 @@ import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
 
-// ==========================================
+// ===============window.playBumpSound = function() {===========================
 // ⏱️ 다중 스톱워치 상태 및 8자 줄넘기 변수
 // ==========================================
 let groupStudents = []; 
