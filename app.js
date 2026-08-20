@@ -942,7 +942,7 @@ window.deleteClassFromSelection = function(className) {
     window.showModal(`학급 삭제: ${className}`, '이 학급의 학생 명단과 모든 수업 기록을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.', true, () => {
         removeClassData(className);
         if (currentClass === className) currentClass = '';
-        saveData();
+        saveData({ immediate: true });
         window.renderClassSelect();
         window.renderClassLanding();
     }, '삭제');
@@ -1181,7 +1181,7 @@ function setupFirestoreListener() {
     });
 }
 
-function saveData() {
+function saveData({ immediate = false } = {}) {
     if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
     if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""]; if ("" in groupPenalties) delete groupPenalties[""];
 
@@ -1191,7 +1191,12 @@ function saveData() {
     const syncIcon = document.getElementById('sync-status');
     if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(flushSaveData, 300);
+    if (immediate) {
+        saveTimer = null;
+        void flushSaveData();
+    } else {
+        saveTimer = setTimeout(flushSaveData, 300);
+    }
 }
 
 async function flushSaveData() {
@@ -1207,7 +1212,7 @@ async function flushSaveData() {
             throw new Error('저장 데이터가 Firestore 문서 크기 제한에 가까워졌습니다.');
         }
         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-        await setDoc(docRef, payload, { merge: true });
+        await setDoc(docRef, payload);
     } catch (error) {
         console.error('클라우드 자동 저장 실패:', error);
         window.showModal('저장 실패', escapeHTML(error.message || '네트워크 또는 데이터 용량 문제로 저장하지 못했습니다.'));
@@ -1895,7 +1900,7 @@ window.deleteCurrentClass = function() {
     if (!currentClass) return;
     window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${escapeHTML(currentClass)}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
         removeClassData(currentClass);
-        saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
+        saveData({ immediate: true }); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
         ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -1905,7 +1910,7 @@ window.deleteCurrentClass = function() {
 
 window.deleteAllClasses = function() {
     window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; saveData(); currentClass = ""; window.selectedGroupStudent = null;
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; saveData({ immediate: true }); currentClass = ""; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
         ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -2069,7 +2074,7 @@ window.handleAllCSVUpload = function(event) {
                     isDebouncing = true;
                     try {
                         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData }, { merge: true });
+                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData });
                     } catch (error) { 
                         console.error("즉시 저장 실패:", error); 
                         window.showModal("저장 실패", "네트워크 또는 용량 문제로 클라우드 저장에 실패했습니다.");
