@@ -249,6 +249,23 @@ let groupPenalties = {};
 let classStamps = {}; 
 let sortState = { field: 'no', direction: 'asc' };
 
+const ALLOWED_EMAIL = 'lws5737@seoul-dongsan.es.kr';
+
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[char]));
+}
+
+function clearSensitiveLocalData() {
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('smart_run_backup_')) localStorage.removeItem(key);
+    });
+}
+
+// 이전 버전이 입력창 전체를 저장했던 흔적을 앱 시작 시 제거합니다.
+clearSensitiveLocalData();
+
 let currentGroupMode = 'mixed4'; 
 let currentTab = 'student'; 
 
@@ -797,6 +814,139 @@ window.openManageModal = function() {
     document.getElementById('manage-modal').classList.add('flex');
     window.renderClassSelect();
 }
+
+window.showClassSelectionScreen = function() {
+    const appContainer = document.getElementById('app-container');
+    const selectionScreen = document.getElementById('class-selection-screen');
+    const manageModal = document.getElementById('manage-modal');
+    if (appContainer) appContainer.classList.add('hidden');
+    if (selectionScreen) selectionScreen.classList.remove('hidden');
+    if (manageModal) { manageModal.classList.add('hidden'); manageModal.classList.remove('flex'); }
+    window.renderClassLanding();
+};
+
+window.renderClassLanding = function() {
+    const container = document.getElementById('class-selection-list');
+    if (!container) return;
+    container.replaceChildren();
+
+    const isLoading = Boolean(userId && !hasLoadedRemoteData);
+    document.querySelectorAll('#class-add-form input, #class-add-form button').forEach(control => {
+        control.disabled = isLoading;
+        control.classList.toggle('opacity-50', isLoading);
+        control.classList.toggle('cursor-not-allowed', isLoading);
+    });
+
+    if (isLoading) {
+        const loading = document.createElement('div');
+        loading.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-10 text-center font-bold text-blue-600';
+        loading.textContent = '학급 정보를 불러오는 중입니다…';
+        container.appendChild(loading);
+        return;
+    }
+
+    const classes = getSortedClasses();
+    if (classes.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center';
+        const title = document.createElement('p');
+        title.className = 'font-black text-slate-500';
+        title.textContent = '등록된 학급이 없습니다.';
+        const hint = document.createElement('p');
+        hint.className = 'mt-1 text-sm text-slate-400';
+        hint.textContent = '아래 입력창에서 첫 학급을 추가하세요.';
+        empty.append(title, hint);
+        container.appendChild(empty);
+        return;
+    }
+
+    classes.forEach((className) => {
+        const card = document.createElement('article');
+        card.className = 'group flex min-h-24 items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md';
+
+        const selectButton = document.createElement('button');
+        selectButton.type = 'button';
+        selectButton.className = 'flex flex-1 items-center gap-3 px-4 py-4 text-left outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-100';
+        selectButton.setAttribute('aria-label', `${className} 학급 선택`);
+        selectButton.addEventListener('click', () => window.selectClass(className));
+
+        const icon = document.createElement('span');
+        icon.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-xl group-hover:bg-blue-100';
+        icon.textContent = '🏫';
+        const name = document.createElement('span');
+        name.className = 'min-w-0 flex-1 truncate text-lg font-black text-slate-800';
+        name.textContent = className;
+        const arrow = document.createElement('span');
+        arrow.className = 'text-lg font-black text-slate-300 group-hover:text-blue-500';
+        arrow.textContent = '›';
+        selectButton.append(icon, name, arrow);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'w-12 shrink-0 border-l border-slate-100 text-slate-300 transition hover:bg-red-50 hover:text-red-500 focus-visible:bg-red-50 focus-visible:text-red-500';
+        deleteButton.textContent = '🗑️';
+        deleteButton.setAttribute('aria-label', `${className} 학급 삭제`);
+        deleteButton.addEventListener('click', () => window.deleteClassFromSelection(className));
+
+        card.append(selectButton, deleteButton);
+        container.appendChild(card);
+    });
+};
+
+window.addClassFromSelection = function() {
+    if (!hasLoadedRemoteData) return;
+    const input = document.getElementById('class-selection-new-input');
+    const className = normalizeClassName(input?.value || '');
+    if (!className) {
+        input?.focus();
+        return;
+    }
+    if (classData[className]) {
+        window.showModal('학급 추가', '이미 등록된 학급입니다.');
+        return;
+    }
+
+    classData[className] = [];
+    groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+    groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+    classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
+    groupPenalties[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+    window.saveClassVisibility(className, true);
+    saveData();
+    input.value = '';
+    window.renderClassSelect();
+    window.renderClassLanding();
+    input.focus();
+};
+
+function removeClassData(className) {
+    delete classData[className];
+    delete groupScores[className];
+    delete groupRecords[className];
+    delete classStamps[className];
+    delete groupPenalties[className];
+    Object.values(jumpRopeData).forEach(week => {
+        if (week && typeof week === 'object') delete week[className];
+    });
+    localStorage.removeItem(`pinnedGroupMode_${className}`);
+
+    const order = (JSON.parse(localStorage.getItem('classOrder')) || []).filter(name => name !== className);
+    saveClassOrder(order);
+    const visibility = JSON.parse(localStorage.getItem('classVisibility')) || {};
+    delete visibility[className];
+    localStorage.setItem('classVisibility', JSON.stringify(visibility));
+}
+
+window.deleteClassFromSelection = function(className) {
+    if (!classData[className]) return;
+    window.showModal(`학급 삭제: ${className}`, '이 학급의 학생 명단과 모든 수업 기록을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.', true, () => {
+        removeClassData(className);
+        if (currentClass === className) currentClass = '';
+        saveData();
+        window.renderClassSelect();
+        window.renderClassLanding();
+    }, '삭제');
+};
 window.closeManageModal = function() {
     document.getElementById('manage-modal').classList.add('hidden');
     document.getElementById('manage-modal').classList.remove('flex');
@@ -806,6 +956,7 @@ window.renderClassSelect = function() {
     const listEl = document.getElementById('modal-class-list');
     const displayBtn = document.getElementById('current-class-display');
     const toggleBtn = document.getElementById('toggle-hidden-classes-btn');
+    window.renderClassLanding();
     if(!listEl) return;
     
     if (toggleBtn) toggleBtn.style.display = 'none';
@@ -860,7 +1011,7 @@ window.renderClassSelect = function() {
     }
 
     if (currentClass && classes.includes(currentClass)) {
-        if(displayBtn) displayBtn.innerHTML = `<span>⚙️ ${currentClass}</span>`;
+        if(displayBtn) displayBtn.textContent = `🏫 ${currentClass}`;
     } else { 
         if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 설정 및 시작</span>";
     }
@@ -902,43 +1053,85 @@ function createClassButtonDOM(cls, isVisible) {
 // ==========================================
 let userId = null; let appId = 'smart-class-manager'; 
 let isDebouncing = false; let unsubscribeSnapshot = null;
+let saveTimer = null; let saveInFlight = false; let saveRequested = false;
+let hasLoadedRemoteData = false;
 
 window.signInWithGoogle = function() {
     const btn = document.getElementById('btn-login');
-    btn.innerHTML = '로그인 중...';
+    const message = document.getElementById('login-message');
+    if (message) { message.classList.add('hidden'); message.textContent = ''; }
+    btn.disabled = true;
+    btn.textContent = '로그인 중...';
     signInWithPopup(auth, provider).catch((error) => {
-        alert("로그인에 실패했습니다. 팝업이 차단되었는지 확인해주세요.");
-        btn.innerHTML = 'Google 계정으로 시작하기';
+        console.error('로그인 실패:', error);
+        if (message) {
+            message.textContent = '로그인하지 못했습니다. 팝업 허용 여부와 네트워크를 확인해주세요.';
+            message.classList.remove('hidden');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Google 계정으로 시작하기';
     });
 };
 
-window.signOutApp = function() { if(confirm("로그아웃 하시겠습니까?")) signOut(auth); };
+window.signOutApp = function() {
+    if (!confirm('로그아웃 하시겠습니까?')) return;
+    clearSensitiveLocalData();
+    signOut(auth);
+};
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
+        const email = (user.email || '').toLowerCase();
+        if (!user.emailVerified || email !== ALLOWED_EMAIL) {
+            const message = document.getElementById('login-message');
+            if (message) {
+                message.textContent = `${ALLOWED_EMAIL} 계정만 이용할 수 있습니다.`;
+                message.classList.remove('hidden');
+            }
+            clearSensitiveLocalData();
+            signOut(auth);
+            return;
+        }
+
         userId = user.uid;
+        hasLoadedRemoteData = false;
+        currentClass = '';
         document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-container').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+        document.getElementById('class-selection-screen').classList.remove('hidden');
         
         const emailEl = document.getElementById('user-email');
-        if(emailEl) emailEl.innerText = user.email.split('@')[0];
+        if(emailEl) emailEl.innerText = email;
+        const selectionUser = document.getElementById('class-selection-user');
+        if(selectionUser) selectionUser.textContent = email;
         
-        document.getElementById('tab-navigation').classList.remove('hidden');
-        document.getElementById('tab-navigation').classList.add('flex');
+        document.getElementById('tab-navigation').classList.add('hidden');
+        document.getElementById('tab-navigation').classList.remove('flex');
         document.getElementById('logout-btn').classList.remove('hidden');
+        const toolsBtn = document.getElementById('class-tools-btn');
+        if (toolsBtn) toolsBtn.classList.add('hidden');
         
         setupFirestoreListener();
-        if (!currentClass) {
-            window.openManageModal();
-        }
+        window.renderClassLanding();
     } else {
         userId = null;
+        hasLoadedRemoteData = false;
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        saveRequested = false;
+        saveInFlight = false;
+        isDebouncing = false;
         if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
+        document.getElementById('class-selection-screen').classList.add('hidden');
         document.getElementById('tab-navigation').classList.add('hidden');
         document.getElementById('tab-navigation').classList.remove('flex');
         document.getElementById('logout-btn').classList.add('hidden');
+        const toolsBtn = document.getElementById('class-tools-btn');
+        if (toolsBtn) toolsBtn.classList.add('hidden');
+        const loginBtn = document.getElementById('btn-login');
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Google 계정으로 시작하기'; }
         
         classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {};
         currentClass = ""; window.renderClassSelect();
@@ -953,7 +1146,8 @@ function setupFirestoreListener() {
     if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
 
     unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
-        if (isDebouncing) return;
+        hasLoadedRemoteData = true;
+        if (isDebouncing) { window.renderClassLanding(); return; }
         if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -981,6 +1175,8 @@ function setupFirestoreListener() {
         }
     }, (error) => {
         console.error("데이터 동기화 오류:", error);
+        hasLoadedRemoteData = true;
+        window.renderClassLanding();
         if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
     });
 }
@@ -989,20 +1185,40 @@ function saveData() {
     if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
     if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""]; if ("" in groupPenalties) delete groupPenalties[""];
 
-    if (userId && db) {
-        isDebouncing = true; 
-        const syncIcon = document.getElementById('sync-status');
-        if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+    if (!userId || !db) return;
+    saveRequested = true;
+    isDebouncing = true;
+    const syncIcon = document.getElementById('sync-status');
+    if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flushSaveData, 300);
+}
 
+async function flushSaveData() {
+    if (!userId || !db || saveInFlight || !saveRequested) return;
+    saveRequested = false;
+    saveInFlight = true;
+    const syncIcon = document.getElementById('sync-status');
+    const payload = { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData };
+
+    try {
+        const payloadBytes = new Blob([JSON.stringify(payload)]).size;
+        if (payloadBytes > 900_000) {
+            throw new Error('저장 데이터가 Firestore 문서 크기 제한에 가까워졌습니다.');
+        }
         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-        setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData }, { merge: true })
-        .then(() => { isDebouncing = false; if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } })
-        .catch((error) => { 
-            console.error("클라우드 자동 저장 실패:", error); 
-            isDebouncing = false; 
-            if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); } 
-            window.showModal("저장 실패", "네트워크 문제 또는 데이터 용량 문제로 저장에 실패했습니다.");
-        });
+        await setDoc(docRef, payload, { merge: true });
+    } catch (error) {
+        console.error('클라우드 자동 저장 실패:', error);
+        window.showModal('저장 실패', escapeHTML(error.message || '네트워크 또는 데이터 용량 문제로 저장하지 못했습니다.'));
+    } finally {
+        saveInFlight = false;
+        if (saveRequested) {
+            saveTimer = setTimeout(flushSaveData, 100);
+        } else {
+            isDebouncing = false;
+            if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+        }
     }
 }
 
@@ -1086,7 +1302,7 @@ window.renderJumpRopeTab = function() {
 
             html += `
                 <li class="flex justify-between items-center px-2 py-1 ${highlight}">
-                    <div class="flex items-center gap-1"><span>${medal}</span> <span>${item.cls}</span> ${reward}</div>
+                    <div class="flex items-center gap-1"><span>${medal}</span> <span>${escapeHTML(item.cls)}</span> ${reward}</div>
                     <span class="font-black">${item.score}개</span>
                 </li>`;
         });
@@ -1113,20 +1329,6 @@ window.injectJumpRopeUI = function() {
         }
     }
 
-    if (!document.getElementById('jumprope-analysis-btn')) {
-        const maleInput = document.getElementById('jumprope-male-input');
-        if(maleInput) {
-            const wrapper = maleInput.closest('.p-4') || maleInput.parentElement.parentElement;
-            if(wrapper) {
-                const analysisBtn = document.createElement('button');
-                analysisBtn.id = 'jumprope-analysis-btn';
-                analysisBtn.className = "w-full mt-3 bg-indigo-500 hover:bg-indigo-600 text-white font-black py-2.5 rounded-xl transition shadow-md text-sm sm:text-base";
-                analysisBtn.innerHTML = '📊 팀별 기록 분석 보기';
-                analysisBtn.onclick = window.openJumpRopeAnalysisModal;
-                wrapper.appendChild(analysisBtn);
-            }
-        }
-    }
 };
 
 window.openJumpRopeAnalysisModal = function() {
@@ -1227,6 +1429,27 @@ window.toggleJumpRopeTimerMode = function() {
     } else {
         jumpRopeTimerMs = 0;
     }
+    document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
+};
+
+window.editJumpRopeTimerTarget = function() {
+    if (jumpRopeInterval) {
+        window.showModal('타이머 설정', '측정을 일시정지한 뒤 목표 시간을 변경해주세요.');
+        return;
+    }
+    const currentSeconds = Math.max(1, Math.round(jumpRopeTargetMs / 1000));
+    const input = prompt('목표 시간을 초 또는 분:초 형식으로 입력하세요. (예: 60 또는 1:00)', String(currentSeconds));
+    if (input === null || input.trim() === '') return;
+    const parsed = window.parseTime(input);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        window.showModal('타이머 설정', '0보다 큰 올바른 시간을 입력해주세요.');
+        return;
+    }
+    jumpRopeTimerMode = 'timer';
+    jumpRopeTargetMs = parsed;
+    jumpRopeTimerMs = parsed;
+    const modeBtn = document.getElementById('jumprope-mode-btn');
+    if (modeBtn) modeBtn.innerText = '⏳';
     document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
 };
 
@@ -1422,10 +1645,11 @@ window.parseTime = function(str) {
     let parts = str.split(':'); return ((parseInt(parts[0]) || 0) * 60 * 1000) + Math.floor((parseFloat(parts[1]) || 0) * 1000);
 }
 
-window.openMemoModal = function(studentNo, studentName) {
+window.openMemoModal = function(studentNo) {
     currentEditingStudentNo = studentNo;
     const student = classData[currentClass].find(s => s.no === studentNo);
-    document.getElementById('memo-modal-name').innerText = studentName;
+    if (!student) return;
+    document.getElementById('memo-modal-name').innerText = student.name;
     document.getElementById('memo-modal-input').value = student.memo || '';
     
     document.getElementById('memo-modal').classList.remove('hidden');
@@ -1660,17 +1884,17 @@ window.addNewClass = function() {
     window.saveClassVisibility(newClassName, true);
 
     saveData(); input.value = ""; window.renderClassSelect(); window.selectClass(newClassName);
-    window.showModal("학급 추가 완료", `<b class="text-blue-600">${newClassName}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
+    window.showModal("학급 추가 완료", `<b class="text-blue-600">${escapeHTML(newClassName)}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
 }
 
 function normalizeClassName(name) {
-    return name ? name.trim().replace(/\s+/g, '') : name;
+    return name ? name.trim().replace(/\s+/g, '').replace(/[\\/<>\u0000-\u001F]/g, '').slice(0, 30) : name;
 }
 
 window.deleteCurrentClass = function() {
     if (!currentClass) return;
-    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${currentClass}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
-        delete classData[currentClass]; delete groupScores[currentClass]; delete groupRecords[currentClass]; delete classStamps[currentClass]; delete groupPenalties[currentClass];
+    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${escapeHTML(currentClass)}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
+        removeClassData(currentClass);
         saveData(); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -1694,7 +1918,7 @@ window.exportAllToExcel = function() {
     csvContent += "학급,번호,이름,성별,볼센스,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,순발력(초),메모,하교지도\n";
 
     if (Object.keys(classData).length === 0) {
-        csvContent += "=\"6-1\",1,홍길동,남,0,참석,0,,,,,{},{},N,0,,\n";
+        csvContent += ['6-1', 1, '홍길동', '남', 0, '참석', 0, '', '', '', '', '{}', '{}', 'N', 0, '', ''].map(toCSVCell).join(',') + '\n';
     } else {
         const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
@@ -1707,9 +1931,8 @@ window.exportAllToExcel = function() {
             if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
             if (groupScores[className][1] !== undefined) { groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: groupScores[className], gender: {1:0, 2:0, 3:0, 4:0} }; }
 
-            const gScoresJSON = JSON.stringify(groupScores[className]).replace(/"/g, '""'); 
-            const gRecordsJSON = JSON.stringify(groupRecords[className]).replace(/"/g, '""'); 
-            const safeClassName = `="${className}"`; 
+            const gScoresJSON = JSON.stringify(groupScores[className]);
+            const gRecordsJSON = JSON.stringify(groupRecords[className]);
 
             students.forEach((s, idx) => {
                 const attendance = s.attendance ? '참석' : '불참';
@@ -1717,12 +1940,13 @@ window.exportAllToExcel = function() {
                 const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
                 const isCapt = s.captain_mixed4 ? 'Y' : 'N';
                 const recSec = s.recordMs ? (s.recordMs / 1000).toFixed(2) : '';
-                const memo = (s.memo || "").replace(/"/g, '""');
-                const dismissal = (s.dismissalInfo || "").replace(/"/g, '""');
-                const jsonScoreCol = (idx === 0) ? `"${gScoresJSON}"` : '';
-                const jsonRecordCol = (idx === 0) ? `"${gRecordsJSON}"` : '';
-
-                csvContent += `${safeClassName},${s.no},${s.name},${s.gender},${bs},${attendance},${score},${g2},${g3},${g4},${gg},${jsonScoreCol},${jsonRecordCol},${isCapt},${recSec},"${memo}","${dismissal}"\n`;
+                const row = [
+                    className, s.no, s.name, s.gender, bs, attendance, score,
+                    g2, g3, g4, gg,
+                    idx === 0 ? gScoresJSON : '', idx === 0 ? gRecordsJSON : '',
+                    isCapt, recSec, s.memo || '', s.dismissalInfo || ''
+                ];
+                csvContent += row.map(toCSVCell).join(',') + '\n';
             });
         }
     }
@@ -1732,6 +1956,13 @@ window.exportAllToExcel = function() {
     const today = new Date(); const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
     link.download = `스마트학급관리_백업_${dateStr}.csv`;
     link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+function toCSVCell(value) {
+    let text = String(value ?? '');
+    // Excel에서 수식으로 해석될 수 있는 셀을 일반 텍스트로 고정합니다.
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
 }
 
 function parseCSVLine(line) {
@@ -1856,7 +2087,7 @@ window.handleAllCSVUpload = function(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         let text = e.target.result;
-        if (text.includes('')) {
+        if (text.includes('\uFFFD')) {
             const eucReader = new FileReader();
             eucReader.onload = function(e2) {
                 processCSV(e2.target.result);
@@ -1870,9 +2101,14 @@ window.handleAllCSVUpload = function(event) {
 }
 
 window.selectClass = function(className) {
+    if (!classData[className]) return;
     currentClass = className; activeTimers = {}; window.selectedGroupStudent = null;
+    document.getElementById('class-selection-screen').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
     const displayBtn = document.getElementById('current-class-display');
-    if (displayBtn) displayBtn.innerHTML = `<span>⚙️ ${className}</span>`;
+    if (displayBtn) displayBtn.textContent = `🏫 ${className}`;
+    const toolsBtn = document.getElementById('class-tools-btn');
+    if (toolsBtn) toolsBtn.classList.remove('hidden');
 
     let pinnedKey = `pinnedGroupMode_${currentClass}`;
     currentGroupMode = localStorage.getItem(pinnedKey) || 'mixed4';
@@ -1922,7 +2158,7 @@ window.showTab = function(tabName) {
 window.deleteStudent = function(studentNo) {
     const student = classData[currentClass].find(s => s.no == studentNo);
     if (!student) return;
-    window.showModal("학생 정보 삭제", `<span class="font-bold text-red-500">${student.no}번 ${student.name}</span> 학생의 정보를 정말로 삭제하시겠습니까?`, true, () => {
+    window.showModal("학생 정보 삭제", `<span class="font-bold text-red-500">${student.no}번 ${escapeHTML(student.name)}</span> 학생의 정보를 정말로 삭제하시겠습니까?`, true, () => {
         const idx = classData[currentClass].findIndex(s => s.no == studentNo);
         if (idx > -1) { classData[currentClass].splice(idx, 1); saveData(); window.renderStudentList(); window.renderGroups(); }
     }, "삭제");
@@ -2095,7 +2331,7 @@ window.renderStudentList = function() {
         if (!isRegular) {
             dismissalCell = `
                 <td class="px-0.5 py-1 sm:p-2 text-center">
-                    <input type="text" value="${s.dismissalInfo || ''}" onblur="window.updateDismissal(${s.no}, this.value)" placeholder="하교입력" class="w-full min-w-[50px] text-[10px] sm:text-xs border border-slate-200 rounded p-1 focus:outline-blue-500 bg-white" ${!s.attendance ? 'disabled' : ''}>
+                    <input type="text" value="${escapeHTML(s.dismissalInfo || '')}" onblur="window.updateDismissal(${s.no}, this.value)" placeholder="하교입력" class="w-full min-w-[50px] text-[10px] sm:text-xs border border-slate-200 rounded p-1 focus:outline-blue-500 bg-white" ${!s.attendance ? 'disabled' : ''}>
                 </td>
             `;
         }
@@ -2112,9 +2348,9 @@ window.renderStudentList = function() {
             <td class="px-2 py-1 sm:p-2 font-black text-center whitespace-nowrap min-w-[70px]">
                 <div class="flex items-center justify-center gap-1.5">
                     <button onclick="window.toggleSelection(${s.no})" class="text-[11px] sm:text-[14px] whitespace-nowrap shrink-0 ${s.attendance ? 'text-slate-800' : 'text-slate-400 line-through'} px-1 py-0.5 rounded transition ${s.selected ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'hover:bg-slate-200'}" title="이름 터치: 다중 스톱워치 선택">
-                        ${s.name}${drawnBadge}
+                        ${escapeHTML(s.name)}${drawnBadge}
                     </button>
-                    <button onclick="event.stopPropagation(); window.openMemoModal(${s.no}, '${s.name}')" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">📝</button>
+                    <button onclick="event.stopPropagation(); window.openMemoModal(${s.no})" class="text-xs sm:text-sm transition flex items-center justify-center w-6 h-6 ${memoHighlight}" title="메모 쓰기">📝</button>
                 </div>
             </td>
             
@@ -2122,7 +2358,7 @@ window.renderStudentList = function() {
 
             <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8">
                 <div class="flex flex-col items-center justify-center leading-none mt-1">
-                    <span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${s.gender}</span>
+                        <span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${escapeHTML(s.gender)}</span>
                 </div>
             </td>
             
@@ -2378,8 +2614,8 @@ window.showDrawResultModal = function(title, students) {
             html += `
                 <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-3 sm:p-4 shadow-md flex flex-col items-center justify-center w-[100px] sm:w-[130px] transform hover:scale-105 transition-transform animate-pop-in" style="animation-delay: ${Math.random() * 0.2}s">
                     <span class="text-[10px] sm:text-xs font-bold text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full mb-1.5 shadow-sm border border-fuchsia-100">${groupInfo}</span>
-                    <span class="font-black text-xl sm:text-2xl text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1">${s.name}</span>
-                    <span class="text-[11px] sm:text-xs text-slate-400 font-bold mt-1.5">${s.no}번 / ${s.gender}</span>
+                    <span class="font-black text-xl sm:text-2xl text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis w-full text-center mt-1">${escapeHTML(s.name)}</span>
+                    <span class="text-[11px] sm:text-xs text-slate-400 font-bold mt-1.5">${s.no}번 / ${escapeHTML(s.gender)}</span>
                 </div>
             `;
         });
@@ -2452,7 +2688,7 @@ window.drawFromClass = function() {
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
-        const names = totalPicked.map(p => p.name).join(', ');
+        const names = totalPicked.map(p => escapeHTML(p.name)).join(', ');
         summaryEl.innerHTML = `🎉 학급 비례 당첨(<span class="text-blue-600 font-black">${totalPicked.length}명</span>): <b class="text-slate-800">${names}</b>`;
     }
 };
@@ -2657,7 +2893,7 @@ window.renderGroups = function() {
                         ${memberDrawnBadge}
                         
                         <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                             ${penaltyCardsHtml}
                         </div>
 
@@ -2773,7 +3009,7 @@ window.renderGroups = function() {
                     ${memberDrawnBadge}
                     
                     <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${s.name}</span>
+                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                         ${penaltyCardsHtml}
                     </div>
 
@@ -2989,7 +3225,7 @@ window.renderGroupList = function() {
                 <div class="flex flex-col justify-center">
                     <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-black text-slate-400 w-4 sm:w-5 text-right text-[10px] sm:text-xs">${i+1}</span>
-                        <span class="font-black text-slate-800 text-sm sm:text-base">${s.name}</span>
+                        <span class="font-black text-slate-800 text-sm sm:text-base">${escapeHTML(s.name)}</span>
                     </div>
                     <div class="ml-6 sm:ml-8 mt-0.5">
                         ${recordBadge}
@@ -3058,8 +3294,8 @@ window.addEventListener('beforeunload', function() {
 
 // 2. 현재 입력값 및 선택창(?월?주차 등) 상태 로컬 임시 저장 함수
 function backupAllDataLocally() {
-  // input, textarea뿐만 아니라 select(드롭다운)까지 모두 찾아냅니다.
-  const allElements = document.querySelectorAll('input, textarea, select');
+  // 민감하지 않다고 명시한 UI 상태만 저장합니다.
+  const allElements = document.querySelectorAll('[data-persist="true"]');
   allElements.forEach(field => {
     if(field.id || field.name) {
        const key = 'smart_run_backup_' + (field.id || field.name);
@@ -3077,7 +3313,7 @@ function backupAllDataLocally() {
 window.addEventListener('DOMContentLoaded', () => {
   // 페이지가 로드되면 잠시 후(0.1초 뒤) 데이터를 복원하여 브라우저 안정성을 높입니다.
   setTimeout(() => {
-    const allElements = document.querySelectorAll('input, textarea, select');
+    const allElements = document.querySelectorAll('[data-persist="true"]');
     allElements.forEach(field => {
       const key = 'smart_run_backup_' + (field.id || field.name);
       const savedValue = localStorage.getItem(key);
@@ -3110,6 +3346,7 @@ document.addEventListener('change', function(e) {
 
 // 실시간 저장 처리 돕는 함수
 function saveTargetElement(target) {
+  if (target?.dataset?.persist !== 'true') return;
   if(['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
       if(target.id || target.name) {
           const key = 'smart_run_backup_' + (target.id || target.name);
@@ -3117,3 +3354,4 @@ function saveTargetElement(target) {
       }
   }
 }
+
