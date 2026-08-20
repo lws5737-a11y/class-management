@@ -58,6 +58,27 @@ animation: pop-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     user-select: none;
 }
 
+/* 모둠 이동 시 미편성 영역을 넉넉하고 안정적인 드롭 대상으로 유지 */
+#unassigned-area {
+    min-height: 150px;
+}
+#unassigned-area > div:last-child {
+    min-height: 92px;
+}
+#unassigned-area.unassigned-floating {
+    min-height: 132px;
+    max-height: 38vh;
+    touch-action: none;
+}
+#unassigned-area.unassigned-floating > div:last-child {
+    min-height: 72px;
+}
+
+@media screen and (max-width: 640px) {
+    #unassigned-area { min-height: 120px; }
+    #unassigned-area.unassigned-floating { min-height: 142px; }
+}
+
 .emoji-lvl-1 { font-size: 13px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 
 .emoji-lvl-2 { position: relative; width: 18px; height: 14px; margin: 0 auto; }
@@ -132,5 +153,3 @@ width: 85%; height: 85%; object-fit: contain; opacity: 0; pointer-events: none;
         white-space: nowrap;
     }
 }
-
-

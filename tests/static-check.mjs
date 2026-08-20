@@ -23,12 +23,19 @@ assert.ok(!html.includes('id="modal-class-list"'), '명단·백업 화면에 학
 assert.ok(!html.includes('id="new-class-input"'), '명단·백업 화면에 새 학급 추가 UI가 남아 있습니다.');
 assert.ok(html.includes('학생 명단 및 백업') && html.includes('명단·백업'), '자료 관리 명칭이 이해하기 쉽게 바뀌지 않았습니다.');
 assert.ok(html.includes('cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js') && html.includes('accept=".xlsx,.csv"'), 'XLSX 저장·불러오기 모듈이 연결되지 않았습니다.');
+assert.ok(html.includes('exportAllToExcel()') && html.includes('exportCurrentClassToExcel()'), '전체/현재 학급 엑셀 저장 기능이 분리되지 않았습니다.');
+assert.ok(html.includes('handleAllCSVUpload(event)') && html.includes('handleClassExcelUpload(event)'), '전체/현재 학급 엑셀 불러오기 기능이 분리되지 않았습니다.');
+assert.ok(app.includes("['백업범위', scope]") && app.includes("scopeIsClass"), '학급/전체 백업 간 호환 범위 정보가 없습니다.');
 assert.ok(app.includes("book_append_sheet(workbook, displaySheet, '학생명단')"), '보기 좋은 학생명단 시트가 없습니다.');
 assert.ok(app.includes("book_append_sheet(workbook, backupSheet, '백업데이터')"), '복구용 백업 시트가 없습니다.');
 assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '학년·반·번호·이름·성별 붙여넣기 형식을 처리하지 않습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');
+assert.ok(html.includes('<span class="block">번호</span>') && html.includes('(출석)'), '출석부 번호 제목이 번호(출석)으로 표시되지 않습니다.');
+assert.ok(html.includes('oninput="window.saveMemoImmediately()"') && !html.includes('onclick="window.saveMemo()"'), '메모 자동 저장 UI가 적용되지 않았습니다.');
+assert.ok(app.includes('window.dragOverUnassigned') && app.includes("closest?.('#unassigned-area')"), '미편성 드롭 중 자동 스크롤 방지 처리가 없습니다.');
+assert.ok(html.includes('href="./style.css"'), '모둠 드롭 영역 보완 스타일이 연결되지 않았습니다.');
 
 function extractFunctionSource(source, functionName) {
   const start = source.indexOf(`function ${functionName}`);
@@ -51,6 +58,13 @@ assert.deepEqual(
   { sourceClass: '6-2', no: 1, name: '강루미', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
   '학교 출석부 5열 붙여넣기를 잘못 해석합니다.'
 );
+
+const getNextGroupActionState = new Function(
+  `${extractFunctionSource(app, 'getNextGroupActionState')}\nreturn getNextGroupActionState;`
+)();
+assert.deepEqual(getNextGroupActionState([null, null], [null, null]), { type: 'start', index: 0 }, '다중 스톱워치 첫 출발 순서가 잘못되었습니다.');
+assert.deepEqual(getNextGroupActionState([10, 20], [null, null]), { type: 'stop', index: 0 }, '다중 스톱워치 도착 순서가 잘못되었습니다.');
+assert.deepEqual(getNextGroupActionState([10, 20], [30, 40]), { type: 'save', index: -1 }, '다중 스톱워치 저장 단계가 잘못되었습니다.');
 assert.deepEqual(
   parseRosterLine('2 김나은 여'),
   { sourceClass: null, no: 2, name: '김나은', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
@@ -64,4 +78,3 @@ for (const handlerName of new Set(handlerNames)) {
 }
 
 console.log('정적 검사 통과');
-
