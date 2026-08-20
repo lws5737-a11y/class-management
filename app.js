@@ -1,4 +1,4 @@
-import { auth, db, provider } from './firebase-config.js';
+import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -1004,6 +1004,248 @@ let userId = null; let appId = 'smart-class-manager';
 let isDebouncing = false; let unsubscribeSnapshot = null;
 let saveTimer = null; let saveInFlight = false; let saveRequested = false;
 let hasLoadedRemoteData = false;
+let pendingCloudPayload = null;
+let latestLocalRevision = 0;
+let latestSyncedRevision = 0;
+let latestRecoveryRecord = null;
+let syncStatusHideTimer = null;
+
+const RECOVERY_DB_NAME = 'smart-class-manager-recovery';
+const RECOVERY_STORE_NAME = 'snapshots';
+const RECOVERY_RECORD_KEY = 'latest';
+const EMERGENCY_RECOVERY_KEY = 'smart_class_emergency_recovery_v1';
+const RECOVERY_SCHEMA_VERSION = 1;
+let recoveryDbPromise = null;
+
+function setSyncStatus(state, label) {
+    const status = document.getElementById('sync-status');
+    const icon = document.getElementById('sync-status-icon');
+    const labelEl = document.getElementById('sync-status-label');
+    if (!status || !icon || !labelEl) return;
+
+    clearTimeout(syncStatusHideTimer);
+    status.classList.remove('hidden', 'border-blue-100', 'bg-blue-50', 'text-blue-600', 'border-amber-200', 'bg-amber-50', 'text-amber-700', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'border-red-200', 'bg-red-50', 'text-red-700');
+    status.classList.add('flex');
+    icon.classList.toggle('animate-spin', state === 'syncing');
+
+    const styles = {
+        syncing: ['border-blue-100', 'bg-blue-50', 'text-blue-600', '↻'],
+        offline: ['border-amber-200', 'bg-amber-50', 'text-amber-700', '●'],
+        saved: ['border-emerald-200', 'bg-emerald-50', 'text-emerald-700', '✓'],
+        error: ['border-red-200', 'bg-red-50', 'text-red-700', '!']
+    };
+    const [border, background, color, symbol] = styles[state] || styles.syncing;
+    status.classList.add(border, background, color);
+    icon.textContent = symbol;
+    labelEl.textContent = label;
+
+    if (state === 'saved') {
+        syncStatusHideTimer = setTimeout(() => {
+            status.classList.add('hidden');
+            status.classList.remove('flex');
+        }, 1800);
+    }
+}
+
+function createAppPayload(revision = latestLocalRevision) {
+    return {
+        data: classData,
+        scores: groupScores,
+        records: groupRecords,
+        stamps: classStamps,
+        stampImage: globalStampImage,
+        penalties: groupPenalties,
+        jumpRope: jumpRopeData,
+        syncMeta: {
+            revision,
+            updatedAt: new Date().toISOString(),
+            deviceId: getRecoveryDeviceId()
+        }
+    };
+}
+
+function cloneAppPayload(payload) {
+    return typeof structuredClone === 'function' ? structuredClone(payload) : JSON.parse(JSON.stringify(payload));
+}
+
+function applyAppPayload(payload) {
+    if (!payload || typeof payload !== 'object') return false;
+    classData = payload.data || {};
+    groupScores = payload.scores || {};
+    groupRecords = payload.records || {};
+    classStamps = payload.stamps || {};
+    groupPenalties = payload.penalties || {};
+    jumpRopeData = payload.jumpRope || {};
+    if (payload.stampImage) {
+        globalStampImage = payload.stampImage;
+        localStorage.setItem('customStamp', globalStampImage);
+    }
+    migrateData();
+    return true;
+}
+
+function mergeAppPayloads(serverPayload, localPayload, revision) {
+    const mergeMap = (serverValue, localValue) => ({ ...(serverValue || {}), ...(localValue || {}) });
+    const mergedJumpRope = { ...(serverPayload.jumpRope || {}) };
+    Object.entries(localPayload.jumpRope || {}).forEach(([week, classes]) => {
+        mergedJumpRope[week] = { ...(mergedJumpRope[week] || {}), ...(classes || {}) };
+    });
+    return cloneAppPayload({
+        data: mergeMap(serverPayload.data, localPayload.data),
+        scores: mergeMap(serverPayload.scores, localPayload.scores),
+        records: mergeMap(serverPayload.records, localPayload.records),
+        stamps: mergeMap(serverPayload.stamps, localPayload.stamps),
+        stampImage: localPayload.stampImage || serverPayload.stampImage || globalStampImage,
+        penalties: mergeMap(serverPayload.penalties, localPayload.penalties),
+        jumpRope: mergedJumpRope,
+        syncMeta: { revision, updatedAt: new Date().toISOString(), deviceId: getRecoveryDeviceId(), mergedConflict: true }
+    });
+}
+
+function getRecoveryDeviceId() {
+    const key = 'smart_class_recovery_device_id';
+    let value = localStorage.getItem(key);
+    if (!value) {
+        value = (crypto.randomUUID?.() || `device-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+        localStorage.setItem(key, value);
+    }
+    return value;
+}
+
+function nextLocalRevision() {
+    latestLocalRevision = Math.max(Date.now(), latestLocalRevision + 1);
+    return latestLocalRevision;
+}
+
+function openRecoveryDatabase() {
+    if (recoveryDbPromise) return recoveryDbPromise;
+    recoveryDbPromise = new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB를 지원하지 않는 브라우저입니다.')); return; }
+        const request = indexedDB.open(RECOVERY_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) database.createObjectStore(RECOVERY_STORE_NAME);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('로컬 복구 저장소를 열 수 없습니다.'));
+    });
+    return recoveryDbPromise;
+}
+
+async function persistRecoveryRecord(record) {
+    latestRecoveryRecord = record;
+    const database = await openRecoveryDatabase();
+    await new Promise((resolve, reject) => {
+        const transaction = database.transaction(RECOVERY_STORE_NAME, 'readwrite');
+        transaction.objectStore(RECOVERY_STORE_NAME).put(record, RECOVERY_RECORD_KEY);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error || new Error('로컬 복구본을 저장하지 못했습니다.'));
+        transaction.onabort = () => reject(transaction.error || new Error('로컬 복구 저장이 중단되었습니다.'));
+    });
+}
+
+async function archiveConflictRecord(record, label) {
+    try {
+        const database = await openRecoveryDatabase();
+        await new Promise((resolve, reject) => {
+            const transaction = database.transaction(RECOVERY_STORE_NAME, 'readwrite');
+            transaction.objectStore(RECOVERY_STORE_NAME).put(record, `conflict-${Date.now()}-${label}`);
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error || new Error('충돌 복구본 저장 실패'));
+        });
+    } catch (error) {
+        console.warn('충돌 복구본을 별도로 보관하지 못했습니다:', error);
+    }
+}
+
+async function readIndexedRecoveryRecord() {
+    const database = await openRecoveryDatabase();
+    return new Promise((resolve, reject) => {
+        const request = database.transaction(RECOVERY_STORE_NAME, 'readonly').objectStore(RECOVERY_STORE_NAME).get(RECOVERY_RECORD_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error('로컬 복구본을 읽지 못했습니다.'));
+    });
+}
+
+function writeEmergencyRecovery(record) {
+    try {
+        localStorage.setItem(EMERGENCY_RECOVERY_KEY, JSON.stringify(record));
+        return true;
+    } catch (error) {
+        console.error('긴급 로컬 백업 실패:', error);
+        setSyncStatus('error', '기기 저장 실패');
+        return false;
+    }
+}
+
+function readEmergencyRecovery() {
+    try {
+        const raw = localStorage.getItem(EMERGENCY_RECOVERY_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+        console.warn('긴급 복구본을 읽지 못했습니다:', error);
+        return null;
+    }
+}
+
+function stageLocalRecovery(payload) {
+    const record = {
+        schemaVersion: RECOVERY_SCHEMA_VERSION,
+        revision: payload.syncMeta.revision,
+        savedAt: Date.now(),
+        dirty: true,
+        payload
+    };
+    latestRecoveryRecord = record;
+    void persistRecoveryRecord(record).catch(error => {
+        console.error('IndexedDB 로컬 백업 실패:', error);
+        writeEmergencyRecovery(record);
+    });
+    return record;
+}
+
+async function markRecoverySynced(revision) {
+    if (!latestRecoveryRecord || latestRecoveryRecord.revision > revision) return;
+    const cleanRecord = { ...latestRecoveryRecord, dirty: false, syncedAt: Date.now() };
+    latestRecoveryRecord = cleanRecord;
+    try { await persistRecoveryRecord(cleanRecord); } catch (error) { console.warn('동기화 상태 저장 실패:', error); }
+    const emergency = readEmergencyRecovery();
+    if (!emergency || (Number(emergency.revision) || 0) <= revision) localStorage.removeItem(EMERGENCY_RECOVERY_KEY);
+}
+
+async function cacheCleanServerRecovery(payload, revision) {
+    const record = {
+        schemaVersion: RECOVERY_SCHEMA_VERSION,
+        revision,
+        savedAt: Date.now(),
+        syncedAt: Date.now(),
+        dirty: false,
+        payload: cloneAppPayload(payload)
+    };
+    try { await persistRecoveryRecord(record); } catch (error) { console.warn('서버 자료의 로컬 복구본 저장 실패:', error); }
+}
+
+async function restoreLatestRecovery() {
+    let indexedRecord = null;
+    try { indexedRecord = await readIndexedRecoveryRecord(); } catch (error) { console.warn('IndexedDB 복구본 사용 불가:', error); }
+    const emergencyRecord = readEmergencyRecovery();
+    const candidates = [indexedRecord, emergencyRecord].filter(record => record?.payload && record.schemaVersion === RECOVERY_SCHEMA_VERSION);
+    if (candidates.length === 0) return null;
+    const record = candidates.sort((a, b) => (Number(b.revision) || 0) - (Number(a.revision) || 0))[0];
+    latestRecoveryRecord = record;
+    latestLocalRevision = Math.max(latestLocalRevision, Number(record.revision) || 0);
+    applyAppPayload(record.payload);
+    hasLoadedRemoteData = true;
+    window.renderClassSelect();
+    window.renderClassLanding();
+    if (record.dirty) {
+        pendingCloudPayload = record.payload;
+        saveRequested = true;
+        isDebouncing = true;
+        setSyncStatus(navigator.onLine ? 'syncing' : 'offline', navigator.onLine ? '복구 자료 저장 중' : '기기에 안전하게 저장됨');
+    }
+    return record;
+}
 
 window.signInWithGoogle = function() {
     const btn = document.getElementById('btn-login');
@@ -1028,7 +1270,7 @@ window.signOutApp = function() {
     signOut(auth);
 };
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (user) {
         const email = (user.email || '').toLowerCase();
         if (!user.emailVerified || email !== ALLOWED_EMAIL) {
@@ -1060,7 +1302,16 @@ onAuthStateChanged(auth, (user) => {
         const toolsBtn = document.getElementById('class-tools-btn');
         if (toolsBtn) toolsBtn.classList.add('hidden');
         
+        const persistenceEnabled = await firestorePersistenceReady;
+        if (auth.currentUser?.uid !== user.uid) return;
+        const recoveredRecord = await restoreLatestRecovery();
         setupFirestoreListener();
+        if (recoveredRecord?.dirty) {
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(flushSaveData, 0);
+        } else if (!persistenceEnabled || !firestorePersistenceState.enabled) {
+            setSyncStatus('error', '오프라인 저장 제한');
+        }
         window.renderClassLanding();
     } else {
         userId = null;
@@ -1069,6 +1320,7 @@ onAuthStateChanged(auth, (user) => {
         saveTimer = null;
         saveRequested = false;
         saveInFlight = false;
+        pendingCloudPayload = null;
         isDebouncing = false;
         if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
         document.getElementById('login-screen').classList.remove('hidden');
@@ -1091,24 +1343,53 @@ function setupFirestoreListener() {
     if (!userId || !db) return;
     const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
     if (unsubscribeSnapshot) unsubscribeSnapshot(); 
-    const syncIcon = document.getElementById('sync-status');
-    if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+    setSyncStatus(navigator.onLine ? 'syncing' : 'offline', navigator.onLine ? '자료 확인 중' : '오프라인 · 기기 저장');
 
-    unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+    unsubscribeSnapshot = onSnapshot(docRef, { includeMetadataChanges: true }, (docSnap) => {
         hasLoadedRemoteData = true;
-        if (isDebouncing) { window.renderClassLanding(); return; }
-        if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+        const hasPendingWrites = docSnap.metadata.hasPendingWrites;
+        const fromCache = docSnap.metadata.fromCache;
+        if (hasPendingWrites || isDebouncing) {
+            setSyncStatus(navigator.onLine ? 'syncing' : 'offline', navigator.onLine ? 'Firebase 저장 중' : '오프라인 · 기기 저장됨');
+        } else if (fromCache && !navigator.onLine) {
+            setSyncStatus('offline', '오프라인 · 기기 저장됨');
+        }
         if (docSnap.exists()) {
             const data = docSnap.data();
-            classData = data.data || {}; 
-            groupScores = data.scores || {}; 
-            groupRecords = data.records || {}; 
-            classStamps = data.stamps || {};
-            groupPenalties = data.penalties || {};
-            jumpRopeData = data.jumpRope || {};
+            const serverRevision = Number(data.syncMeta?.revision) || 0;
+            const localDirty = Boolean(latestRecoveryRecord?.dirty);
+            const localRevision = Number(latestRecoveryRecord?.revision) || 0;
+            const otherDeviceConflict = localDirty && !hasPendingWrites && serverRevision > localRevision
+                && data.syncMeta?.deviceId && data.syncMeta.deviceId !== getRecoveryDeviceId();
 
-            if (data.stampImage) { globalStampImage = data.stampImage; localStorage.setItem('customStamp', globalStampImage); }
-            migrateData();
+            if (otherDeviceConflict) {
+                void archiveConflictRecord(latestRecoveryRecord, 'local');
+                void archiveConflictRecord({ schemaVersion: RECOVERY_SCHEMA_VERSION, revision: serverRevision, savedAt: Date.now(), dirty: false, payload: data }, 'server');
+                latestLocalRevision = Math.max(Date.now(), serverRevision + 1, latestLocalRevision + 1);
+                const mergedPayload = mergeAppPayloads(data, latestRecoveryRecord.payload, latestLocalRevision);
+                applyAppPayload(mergedPayload);
+                pendingCloudPayload = mergedPayload;
+                stageLocalRecovery(mergedPayload);
+                saveRequested = true;
+                isDebouncing = true;
+                setSyncStatus('syncing', '다른 기기 자료와 병합 중');
+                if (navigator.onLine && !saveInFlight) {
+                    clearTimeout(saveTimer);
+                    saveTimer = setTimeout(flushSaveData, 0);
+                }
+            } else if (!localDirty || serverRevision >= localRevision) {
+                applyAppPayload(data);
+                latestLocalRevision = Math.max(latestLocalRevision, serverRevision);
+            }
+
+            if (!otherDeviceConflict && !hasPendingWrites && !fromCache && serverRevision >= localRevision) {
+                latestSyncedRevision = Math.max(latestSyncedRevision, serverRevision);
+                if (localDirty && serverRevision === localRevision) void markRecoverySynced(serverRevision);
+                else void cacheCleanServerRecovery(data, serverRevision);
+                if (!saveRequested && !saveInFlight) setSyncStatus('saved', 'Firebase 저장 완료');
+            }
+        } else if (!latestRecoveryRecord?.dirty) {
+            classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; groupPenalties = {}; jumpRopeData = {};
         }
         window.renderClassSelect();
         if (currentClass && classData[currentClass]) {
@@ -1126,7 +1407,7 @@ function setupFirestoreListener() {
         console.error("데이터 동기화 오류:", error);
         hasLoadedRemoteData = true;
         window.renderClassLanding();
-        if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+        setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? 'Firebase 연결 오류' : '오프라인 · 기기 저장');
     });
 }
 
@@ -1135,10 +1416,13 @@ function saveData({ immediate = false } = {}) {
     if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""]; if ("" in groupPenalties) delete groupPenalties[""];
 
     if (!userId || !db) return Promise.resolve(false);
+    const revision = nextLocalRevision();
+    const payload = cloneAppPayload(createAppPayload(revision));
+    pendingCloudPayload = payload;
+    stageLocalRecovery(payload);
     saveRequested = true;
     isDebouncing = true;
-    const syncIcon = document.getElementById('sync-status');
-    if(syncIcon) { syncIcon.classList.remove('hidden'); syncIcon.classList.add('flex'); }
+    setSyncStatus(navigator.onLine ? 'syncing' : 'offline', navigator.onLine ? 'Firebase 저장 중' : '오프라인 · 기기 저장됨');
     clearTimeout(saveTimer);
     if (immediate) {
         saveTimer = null;
@@ -1164,8 +1448,10 @@ async function flushSaveData() {
     if (!userId || !db || saveInFlight || !saveRequested) return;
     saveRequested = false;
     saveInFlight = true;
-    const syncIcon = document.getElementById('sync-status');
-    const payload = { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData };
+    const payload = pendingCloudPayload || cloneAppPayload(createAppPayload(nextLocalRevision()));
+    pendingCloudPayload = null;
+    const revision = Number(payload.syncMeta?.revision) || 0;
+    let writeSucceeded = false;
 
     try {
         const payloadBytes = new Blob([JSON.stringify(payload)]).size;
@@ -1174,16 +1460,28 @@ async function flushSaveData() {
         }
         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
         await writeAppData(docRef, payload);
+        writeSucceeded = true;
+        latestSyncedRevision = Math.max(latestSyncedRevision, revision);
+        await markRecoverySynced(revision);
     } catch (error) {
         console.error('클라우드 자동 저장 실패:', error);
-        window.showModal('저장 실패', escapeHTML(error.message || '네트워크 또는 데이터 용량 문제로 저장하지 못했습니다.'));
-    } finally {
-        saveInFlight = false;
-        if (saveRequested) {
-            saveTimer = setTimeout(flushSaveData, 100);
+        const retryable = !navigator.onLine || ['unavailable', 'firestore/unavailable', 'deadline-exceeded', 'firestore/deadline-exceeded'].includes(error?.code);
+        if (retryable) {
+            if (!pendingCloudPayload || (Number(pendingCloudPayload.syncMeta?.revision) || 0) < revision) pendingCloudPayload = payload;
+            saveRequested = true;
+            setSyncStatus('offline', '기기에 저장됨 · 재연결 대기');
         } else {
             isDebouncing = false;
-            if(syncIcon) { syncIcon.classList.add('hidden'); syncIcon.classList.remove('flex'); }
+            setSyncStatus('error', 'Firebase 저장 실패');
+            window.showModal('저장 실패', `${escapeHTML(error.message || 'Firebase에 저장하지 못했습니다.')}<br><span class="font-bold text-amber-600">입력 내용은 이 기기의 복구 저장소에 보관했습니다.</span>`);
+        }
+    } finally {
+        saveInFlight = false;
+        if (saveRequested && navigator.onLine) {
+            saveTimer = setTimeout(flushSaveData, 100);
+        } else if (!saveRequested && writeSucceeded) {
+            isDebouncing = false;
+            setSyncStatus('saved', 'Firebase 저장 완료');
         }
     }
 }
@@ -3442,6 +3740,7 @@ window.updateFloatingStopwatchBtn = function() {
 document.addEventListener("visibilitychange", function() {
   if (document.visibilityState === 'hidden') {
     backupAllDataLocally();
+    persistEmergencyRecoveryBeforeExit();
     
     // 모바일 사용성을 위한 짧은 진동 피드백
     if (navigator.vibrate) {
@@ -3452,7 +3751,33 @@ document.addEventListener("visibilitychange", function() {
 
 window.addEventListener('beforeunload', function() {
     backupAllDataLocally();
+    persistEmergencyRecoveryBeforeExit();
 });
+
+window.addEventListener('pagehide', persistEmergencyRecoveryBeforeExit);
+
+window.addEventListener('offline', () => {
+    if (userId) setSyncStatus('offline', latestRecoveryRecord?.dirty ? '오프라인 · 기기 저장됨' : '오프라인');
+});
+
+window.addEventListener('online', () => {
+    if (!userId) return;
+    if (latestRecoveryRecord?.dirty) {
+        pendingCloudPayload = pendingCloudPayload || latestRecoveryRecord.payload;
+        saveRequested = true;
+        isDebouncing = true;
+        setSyncStatus('syncing', 'Firebase 재연결 중');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(flushSaveData, 0);
+    } else {
+        setSyncStatus('syncing', '연결 확인 중');
+    }
+});
+
+function persistEmergencyRecoveryBeforeExit() {
+    if (!userId || !latestRecoveryRecord?.dirty) return;
+    writeEmergencyRecovery(latestRecoveryRecord);
+}
 
 // 2. 현재 입력값 및 선택창(?월?주차 등) 상태 로컬 임시 저장 함수
 function backupAllDataLocally() {
