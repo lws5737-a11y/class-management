@@ -14,6 +14,8 @@ assert.ok(html.includes('id="class-selection-list"'), '학급 선택 목록이 �
 assert.ok(!html.includes('user-scalable=no'), '화면 확대가 차단되어 있습니다.');
 assert.ok(!app.includes("text.includes('')"), 'CSV 인코딩 검사가 항상 참인 오류가 남아 있습니다.');
 assert.ok(!app.includes('${s.name}'), '학생 이름이 HTML에 직접 삽입되는 코드가 남아 있습니다.');
+assert.ok(!app.includes('{ merge: true }'), '삭제된 Firestore 중첩 필드를 되살릴 수 있는 merge 저장이 남아 있습니다.');
+assert.ok(app.includes('saveData({ immediate: true })'), '학급 삭제 직후 즉시 저장하는 처리가 없습니다.');
 
 const handlerNames = [...html.matchAll(/on(?:click|change|submit)="[^"]*window\.([A-Za-z_$][\w$]*)/g)].map(match => match[1]);
 for (const handlerName of new Set(handlerNames)) {
