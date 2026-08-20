@@ -18,6 +18,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
+provider.setCustomParameters({
+  hd: 'seoul-dongsan.es.kr',
+  prompt: 'select_account'
+});
 export const db = getFirestore(app);
 
 // [추가된 기능] 오프라인 자동저장(지속성) 활성화
@@ -29,3 +33,4 @@ enableMultiTabIndexedDbPersistence(db)
       console.warn("현재 브라우저가 오프라인 데이터 지속성을 지원하지 않습니다.");
     }
   });
+

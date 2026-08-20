@@ -1,0 +1,8 @@
+{
+  "name": "class-management",
+  "private": true,
+  "scripts": {
+    "test": "node tests/static-check.mjs"
+  }
+}
+

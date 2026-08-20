@@ -2,11 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js 라이브러리 추가 (그래프 그리기 용) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=400;700;900&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
@@ -34,12 +32,46 @@
 <body class="text-slate-800 overscroll-y-none select-none">
 
     <!-- 로그인 화면 -->
-    <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-slate-100 z-50">
-        <div class="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full">
-            <h1 class="text-3xl font-black text-blue-600 mb-2">🏃‍♂️ 스마트 체육</h1>
-            <p class="text-slate-500 mb-8 font-bold">동산초등학교 전용</p>
+    <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-emerald-50 z-50 p-4">
+        <div class="bg-white p-7 sm:p-9 rounded-3xl shadow-xl text-center max-w-sm w-full border border-slate-100">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-3xl shadow-lg">🏃</div>
+            <h1 class="text-3xl font-black text-slate-800 mb-2">스마트 체육</h1>
+            <p class="text-slate-500 mb-6 font-bold">동산초등학교 교사용</p>
+            <p id="login-message" class="hidden mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600" role="alert"></p>
             <button id="btn-login" onclick="window.signInWithGoogle()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition">Google 계정으로 시작하기</button>
+            <p class="mt-4 text-xs leading-relaxed text-slate-400">허용된 학교 계정으로만 이용할 수 있습니다.</p>
         </div>
+    </div>
+
+    <!-- 로그인 후 첫 화면: 학급 선택 / 추가 / 삭제 전용 -->
+    <div id="class-selection-screen" class="hidden min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50">
+        <header class="border-b border-white/80 bg-white/90 backdrop-blur sticky top-0 z-30">
+            <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-xl text-white shadow">🏃</div>
+                    <div>
+                        <h1 class="font-black text-slate-800 sm:text-lg">스마트 체육</h1>
+                        <p id="class-selection-user" class="text-[11px] font-medium text-slate-400"></p>
+                    </div>
+                </div>
+                <button onclick="window.signOutApp()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600">로그아웃</button>
+            </div>
+        </header>
+        <main class="mx-auto flex min-h-[calc(100vh-70px)] max-w-5xl items-start justify-center p-4 pt-8 sm:p-8 sm:pt-14">
+            <section class="w-full max-w-3xl rounded-3xl border border-white bg-white/95 p-5 shadow-xl shadow-slate-200/50 sm:p-8" aria-labelledby="class-selection-title">
+                <div class="mb-6 text-center sm:mb-8">
+                    <h2 id="class-selection-title" class="text-2xl font-black text-slate-800 sm:text-3xl">학급을 선택하세요</h2>
+                    <p class="mt-2 text-sm font-medium text-slate-400">수업을 시작할 학급을 누르세요.</p>
+                </div>
+                <div id="class-selection-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></div>
+                <div class="my-7 h-px bg-slate-100"></div>
+                <form id="class-add-form" class="flex flex-col gap-2 sm:flex-row" onsubmit="event.preventDefault(); window.addClassFromSelection()">
+                    <label for="class-selection-new-input" class="sr-only">새 학급 이름</label>
+                    <input id="class-selection-new-input" type="text" maxlength="30" autocomplete="off" placeholder="새 학급 이름 (예: 6-1)" class="min-h-12 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
+                    <button type="submit" class="min-h-12 rounded-xl bg-blue-600 px-6 py-3 font-black text-white shadow-md transition hover:bg-blue-700 active:scale-[0.98]">+ 학급 추가</button>
+                </form>
+            </section>
+        </main>
     </div>
 
     <!-- 앱 메인 화면 -->
@@ -48,7 +80,7 @@
         <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
             <div id="header-inner-container" class="max-w-4xl mx-auto px-2 sm:px-4 py-2">
                 <div class="flex items-center gap-1.5 sm:gap-2 w-full overflow-x-auto no-scrollbar scroll-smooth">
-                    <button onclick="window.openManageModal()" id="current-class-display" class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-[11px] sm:text-sm transition shadow-sm border border-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+                    <button onclick="window.showClassSelectionScreen()" id="current-class-display" class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-[11px] sm:text-sm transition shadow-sm border border-slate-200 flex items-center gap-1.5 whitespace-nowrap" title="학급 선택 화면으로 돌아가기">
                         <span>⚙️ 설정 및 시작</span>
                     </button>
                     <div id="tab-navigation" class="hidden flex items-center gap-1 sm:gap-2 shrink-0">
@@ -58,6 +90,7 @@
                         <button id="tab-stamp" onclick="window.showTab('stamp')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">도장판</button>
                     </div>
                     <div class="flex items-center gap-1.5 ml-auto shrink-0 pl-2">
+                        <button id="class-tools-btn" onclick="window.openManageModal()" class="hidden shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 shadow-sm transition hover:bg-slate-50" title="명단 및 백업 관리">⚙️ <span class="hidden sm:inline">자료관리</span></button>
                         <div id="sync-status" class="hidden items-center gap-1 text-[9px] sm:text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">
                             <span class="animate-spin">↻</span>
                         </div>
@@ -177,7 +210,7 @@
                     
                     <!-- 팀별 기록 분석 버튼 & 그래프 영역 -->
                     <div class="mt-4">
-                        <button onclick="window.toggleJumpRopeAnalysis()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-black py-3 rounded-xl transition border-2 border-slate-200 flex justify-center items-center gap-2 shadow-sm text-sm sm:text-base">
+                        <button onclick="window.openJumpRopeAnalysisModal()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-black py-3 rounded-xl transition border-2 border-slate-200 flex justify-center items-center gap-2 shadow-sm text-sm sm:text-base">
                             📊 팀별 기록 분석 차트 보기
                         </button>
                         <div id="jumprope-analysis-area" class="hidden mt-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -386,3 +419,4 @@
     <script type="module" src="app.js"></script>
 </body>
 </html>
+
