@@ -6,6 +6,7 @@
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="./style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=400;700;900&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
@@ -71,6 +72,13 @@
                     <input id="class-selection-new-input" type="text" maxlength="30" autocomplete="off" placeholder="새 학급 이름 (예: 6-1)" class="min-h-12 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
                     <button type="submit" class="min-h-12 rounded-xl bg-blue-600 px-6 py-3 font-black text-white shadow-md transition hover:bg-blue-700 active:scale-[0.98]">+ 학급 추가</button>
                 </form>
+                <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button id="export-all-classes-btn" type="button" onclick="window.exportAllToExcel()" class="min-h-12 rounded-xl bg-purple-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40">💾 전체 학급 엑셀 저장하기</button>
+                    <label class="relative flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 border-purple-300 bg-white px-4 py-3 text-sm font-black text-purple-700 shadow-sm transition hover:bg-purple-50">
+                        📂 전체 학급 엑셀 불러오기
+                        <input type="file" id="all-class-excel-input" accept=".xlsx,.csv" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" onchange="window.handleAllCSVUpload(event)">
+                    </label>
+                </div>
                 <button id="delete-all-classes-btn" type="button" onclick="window.deleteAllClasses()" disabled class="mt-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40">모든 학급 삭제</button>
             </section>
         </main>
@@ -115,7 +123,7 @@
                         <table class="w-full text-xs sm:text-sm text-left">
                             <thead class="bg-slate-100 text-slate-600 font-black border-b border-slate-200 uppercase text-[10px] sm:text-xs">
                                 <tr>
-                                    <th class="px-1 py-2 sm:p-3 text-center cursor-pointer hover:bg-slate-200 transition whitespace-nowrap" onclick="window.toggleSort('no')">번호 <span id="sort-no-icon">↕</span></th>
+                                    <th class="px-1 py-2 sm:p-3 text-center cursor-pointer hover:bg-slate-200 transition whitespace-nowrap leading-tight" onclick="window.toggleSort('no')"><span class="block">번호</span><span class="block text-[9px] sm:text-[10px] font-bold text-blue-500">(출석)</span><span id="sort-no-icon" aria-hidden="true">↕</span></th>
                                     <th class="px-1 py-2 sm:p-3 text-center cursor-pointer hover:bg-slate-200 transition whitespace-nowrap" onclick="window.toggleSort('name')">이름 <span id="sort-name-icon">↕</span></th>
                                     <th class="px-1 py-2 sm:p-3 text-center cursor-pointer hover:bg-slate-200 transition whitespace-nowrap" onclick="window.toggleSort('gender')">성별 <span id="sort-gender-icon">↕</span></th>
                                     <th class="px-1 py-2 sm:p-3 text-center cursor-pointer hover:bg-slate-200 transition whitespace-nowrap" onclick="window.toggleSort('group')">조 <span id="sort-group-icon">↕</span></th>
@@ -344,11 +352,12 @@
                 </div>
                 <hr class="border-slate-100">
                 <div class="bg-purple-50/50 p-4 rounded-2xl border border-purple-100 flex flex-col gap-3">
-                    <h3 class="text-sm font-black text-purple-800 flex items-center gap-2">💾 전체 데이터 백업 / 복구</h3>
-                    <button onclick="window.exportAllToExcel()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 sm:py-3 rounded-xl transition shadow-sm">전체 학급 엑셀 파일 저장하기 (.xlsx)</button>
+                    <h3 class="text-sm font-black text-purple-800 flex items-center gap-2">💾 현재 학급 백업 / 복구</h3>
+                    <p class="text-xs font-medium text-purple-700">현재 선택한 학급의 명단과 수업 기록만 저장하거나 불러옵니다.</p>
+                    <button onclick="window.exportCurrentClassToExcel()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 sm:py-3 rounded-xl transition shadow-sm">현재 학급 엑셀 저장하기 (.xlsx)</button>
                     <div class="relative w-full">
-                        <input type="file" id="csv-all-file-input" accept=".xlsx,.csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="window.handleAllCSVUpload(event)">
-                        <button class="w-full bg-white border-2 border-purple-300 text-purple-700 hover:bg-purple-50 font-bold py-2.5 sm:py-3 rounded-xl transition shadow-sm flex justify-center items-center gap-2">📂 엑셀 백업 불러오기 (전체 덮어쓰기)</button>
+                        <input type="file" id="class-excel-file-input" accept=".xlsx,.csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="window.handleClassExcelUpload(event)">
+                        <button class="w-full bg-white border-2 border-purple-300 text-purple-700 hover:bg-purple-50 font-bold py-2.5 sm:py-3 rounded-xl transition shadow-sm flex justify-center items-center gap-2">📂 현재 학급 엑셀 불러오기</button>
                     </div>
                 </div>
             </div>
@@ -368,14 +377,11 @@
         </div>
     </div>
 
-    <div id="memo-modal" class="fixed inset-0 bg-slate-900/60 z-[70] hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center">
+    <div id="memo-modal" class="fixed inset-0 bg-slate-900/60 z-[70] hidden items-center justify-center p-4 backdrop-blur-sm" onclick="window.closeMemoModal()">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center" onclick="event.stopPropagation()">
             <h2 class="text-xl font-black text-slate-800 mb-4 flex items-center justify-center gap-2">📝 <span id="memo-modal-name" class="text-blue-600"></span> 학생 메모</h2>
-            <textarea id="memo-modal-input" rows="4" class="w-full border-2 border-slate-200 rounded-xl p-3 focus:outline-none focus:border-blue-500 bg-slate-50 text-sm mb-4" placeholder="특이사항을 입력하세요..."></textarea>
-            <div class="flex gap-2">
-                <button onclick="window.closeMemoModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition">취소</button>
-                <button onclick="window.saveMemo()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition">저장</button>
-            </div>
+            <textarea id="memo-modal-input" rows="5" oninput="window.saveMemoImmediately()" class="w-full border-2 border-slate-200 rounded-xl p-3 focus:outline-none focus:border-blue-500 bg-slate-50 text-sm" placeholder="특이사항을 입력하세요..."></textarea>
+            <p class="mt-3 text-xs font-bold text-emerald-600">입력 내용은 자동으로 저장됩니다. 바깥 영역을 누르면 닫힙니다.</p>
         </div>
     </div>
 
@@ -404,4 +410,3 @@
     <script type="module" src="app.js"></script>
 </body>
 </html>
-

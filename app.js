@@ -285,6 +285,7 @@ const getGroupsCycle = () => {
 
 window.currentDragY = -1;
 window.autoScrollRaf = null;
+window.dragOverUnassigned = false;
 
 window.startAutoScroll = function() {
     if (window.autoScrollRaf) return;
@@ -294,7 +295,7 @@ window.startAutoScroll = function() {
             window.autoScrollRaf = null;
             return;
         }
-        if (window.currentDragY !== -1) {
+        if (window.currentDragY !== -1 && !window.dragOverUnassigned) {
             const threshold = 120;
             const speed = 12; 
             if (window.currentDragY < threshold) {
@@ -319,21 +320,20 @@ window.stopAutoScroll = function() {
 document.addEventListener('dragover', function(e) {
     if (window.isDraggingCard || window.draggedClass) {
         window.currentDragY = e.clientY;
+        window.dragOverUnassigned = Boolean(e.target.closest?.('#unassigned-area'));
     }
 });
 
 window.showFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
+        el.classList.add('unassigned-floating');
         el.classList.remove('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-900', 'rounded-2xl');
         el.classList.add(
             'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
             'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
             'border-t-[3px]', 'border-slate-900', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
-        
-        const titleCont = el.querySelector('div.flex.items-center');
-        if (titleCont) titleCont.classList.add('hidden');
         
         const innerCont = el.querySelector('div.flex.flex-wrap, div.flex-wrap');
         if (innerCont) {
@@ -346,15 +346,13 @@ window.showFloatingUnassigned = function() {
 window.hideFloatingUnassigned = function() {
     const el = document.getElementById('unassigned-area');
     if (el) {
+        el.classList.remove('unassigned-floating');
         el.classList.add('col-span-full', 'mt-2', 'bg-slate-100/80', 'border-slate-900', 'rounded-2xl');
         el.classList.remove(
             'fixed', 'bottom-0', 'left-0', 'right-0', 'z-40', 
             'bg-slate-100', 'shadow-[0_-5px_20px_rgba(0,0,0,0.15)]', 
             'border-t-[3px]', 'border-slate-900', 'rounded-t-2xl', 'p-2', 'm-0', 'border-x-0', 'border-b-0'
         );
-        
-        const titleCont = el.querySelector('div.flex.items-center');
-        if (titleCont) titleCont.classList.remove('hidden');
         
         const innerCont = el.querySelector('div.flex.flex-row, div.flex-row');
         if (innerCont) {
@@ -617,6 +615,7 @@ window.handleTouchMove = function(e) {
     window.touchClone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.05)`;
 
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    window.dragOverUnassigned = Boolean(elemBelow?.closest('#unassigned-area'));
     
     clearDropStyles();
 
@@ -642,6 +641,7 @@ window.handleTouchEnd = function(e) {
     e.preventDefault(); 
     
     window.stopAutoScroll();
+    window.dragOverUnassigned = false;
     
     const touch = e.changedTouches[0];
     const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -740,6 +740,7 @@ window.handleDragStart = function(e, studentNo) {
 window.handleDragEnd = function(e) {
     window.isDraggingCard = false; window.draggedStudentNo = null;
     window.stopAutoScroll();
+    window.dragOverUnassigned = false;
     window.hideFloatingUnassigned();
     e.target.style.opacity = '1'; e.target.style.transform = 'scale(1)'; 
     clearDropStyles();
@@ -826,9 +827,11 @@ window.renderClassLanding = function() {
     if (!container) return;
     container.replaceChildren();
     const deleteAllButton = document.getElementById('delete-all-classes-btn');
+    const exportAllButton = document.getElementById('export-all-classes-btn');
 
     const isLoading = Boolean(userId && !hasLoadedRemoteData);
     if (deleteAllButton) deleteAllButton.disabled = isLoading;
+    if (exportAllButton) exportAllButton.disabled = isLoading;
     document.querySelectorAll('#class-add-form input, #class-add-form button').forEach(control => {
         control.disabled = isLoading;
         control.classList.toggle('opacity-50', isLoading);
@@ -845,6 +848,7 @@ window.renderClassLanding = function() {
 
     const classes = getSortedClasses();
     if (deleteAllButton) deleteAllButton.disabled = classes.length === 0 || isLoading;
+    if (exportAllButton) exportAllButton.disabled = classes.length === 0 || isLoading;
     if (classes.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center';
@@ -1616,23 +1620,24 @@ window.openMemoModal = function(studentNo) {
     
     document.getElementById('memo-modal').classList.remove('hidden');
     document.getElementById('memo-modal').classList.add('flex');
+    setTimeout(() => document.getElementById('memo-modal-input')?.focus(), 0);
 }
 
 window.closeMemoModal = function() {
+    if (currentEditingStudentNo !== null) window.saveMemoImmediately();
     document.getElementById('memo-modal').classList.add('hidden');
     document.getElementById('memo-modal').classList.remove('flex');
     currentEditingStudentNo = null;
+    window.renderStudentList();
 }
 
-window.saveMemo = function() {
+window.saveMemoImmediately = function() {
     if (currentEditingStudentNo === null) return;
     const student = classData[currentClass].find(s => s.no === currentEditingStudentNo);
     if (student) {
-        student.memo = document.getElementById('memo-modal-input').value.trim();
+        student.memo = document.getElementById('memo-modal-input').value;
         saveData();
-        window.renderStudentList();
     }
-    window.closeMemoModal();
 }
 
 window.cyclePenaltyCard = function(studentNo) {
@@ -1839,19 +1844,19 @@ window.deleteAllClasses = function() {
     }, "전체 삭제");
 }
 
-window.exportAllToExcel = function() {
+function buildExcelBackup(classNames, scope, sourceClass = '') {
     if (!window.XLSX) {
         window.showModal('엑셀 저장 실패', '엑셀 모듈을 불러오지 못했습니다. 인터넷 연결을 확인한 후 다시 시도해주세요.');
-        return;
+        return null;
     }
-    if (Object.keys(classData).length === 0) {
+    if (classNames.length === 0) {
         window.showModal('저장할 자료 없음', '먼저 학급과 학생 명단을 등록해주세요.');
-        return;
+        return null;
     }
 
     const displayRows = [['학급', '번호', '이름', '성별', '출석', '볼센스', '개인점수', '순발력(초)', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '메모']];
     const backupRows = [['학급', '번호', '이름', '성별', '볼센스', '참석상태', '개인점수', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '그룹점수JSON', '그룹기록JSON', '혼성2부장', '혼성3부장', '혼성4부장', '동성부장', '순발력(초)', '메모', '벌점카드', '그룹벌점JSON', '도장JSON']];
-    const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
+    const sortedClasses = [...classNames].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
 
     for (const className of sortedClasses) {
         const students = [...(classData[className] || [])].sort((a, b) => a.no - b.no || (a.name || '').localeCompare(b.name || '', 'ko'));
@@ -1890,9 +1895,15 @@ window.exportAllToExcel = function() {
     const backupSheet = window.XLSX.utils.aoa_to_sheet(backupRows);
     backupSheet['!cols'] = backupRows[0].map((_, index) => ({ wch: index < 11 ? 12 : 20 }));
     const stampChunks = globalStampImage ? globalStampImage.match(/[\s\S]{1,30000}/g) || [] : [];
-    const jumpRopeChunks = JSON.stringify(jumpRopeData).match(/[\s\S]{1,30000}/g) || [];
+    const scopedJumpRopeData = scope === '학급'
+        ? Object.fromEntries(Object.entries(jumpRopeData).map(([week, records]) => [week, sourceClass && records?.[sourceClass] ? { [sourceClass]: records[sourceClass] } : {}]))
+        : jumpRopeData;
+    const jumpRopeChunks = JSON.stringify(scopedJumpRopeData).match(/[\s\S]{1,30000}/g) || [];
     const settingsSheet = window.XLSX.utils.aoa_to_sheet([
         ['항목', '값'],
+        ['백업범위', scope],
+        ['원본학급', sourceClass],
+        ['백업형식버전', 2],
         ...stampChunks.map((chunk, index) => [`스탬프이미지_${String(index + 1).padStart(4, '0')}`, chunk]),
         ...jumpRopeChunks.map((chunk, index) => [`줄넘기JSON_${String(index + 1).padStart(4, '0')}`, chunk])
     ]);
@@ -1901,9 +1912,27 @@ window.exportAllToExcel = function() {
     window.XLSX.utils.book_append_sheet(workbook, settingsSheet, '앱설정');
     workbook.Workbook = { Sheets: [{ name: '학생명단', Hidden: 0 }, { name: '백업데이터', Hidden: 1 }, { name: '앱설정', Hidden: 1 }] };
 
+    return workbook;
+}
+
+function writeExcelBackup(workbook, fileLabel) {
+    if (!workbook) return;
     const today = new Date();
     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-    window.XLSX.writeFile(workbook, `스마트체육_전체백업_${dateStr}.xlsx`, { compression: true });
+    const safeLabel = String(fileLabel).replace(/[\\/:*?"<>|]/g, '_');
+    window.XLSX.writeFile(workbook, `스마트체육_${safeLabel}_${dateStr}.xlsx`, { compression: true });
+}
+
+window.exportAllToExcel = function() {
+    writeExcelBackup(buildExcelBackup(Object.keys(classData), '전체'), '전체학급백업');
+}
+
+window.exportCurrentClassToExcel = function() {
+    if (!currentClass || !classData[currentClass]) {
+        window.showModal('학급 선택 필요', '첫 화면에서 백업할 학급을 먼저 선택해주세요.');
+        return;
+    }
+    writeExcelBackup(buildExcelBackup([currentClass], '학급', currentClass), `${currentClass}_학급백업`);
 }
 
 function parseCSVLine(line) {
@@ -1917,8 +1946,14 @@ function parseCSVLine(line) {
     result.push(current); return result;
 }
 
-window.handleAllCSVUpload = function(event) {
+function handleExcelUpload(event, importTarget) {
     const file = event.target.files[0]; if (!file) return;
+
+    if (importTarget === 'class' && (!currentClass || !classData[currentClass])) {
+        window.showModal('학급 선택 필요', '불러올 대상 학급을 먼저 선택해주세요.');
+        event.target.value = '';
+        return;
+    }
 
     const resetFileInput = () => { event.target.value = ''; };
     const readJSON = (value, fallback) => {
@@ -1934,7 +1969,14 @@ window.handleAllCSVUpload = function(event) {
         const header = parseCSVLine(lines[0]);
         if (!header[0].includes('학급')) { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); resetFileInput(); return; }
 
-        window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
+        const scopeIsClass = restoredSettings.backupScope === '학급';
+        const confirmTitle = importTarget === 'class' ? `${currentClass} 학급 엑셀 불러오기` : (scopeIsClass ? '학급 백업 불러오기' : '전체 학급 엑셀 불러오기');
+        const confirmMessage = importTarget === 'class'
+            ? `파일에서 <b>${currentClass}</b> 학급 자료를 찾아 현재 학급만 교체합니다.`
+            : scopeIsClass
+                ? `백업 파일의 <b>${escapeHTML(restoredSettings.sourceClass || '해당 학급')}</b> 자료만 추가하거나 교체합니다. 다른 학급은 유지됩니다.`
+                : `파일 내용으로 모든 학급의 자료를 교체하시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 저장된 전체 학급 데이터가 교체됩니다.</span>`;
+        window.showModal(confirmTitle, confirmMessage, true, async () => {
             const newData = {}; const newGroupScores = {}; const newGroupRecords = {}; const newGroupPenalties = {};
             const newClassStamps = {};
             const idxG2 = header.indexOf('혼성2모둠'); const idxG3 = header.indexOf('혼성3모둠'); const idxG4 = header.indexOf('혼성4모둠'); const idxGG = header.indexOf('동성모둠');
@@ -2013,10 +2055,48 @@ window.handleAllCSVUpload = function(event) {
                 });
             }
 
-            if (Object.keys(newData).length > 0) {
-                classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords; groupPenalties = newGroupPenalties;
-                classStamps = newClassStamps;
-                if (restoredSettings.jumpRopeData) jumpRopeData = restoredSettings.jumpRopeData;
+            const importedClasses = Object.keys(newData);
+            if (importedClasses.length > 0) {
+                if (importTarget === 'class') {
+                    const sourceClass = newData[currentClass] ? currentClass : (importedClasses.length === 1 ? importedClasses[0] : '');
+                    if (!sourceClass) {
+                        window.showModal('학급을 찾을 수 없음', `이 파일에는 <b>${escapeHTML(currentClass)}</b> 학급 자료가 없습니다. 전체 학급 불러오기를 이용해주세요.`);
+                        resetFileInput();
+                        return;
+                    }
+                    classData[currentClass] = newData[sourceClass];
+                    groupScores[currentClass] = newGroupScores[sourceClass];
+                    groupRecords[currentClass] = newGroupRecords[sourceClass];
+                    groupPenalties[currentClass] = newGroupPenalties[sourceClass];
+                    classStamps[currentClass] = newClassStamps[sourceClass];
+                    if (restoredSettings.jumpRopeData) {
+                        Object.entries(restoredSettings.jumpRopeData).forEach(([week, records]) => {
+                            if (!jumpRopeData[week]) jumpRopeData[week] = {};
+                            const sourceRecord = records?.[sourceClass] || records?.[restoredSettings.sourceClass];
+                            if (sourceRecord) jumpRopeData[week][currentClass] = sourceRecord;
+                        });
+                    }
+                } else if (scopeIsClass) {
+                    importedClasses.forEach(className => {
+                        classData[className] = newData[className];
+                        groupScores[className] = newGroupScores[className];
+                        groupRecords[className] = newGroupRecords[className];
+                        groupPenalties[className] = newGroupPenalties[className];
+                        classStamps[className] = newClassStamps[className];
+                    });
+                    if (restoredSettings.jumpRopeData) {
+                        Object.entries(restoredSettings.jumpRopeData).forEach(([week, records]) => {
+                            if (!jumpRopeData[week]) jumpRopeData[week] = {};
+                            importedClasses.forEach(className => {
+                                if (records?.[className]) jumpRopeData[week][className] = records[className];
+                            });
+                        });
+                    }
+                } else {
+                    classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords; groupPenalties = newGroupPenalties;
+                    classStamps = newClassStamps;
+                    if (restoredSettings.jumpRopeData) jumpRopeData = restoredSettings.jumpRopeData;
+                }
                 if (restoredSettings.stampImage) globalStampImage = restoredSettings.stampImage;
                 migrateData();
                 activeTimers = {}; window.selectedGroupStudent = null;
@@ -2030,7 +2110,10 @@ window.handleAllCSVUpload = function(event) {
                 saveData({ immediate: true });
 
                 if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
-                window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
+                const doneMessage = importTarget === 'class'
+                    ? `${escapeHTML(currentClass)} 학급 자료를 복구했습니다.`
+                    : scopeIsClass ? '학급 자료를 추가하거나 교체했습니다.' : '모든 학급 자료를 복구했습니다.';
+                window.showModal("완료", doneMessage);
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
             resetFileInput();
         }, "전체 복구하기");
@@ -2047,9 +2130,14 @@ window.handleAllCSVUpload = function(event) {
                 const settingsSheet = workbook.Sheets['앱설정'];
                 let stampImage = '';
                 let restoredJumpRopeData = null;
+                let backupScope = '';
+                let sourceClass = '';
                 if (settingsSheet) {
                     const settingsRows = window.XLSX.utils.sheet_to_json(settingsSheet, { header: 1, defval: '' });
                     const settingsDataRows = settingsRows.slice(1);
+                    const settingsMap = Object.fromEntries(settingsDataRows.map(row => [String(row[0]), row[1]]));
+                    backupScope = String(settingsMap['백업범위'] || '');
+                    sourceClass = normalizeClassName(String(settingsMap['원본학급'] || ''));
                     stampImage = settingsDataRows
                         .filter(row => String(row[0]).startsWith('스탬프이미지_'))
                         .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
@@ -2062,7 +2150,7 @@ window.handleAllCSVUpload = function(event) {
                         .join('');
                     if (jumpRopeJSON) restoredJumpRopeData = JSON.parse(jumpRopeJSON);
                 }
-                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData });
+                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, backupScope, sourceClass });
             } catch (error) {
                 console.error('엑셀 백업 읽기 실패:', error);
                 window.showModal('불러오기 실패', escapeHTML(error.message || '엑셀 파일을 읽을 수 없습니다.'));
@@ -2088,6 +2176,9 @@ window.handleAllCSVUpload = function(event) {
     };
     reader.readAsText(file, "utf-8");
 }
+
+window.handleAllCSVUpload = function(event) { handleExcelUpload(event, 'all'); }
+window.handleClassExcelUpload = function(event) { handleExcelUpload(event, 'class'); }
 
 window.selectClass = function(className) {
     if (!classData[className]) return;
@@ -3150,6 +3241,14 @@ window.importFromExcel = function() {
 // ==========================================
 // ⏱️ 다중 스톱워치 코어 엔진
 // ==========================================
+function getNextGroupActionState(starts, stops) {
+    const nextStart = starts.indexOf(null);
+    if (nextStart !== -1) return { type: 'start', index: nextStart };
+    const nextStop = stops.indexOf(null);
+    if (nextStop !== -1) return { type: 'stop', index: nextStop };
+    return { type: 'save', index: -1 };
+}
+
 window.openGroupStopwatch = function() {
     if(!currentClass || !classData[currentClass]) return;
     groupStudents = classData[currentClass].filter(s => s.selected && s.attendance);
@@ -3183,15 +3282,13 @@ window.resetGroupAction = function() {
 window.handleGroupAction = function() {
     if(navigator.vibrate) navigator.vibrate([30, 50]);
     let n = groupStudents.length;
-    let nextStart = groupStarts.indexOf(null);
-    
-    if(nextStart !== -1) {
-        groupStarts[nextStart] = Date.now();
+    const action = getNextGroupActionState(groupStarts, groupStops);
+
+    if(action.type === 'start') {
+        groupStarts[action.index] = Date.now();
+    } else if(action.type === 'stop') {
+        groupStops[action.index] = Date.now();
     } else {
-        let nextStop = groupStops.indexOf(null);
-        if(nextStop !== -1) {
-            groupStops[nextStop] = Date.now();
-        } else {
             for(let i = 0; i < n; i++) {
                 let elapsed = groupStops[i] - groupStarts[i];
                 let s = classData[currentClass].find(st => st.no === groupStudents[i].no);
@@ -3204,7 +3301,6 @@ window.handleGroupAction = function() {
             window.renderStudentList();
             window.closeGroupStopwatch();
             return;
-        }
     }
     window.renderGroupList();
     window.updateGroupActionButton();
@@ -3222,6 +3318,7 @@ window.startAllGroupAction = function() {
 }
 
 window.handleIndividualGroupAction = function(i) {
+    if (!Number.isInteger(i) || i < 0 || i >= groupStudents.length) return;
     if(navigator.vibrate) navigator.vibrate(20);
     if (groupStarts[i] === null) groupStarts[i] = Date.now();
     else if (groupStops[i] === null) groupStops[i] = Date.now();
@@ -3231,8 +3328,7 @@ window.handleIndividualGroupAction = function(i) {
 window.updateGroupActionButton = function() {
     const btn = document.getElementById('btn-group-action');
     const startAllBtn = document.getElementById('btn-group-start-all');
-    let nextStart = groupStarts.indexOf(null);
-    let nextStop = groupStops.indexOf(null);
+    const action = getNextGroupActionState(groupStarts, groupStops);
     let anyStarted = groupStarts.some(s => s !== null);
 
     if (startAllBtn) {
@@ -3240,12 +3336,12 @@ window.updateGroupActionButton = function() {
         else startAllBtn.classList.remove('hidden');
     }
     
-    if(nextStart !== -1) {
+    if(action.type === 'start') {
         btn.className = "w-full py-5 sm:py-6 text-2xl sm:text-3xl font-black rounded-2xl shadow-xl transition-all transform active:scale-95 bg-blue-600 text-white hover:bg-blue-700 mt-2";
-        btn.innerHTML = `▶ ${nextStart + 1}번 출발`;
-    } else if (nextStop !== -1) {
+        btn.innerHTML = `▶ ${action.index + 1}번 출발`;
+    } else if (action.type === 'stop') {
         btn.className = "w-full py-6 sm:py-8 text-3xl sm:text-4xl font-black rounded-2xl shadow-xl transition-all transform active:scale-95 bg-red-600 text-white hover:bg-red-700 animate-pulse mt-2";
-        btn.innerHTML = `⏸ ${nextStop + 1}번 도착`;
+        btn.innerHTML = `⏸ ${action.index + 1}번 도착`;
     } else {
         btn.className = "w-full py-6 sm:py-8 text-2xl sm:text-3xl font-black rounded-2xl shadow-xl transition-all transform active:scale-95 bg-emerald-600 text-white hover:bg-emerald-700 mt-2";
         btn.innerHTML = `✅ 완벽합니다! 기록 저장`;
@@ -3420,4 +3516,3 @@ function saveTargetElement(target) {
       }
   }
 }
-
