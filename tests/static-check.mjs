@@ -16,6 +16,46 @@ assert.ok(!app.includes("text.includes('')"), 'CSV 인코딩 검사가 항상 �
 assert.ok(!app.includes('${s.name}'), '학생 이름이 HTML에 직접 삽입되는 코드가 남아 있습니다.');
 assert.ok(!app.includes('{ merge: true }'), '삭제된 Firestore 중첩 필드를 되살릴 수 있는 merge 저장이 남아 있습니다.');
 assert.ok(app.includes('saveData({ immediate: true })'), '학급 삭제 직후 즉시 저장하는 처리가 없습니다.');
+assert.ok(app.includes('await updateDoc(docRef, payload)'), '앱 필드만 안전하게 교체하는 Firestore 저장이 없습니다.');
+assert.ok(html.includes('id="delete-all-classes-btn"'), '첫 화면에 모든 학급 삭제 기능이 없습니다.');
+assert.ok(app.includes('deleteButton.innerHTML') && app.includes('aria-hidden="true"'), '학급 삭제 아이콘이 안정적인 SVG로 표시되지 않습니다.');
+assert.ok(!html.includes('id="modal-class-list"'), '명단·백업 화면에 학급 선택 UI가 남아 있습니다.');
+assert.ok(!html.includes('id="new-class-input"'), '명단·백업 화면에 새 학급 추가 UI가 남아 있습니다.');
+assert.ok(html.includes('학생 명단 및 백업') && html.includes('명단·백업'), '자료 관리 명칭이 이해하기 쉽게 바뀌지 않았습니다.');
+assert.ok(html.includes('cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js') && html.includes('accept=".xlsx,.csv"'), 'XLSX 저장·불러오기 모듈이 연결되지 않았습니다.');
+assert.ok(app.includes("book_append_sheet(workbook, displaySheet, '학생명단')"), '보기 좋은 학생명단 시트가 없습니다.');
+assert.ok(app.includes("book_append_sheet(workbook, backupSheet, '백업데이터')"), '복구용 백업 시트가 없습니다.');
+assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '학년·반·번호·이름·성별 붙여넣기 형식을 처리하지 않습니다.');
+assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
+assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
+assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');
+
+function extractFunctionSource(source, functionName) {
+  const start = source.indexOf(`function ${functionName}`);
+  assert.notEqual(start, -1, `${functionName} 함수를 찾을 수 없습니다.`);
+  const braceStart = source.indexOf('{', start);
+  let depth = 0;
+  for (let index = braceStart; index < source.length; index++) {
+    if (source[index] === '{') depth++;
+    if (source[index] === '}') depth--;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  throw new Error(`${functionName} 함수 범위를 찾을 수 없습니다.`);
+}
+
+const parseRosterLine = new Function(
+  `${extractFunctionSource(app, 'normalizeClassName')}\n${extractFunctionSource(app, 'parseRosterLine')}\nreturn parseRosterLine;`
+)();
+assert.deepEqual(
+  parseRosterLine('6\t2\t1\t강루미\t여'),
+  { sourceClass: '6-2', no: 1, name: '강루미', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
+  '학교 출석부 5열 붙여넣기를 잘못 해석합니다.'
+);
+assert.deepEqual(
+  parseRosterLine('2 김나은 여'),
+  { sourceClass: null, no: 2, name: '김나은', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
+  '기존 번호·이름·성별 형식을 잘못 해석합니다.'
+);
 
 const handlerNames = [...html.matchAll(/on(?:click|change|submit)="[^"]*window\.([A-Za-z_$][\w$]*)/g)].map(match => match[1]);
 for (const handlerName of new Set(handlerNames)) {

@@ -1,6 +1,6 @@
 import { auth, db, provider } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -195,11 +195,6 @@ window.fireConfetti = function() {
 // ==========================================
 // 2. 상태 관리 및 유틸리티
 // ==========================================
-
-function isRegularClass(className) {
-    if(!className) return false;
-    return /^\d+-\d+$/.test(className);
-}
 
 window.openStampSelectModal = function() {
     document.getElementById('stampSelectModal').style.display = 'flex';
@@ -719,6 +714,7 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
     }
     
     if (changed) {
+        normalizeGroupCaptains(currentGroupMode);
         saveData(); 
         window.renderStudentList(); 
     }
@@ -829,8 +825,10 @@ window.renderClassLanding = function() {
     const container = document.getElementById('class-selection-list');
     if (!container) return;
     container.replaceChildren();
+    const deleteAllButton = document.getElementById('delete-all-classes-btn');
 
     const isLoading = Boolean(userId && !hasLoadedRemoteData);
+    if (deleteAllButton) deleteAllButton.disabled = isLoading;
     document.querySelectorAll('#class-add-form input, #class-add-form button').forEach(control => {
         control.disabled = isLoading;
         control.classList.toggle('opacity-50', isLoading);
@@ -846,6 +844,7 @@ window.renderClassLanding = function() {
     }
 
     const classes = getSortedClasses();
+    if (deleteAllButton) deleteAllButton.disabled = classes.length === 0 || isLoading;
     if (classes.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center';
@@ -883,8 +882,8 @@ window.renderClassLanding = function() {
 
         const deleteButton = document.createElement('button');
         deleteButton.type = 'button';
-        deleteButton.className = 'w-12 shrink-0 border-l border-slate-100 text-slate-300 transition hover:bg-red-50 hover:text-red-500 focus-visible:bg-red-50 focus-visible:text-red-500';
-        deleteButton.textContent = '🗑️';
+        deleteButton.className = 'flex w-12 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:bg-red-50 focus-visible:text-red-600';
+        deleteButton.innerHTML = '<svg aria-hidden="true" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-10 0 1 13h6l1-13M9 7V4h6v3" /></svg>';
         deleteButton.setAttribute('aria-label', `${className} 학급 삭제`);
         deleteButton.addEventListener('click', () => window.deleteClassFromSelection(className));
 
@@ -953,63 +952,9 @@ window.closeManageModal = function() {
 }
 
 window.renderClassSelect = function() {
-    const listEl = document.getElementById('modal-class-list');
     const displayBtn = document.getElementById('current-class-display');
-    const toggleBtn = document.getElementById('toggle-hidden-classes-btn');
     window.renderClassLanding();
-    if(!listEl) return;
-    
-    if (toggleBtn) toggleBtn.style.display = 'none';
-
-    listEl.innerHTML = ''; 
-    let classes = getSortedClasses();
-
-    if(classes.length === 0) { 
-        listEl.innerHTML = '<div class="text-slate-400 font-bold text-sm w-full py-2">등록된 학급이 없습니다. 새 학급을 추가해주세요.</div>'; 
-        if(displayBtn) displayBtn.innerHTML = "<span>⚙️ 설정 및 시작</span>";
-        return;
-    }
-
-    let visibleClasses = classes.filter(c => window.isClassVisible(c));
-    let hiddenClasses = classes.filter(c => !window.isClassVisible(c));
-
-    const visibleContainer = document.createElement('div');
-    visibleContainer.className = "flex flex-wrap gap-2 mb-4 p-2 border-2 border-transparent rounded-xl transition visible-drop-zone min-h-[60px] bg-white w-full items-center";
-    visibleContainer.ondragover = window.handleClassDragOver;
-    visibleContainer.ondragleave = window.handleClassDragLeave;
-    visibleContainer.ondrop = (e) => window.handleClassZoneDrop(e, 'visible');
-
-    visibleClasses.forEach(cls => {
-        visibleContainer.appendChild(createClassButtonDOM(cls, true));
-    });
-    if(visibleClasses.length === 0) {
-        visibleContainer.innerHTML = '<span class="text-slate-400 text-sm w-full text-center py-2 flex items-center justify-center">보이는 학급이 없습니다.</span>';
-    }
-    listEl.appendChild(visibleContainer);
-
-    const hiddenHeader = document.createElement('div');
-    hiddenHeader.className = "w-full text-center py-3 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer text-slate-500 font-bold text-sm hover:bg-slate-200 transition hidden-drop-zone flex items-center justify-center gap-2";
-    hiddenHeader.innerHTML = window.showHiddenClasses ? "🙈 숨긴 학급 닫기" : `🗑️ 숨긴 학급 휴지통 보기/버리기 (${hiddenClasses.length})`;
-    hiddenHeader.onclick = window.toggleHiddenClasses;
-    hiddenHeader.ondragover = window.handleClassDragOver;
-    hiddenHeader.ondragleave = window.handleClassDragLeave;
-    hiddenHeader.ondrop = (e) => window.handleClassZoneDrop(e, 'hidden');
-    
-    listEl.appendChild(hiddenHeader);
-
-    if (window.showHiddenClasses && hiddenClasses.length > 0) {
-        const hiddenContainer = document.createElement('div');
-        hiddenContainer.className = "flex flex-wrap gap-2 mt-2 p-2 bg-slate-50 rounded-xl border border-slate-200 hidden-drop-zone min-h-[60px] w-full items-center";
-        hiddenContainer.ondragover = window.handleClassDragOver;
-        hiddenContainer.ondragleave = window.handleClassDragLeave;
-        hiddenContainer.ondrop = (e) => window.handleClassZoneDrop(e, 'hidden');
-
-        hiddenClasses.forEach(cls => {
-            hiddenContainer.appendChild(createClassButtonDOM(cls, false));
-        });
-        listEl.appendChild(hiddenContainer);
-    }
-
+    const classes = getSortedClasses();
     if (currentClass && classes.includes(currentClass)) {
         if(displayBtn) displayBtn.textContent = `🏫 ${currentClass}`;
     } else { 
@@ -1185,7 +1130,7 @@ function saveData({ immediate = false } = {}) {
     if ("" in classData) delete classData[""]; if ("" in groupScores) delete groupScores[""];
     if ("" in groupRecords) delete groupRecords[""]; if ("" in classStamps) delete classStamps[""]; if ("" in groupPenalties) delete groupPenalties[""];
 
-    if (!userId || !db) return;
+    if (!userId || !db) return Promise.resolve(false);
     saveRequested = true;
     isDebouncing = true;
     const syncIcon = document.getElementById('sync-status');
@@ -1193,9 +1138,21 @@ function saveData({ immediate = false } = {}) {
     clearTimeout(saveTimer);
     if (immediate) {
         saveTimer = null;
-        void flushSaveData();
+        return flushSaveData();
     } else {
         saveTimer = setTimeout(flushSaveData, 300);
+        return Promise.resolve(true);
+    }
+}
+
+async function writeAppData(docRef, payload) {
+    try {
+        // 각 최상위 앱 필드는 통째로 교체해 삭제된 학급을 확실히 반영하고,
+        // 같은 문서에 남아 있는 다른 프로그램의 최상위 필드는 보존합니다.
+        await updateDoc(docRef, payload);
+    } catch (error) {
+        if (!['not-found', 'firestore/not-found'].includes(error?.code)) throw error;
+        await setDoc(docRef, payload);
     }
 }
 
@@ -1212,7 +1169,7 @@ async function flushSaveData() {
             throw new Error('저장 데이터가 Firestore 문서 크기 제한에 가까워졌습니다.');
         }
         const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-        await setDoc(docRef, payload);
+        await writeAppData(docRef, payload);
     } catch (error) {
         console.error('클라우드 자동 저장 실패:', error);
         window.showModal('저장 실패', escapeHTML(error.message || '네트워크 또는 데이터 용량 문제로 저장하지 못했습니다.'));
@@ -1678,15 +1635,6 @@ window.saveMemo = function() {
     window.closeMemoModal();
 }
 
-window.updateDismissal = function(studentNo, value) {
-    if (!classData[currentClass]) return;
-    const student = classData[currentClass].find(s => s.no === studentNo);
-    if(student) {
-        student.dismissalInfo = value;
-        saveData();
-    }
-}
-
 window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
@@ -1842,7 +1790,7 @@ function migrateData() {
             if (s.group_gender === undefined) s.group_gender = null;
             if (s.running !== undefined) { delete s.running; } 
             if (s.memo === undefined) s.memo = "";
-            if (s.dismissalInfo === undefined) s.dismissalInfo = "";
+            delete s.dismissalInfo;
             if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
             if (s.penaltyCard === undefined) s.penaltyCard = 0; 
             if (s.selected === undefined) s.selected = false;
@@ -1874,42 +1822,15 @@ window.closeModal = function() {
     const customModal = document.getElementById('custom-modal'); customModal.classList.add('hidden'); customModal.classList.remove('flex');
 }
 
-window.addNewClass = function() {
-    const input = document.getElementById('new-class-input');
-    let newClassName = input.value.trim(); newClassName = normalizeClassName(newClassName);
-    if (!newClassName) { window.showModal("알림", "추가할 학급 이름을 입력해주세요."); return; }
-    if (classData[newClassName]) { window.showModal("알림", "이미 존재하는 학급입니다."); return; }
-
-    classData[newClassName] = [];
-    groupScores[newClassName] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
-    groupRecords[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-    classStamps[newClassName] = Array(TOTAL_STAMP_CELLS).fill(false);
-    groupPenalties[newClassName] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-
-    window.saveClassVisibility(newClassName, true);
-
-    saveData(); input.value = ""; window.renderClassSelect(); window.selectClass(newClassName);
-    window.showModal("학급 추가 완료", `<b class="text-blue-600">${escapeHTML(newClassName)}</b> 학급이 추가되었습니다.<br>학생 명단을 설정해주세요.`);
-}
-
 function normalizeClassName(name) {
     return name ? name.trim().replace(/\s+/g, '').replace(/[\\/<>\u0000-\u001F]/g, '').slice(0, 30) : name;
 }
 
-window.deleteCurrentClass = function() {
-    if (!currentClass) return;
-    window.showModal("학급 완전 삭제", `<span class="font-bold text-red-500">${escapeHTML(currentClass)}</span> 학급을 목록에서 완전히 삭제하시겠습니까?<br><br><span class="text-xs">※ 모든 학생 명단과 모둠 점수표가 삭제되며 되돌릴 수 없습니다.</span>`, true, () => {
-        removeClassData(currentClass);
-        saveData({ immediate: true }); currentClass = ""; activeTimers = {}; window.selectedGroupStudent = null;
-        document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
-        document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
-        ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
-        window.renderClassSelect(); window.showModal("삭제 완료", "학급이 성공적으로 삭제되었습니다.");
-    }, "삭제");
-}
-
 window.deleteAllClasses = function() {
     window.showModal("전체 학급 삭제", `<span class="font-bold text-red-600">등록된 모든 학급</span>의 데이터를 완전히 삭제하시겠습니까?<br><br><span class="text-red-500 font-bold">이 작업은 되돌릴 수 없으며</span> 모든 명단과 모둠 정보가 영구적으로 삭제됩니다.`, true, () => {
+        Object.keys(classData).forEach(className => localStorage.removeItem(`pinnedGroupMode_${className}`));
+        localStorage.removeItem('classOrder');
+        localStorage.removeItem('classVisibility');
         classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; saveData({ immediate: true }); currentClass = ""; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -1919,55 +1840,70 @@ window.deleteAllClasses = function() {
 }
 
 window.exportAllToExcel = function() {
-    let csvContent = "\uFEFF"; 
-    csvContent += "학급,번호,이름,성별,볼센스,참석상태,개인점수,혼성2모둠,혼성3모둠,혼성4모둠,동성모둠,그룹점수JSON,그룹기록JSON,체육부장,순발력(초),메모,하교지도\n";
-
+    if (!window.XLSX) {
+        window.showModal('엑셀 저장 실패', '엑셀 모듈을 불러오지 못했습니다. 인터넷 연결을 확인한 후 다시 시도해주세요.');
+        return;
+    }
     if (Object.keys(classData).length === 0) {
-        csvContent += ['6-1', 1, '홍길동', '남', 0, '참석', 0, '', '', '', '', '{}', '{}', 'N', 0, '', ''].map(toCSVCell).join(',') + '\n';
-    } else {
-        const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-
-        for (const className of sortedClasses) {
-            const students = [...classData[className]].sort((a, b) => {
-                if (a.no !== b.no) return a.no - b.no; return (a.name || "").localeCompare(b.name || "");
-            });
-
-            if (!groupScores[className]) groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
-            if (!groupRecords[className]) groupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-            if (groupScores[className][1] !== undefined) { groupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: groupScores[className], gender: {1:0, 2:0, 3:0, 4:0} }; }
-
-            const gScoresJSON = JSON.stringify(groupScores[className]);
-            const gRecordsJSON = JSON.stringify(groupRecords[className]);
-
-            students.forEach((s, idx) => {
-                const attendance = s.attendance ? '참석' : '불참';
-                const bs = s.ballSense || '0'; const score = s.score || 0;
-                const g2 = s.group_mixed2 || ''; const g3 = s.group_mixed3 || ''; const g4 = s.group_mixed4 || s.group || ''; const gg = s.group_gender || '';
-                const isCapt = s.captain_mixed4 ? 'Y' : 'N';
-                const recSec = s.recordMs ? (s.recordMs / 1000).toFixed(2) : '';
-                const row = [
-                    className, s.no, s.name, s.gender, bs, attendance, score,
-                    g2, g3, g4, gg,
-                    idx === 0 ? gScoresJSON : '', idx === 0 ? gRecordsJSON : '',
-                    isCapt, recSec, s.memo || '', s.dismissalInfo || ''
-                ];
-                csvContent += row.map(toCSVCell).join(',') + '\n';
-            });
-        }
+        window.showModal('저장할 자료 없음', '먼저 학급과 학생 명단을 등록해주세요.');
+        return;
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-    const today = new Date(); const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-    link.download = `스마트학급관리_백업_${dateStr}.csv`;
-    link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-}
+    const displayRows = [['학급', '번호', '이름', '성별', '출석', '볼센스', '개인점수', '순발력(초)', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '메모']];
+    const backupRows = [['학급', '번호', '이름', '성별', '볼센스', '참석상태', '개인점수', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '그룹점수JSON', '그룹기록JSON', '혼성2부장', '혼성3부장', '혼성4부장', '동성부장', '순발력(초)', '메모', '벌점카드', '그룹벌점JSON', '도장JSON']];
+    const sortedClasses = Object.keys(classData).sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
 
-function toCSVCell(value) {
-    let text = String(value ?? '');
-    // Excel에서 수식으로 해석될 수 있는 셀을 일반 텍스트로 고정합니다.
-    if (/^[=+\-@]/.test(text)) text = `'${text}`;
-    return `"${text.replace(/"/g, '""')}"`;
+    for (const className of sortedClasses) {
+        const students = [...(classData[className] || [])].sort((a, b) => a.no - b.no || (a.name || '').localeCompare(b.name || '', 'ko'));
+        const classScores = groupScores[className] || { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
+        const classRecords = groupRecords[className] || { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+        const classPenalties = groupPenalties[className] || { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
+        const classStampData = classStamps[className] || Array(TOTAL_STAMP_CELLS).fill(false);
+        const rowsToWrite = students.length > 0 ? students : [null];
+
+        rowsToWrite.forEach((student, index) => {
+            if (student) {
+                displayRows.push([
+                    className, student.no, student.name, student.gender, student.attendance ? '출석' : '불참',
+                    student.ballSense === '2' ? '상' : (student.ballSense === '1' ? '중' : '하'), student.score || 0,
+                    student.recordMs ? Number((student.recordMs / 1000).toFixed(2)) : '', student.group_mixed2 || '',
+                    student.group_mixed3 || '', student.group_mixed4 || '', student.group_gender || '', student.memo || ''
+                ]);
+            }
+
+            backupRows.push([
+                className, student?.no || '', student?.name || '', student?.gender || '', student?.ballSense || '0',
+                student ? (student.attendance ? '참석' : '불참') : '', student?.score || 0, student?.group_mixed2 || '',
+                student?.group_mixed3 || '', student?.group_mixed4 || '', student?.group_gender || '',
+                index === 0 ? JSON.stringify(classScores) : '', index === 0 ? JSON.stringify(classRecords) : '',
+                student?.captain_mixed2 ? 'Y' : 'N', student?.captain_mixed3 ? 'Y' : 'N', student?.captain_mixed4 ? 'Y' : 'N', student?.captain_gender ? 'Y' : 'N',
+                student?.recordMs ? Number((student.recordMs / 1000).toFixed(2)) : '', student?.memo || '', student?.penaltyCard || 0,
+                index === 0 ? JSON.stringify(classPenalties) : '', index === 0 ? JSON.stringify(classStampData) : ''
+            ]);
+        });
+    }
+
+    const workbook = window.XLSX.utils.book_new();
+    const displaySheet = window.XLSX.utils.aoa_to_sheet(displayRows);
+    displaySheet['!cols'] = [12, 7, 13, 7, 8, 9, 10, 12, 12, 12, 12, 12, 28].map(width => ({ wch: width }));
+    displaySheet['!autofilter'] = { ref: displaySheet['!ref'] };
+    const backupSheet = window.XLSX.utils.aoa_to_sheet(backupRows);
+    backupSheet['!cols'] = backupRows[0].map((_, index) => ({ wch: index < 11 ? 12 : 20 }));
+    const stampChunks = globalStampImage ? globalStampImage.match(/[\s\S]{1,30000}/g) || [] : [];
+    const jumpRopeChunks = JSON.stringify(jumpRopeData).match(/[\s\S]{1,30000}/g) || [];
+    const settingsSheet = window.XLSX.utils.aoa_to_sheet([
+        ['항목', '값'],
+        ...stampChunks.map((chunk, index) => [`스탬프이미지_${String(index + 1).padStart(4, '0')}`, chunk]),
+        ...jumpRopeChunks.map((chunk, index) => [`줄넘기JSON_${String(index + 1).padStart(4, '0')}`, chunk])
+    ]);
+    window.XLSX.utils.book_append_sheet(workbook, displaySheet, '학생명단');
+    window.XLSX.utils.book_append_sheet(workbook, backupSheet, '백업데이터');
+    window.XLSX.utils.book_append_sheet(workbook, settingsSheet, '앱설정');
+    workbook.Workbook = { Sheets: [{ name: '학생명단', Hidden: 0 }, { name: '백업데이터', Hidden: 1 }, { name: '앱설정', Hidden: 1 }] };
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    window.XLSX.writeFile(workbook, `스마트체육_전체백업_${dateStr}.xlsx`, { compression: true });
 }
 
 function parseCSVLine(line) {
@@ -1983,31 +1919,41 @@ function parseCSVLine(line) {
 
 window.handleAllCSVUpload = function(event) {
     const file = event.target.files[0]; if (!file) return;
-    
-    const processCSV = function(text) {
+
+    const resetFileInput = () => { event.target.value = ''; };
+    const readJSON = (value, fallback) => {
+        if (!value) return fallback;
+        try { return JSON.parse(value.trim()); } catch (error) { return fallback; }
+    };
+
+    const processCSV = function(text, restoredSettings = {}) {
         text = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
         const lines = text.split('\n').filter(l => l.trim() !== '');
-        if (lines.length < 2) { window.showModal("오류", "파일 형식이 올바르지 않거나 데이터가 없습니다."); event.target.value = ''; return; }
+        if (lines.length < 2) { window.showModal("오류", "파일 형식이 올바르지 않거나 데이터가 없습니다."); resetFileInput(); return; }
 
         const header = parseCSVLine(lines[0]);
-        if (!header[0].includes('학급')) { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); event.target.value = ''; return; }
+        if (!header[0].includes('학급')) { window.showModal("오류", "전체 데이터 백업 파일이 아닙니다."); resetFileInput(); return; }
 
         window.showModal("전체 엑셀 불러오기", `파일 내용으로 모든 학급의 명단을 덮어쓰시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 앱에 저장된 모든 데이터가 교체됩니다.</span>`, true, async () => {
             const newData = {}; const newGroupScores = {}; const newGroupRecords = {}; const newGroupPenalties = {};
-            let idxG2 = header.indexOf('혼성2모둠'); let idxG3 = header.indexOf('혼성3모둠'); let idxG4 = header.indexOf('혼성4모둠'); let idxGG = header.indexOf('동성모둠');
-            let idxScores = header.indexOf('그룹점수JSON'); let idxRecords = header.indexOf('그룹기록JSON'); let idxCaptain = header.indexOf('체육부장'); 
+            const newClassStamps = {};
+            const idxG2 = header.indexOf('혼성2모둠'); const idxG3 = header.indexOf('혼성3모둠'); const idxG4 = header.indexOf('혼성4모둠'); const idxGG = header.indexOf('동성모둠');
+            const idxScores = header.indexOf('그룹점수JSON'); const idxRecords = header.indexOf('그룹기록JSON'); const idxLegacyCaptain = header.indexOf('체육부장');
+            const idxCaptain2 = header.indexOf('혼성2부장'); const idxCaptain3 = header.indexOf('혼성3부장'); const idxCaptain4 = header.indexOf('혼성4부장'); const idxCaptainGender = header.indexOf('동성부장');
+            const idxPenalties = header.indexOf('그룹벌점JSON'); const idxStamps = header.indexOf('도장JSON'); const idxPenaltyCard = header.indexOf('벌점카드');
             
             let idxPersonalRec = header.indexOf('순발력(초)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('달리기(초)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('순발력(개인기록)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('개인기록');
             
-            let idxBall = header.indexOf('볼센스'); 
-            let idxMemo = header.indexOf('메모');
-            let idxDismissal = header.indexOf('하교지도');
+            const idxBall = header.indexOf('볼센스'); 
+            const idxMemo = header.indexOf('메모');
+            const attIdx = header.indexOf('참석상태');
+            const scoreIdx = header.indexOf('개인점수');
 
             for (let i = 1; i < lines.length; i++) {
-                const parts = parseCSVLine(lines[i]); if (parts.length < 5) continue;
+                const parts = parseCSVLine(lines[i]); if (parts.length < 1) continue;
 
                 let className = parts[0].trim();
                 if (className.startsWith('="') && className.endsWith('"')) className = className.slice(2, -1);
@@ -2019,49 +1965,60 @@ window.handleAllCSVUpload = function(event) {
                     newData[className] = [];
                     newGroupScores[className] = { mixed2: {1:0, 2:0}, mixed3: {1:0, 2:0, 3:0}, mixed4: {1:0, 2:0, 3:0, 4:0}, gender: {1:0, 2:0, 3:0, 4:0} };
                     newGroupRecords[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-                    newGroupPenalties[className] = { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} };
-                    if (!classStamps[className]) classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false);
+                    newGroupPenalties[className] = idxPenalties >= 0 ? { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} } : (groupPenalties[className] || { mixed2: {}, mixed3: {}, mixed4: {}, gender: {} });
+                    newClassStamps[className] = idxStamps >= 0 ? Array(TOTAL_STAMP_CELLS).fill(false) : (classStamps[className] || Array(TOTAL_STAMP_CELLS).fill(false));
                 }
 
-                const no = parseInt(parts[1].trim()); const name = parts[2].trim(); const gender = parts[3].trim();
-                let bs = '0'; let attendance = true, score = 0, isCaptain = false, recMs = 0;
+                if (idxScores > -1 && parts[idxScores]) newGroupScores[className] = readJSON(parts[idxScores], newGroupScores[className]);
+                if (idxRecords > -1 && parts[idxRecords]) newGroupRecords[className] = readJSON(parts[idxRecords], newGroupRecords[className]);
+                if (idxPenalties > -1 && parts[idxPenalties]) newGroupPenalties[className] = readJSON(parts[idxPenalties], newGroupPenalties[className]);
+                if (idxStamps > -1 && parts[idxStamps]) newClassStamps[className] = readJSON(parts[idxStamps], newClassStamps[className]);
+
+                const no = Number.parseInt(parts[1]?.trim(), 10); const name = parts[2]?.trim(); const gender = parts[3]?.trim();
+                if (!Number.isInteger(no) || !name) continue;
+
+                let bs = '0'; let attendance = true, score = 0, recMs = 0;
                 let g2 = null, g3 = null, g4 = null, gg = null;
-                let memo = "", dismissalInfo = "";
+                let memo = "";
 
                 if (idxBall > -1 && parts[idxBall]) {
-                    let rawBs = parts[idxBall].trim();
-                    if (rawBs === '3' || rawBs === '상') bs = '2';
-                    else if (rawBs === '2' || rawBs === '중') bs = '1';
+                    const rawBs = parts[idxBall].trim();
+                    if (rawBs === '3' || rawBs === '2' || rawBs === '상') bs = '2';
+                    else if (rawBs === '1' || rawBs === '중') bs = '1';
                     else bs = '0';
                 }
 
-                let attIdx = header.indexOf('참석상태');
                 if(attIdx > -1 && parts[attIdx]) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
-                let scoreIdx = header.indexOf('개인점수');
-                if(scoreIdx > -1 && parts[scoreIdx]) score = parseInt(parts[scoreIdx].trim()) || 0;
+                if(scoreIdx > -1 && parts[scoreIdx]) score = Number.parseInt(parts[scoreIdx].trim(), 10) || 0;
 
-                if (idxG2 > -1 && parts[idxG2]) g2 = parseInt(parts[idxG2].trim()) || null;
-                if (idxG3 > -1 && parts[idxG3]) g3 = parseInt(parts[idxG3].trim()) || null;
-                if (idxG4 > -1 && parts[idxG4]) g4 = parseInt(parts[idxG4].trim()) || null;
-                if (idxGG > -1 && parts[idxGG]) gg = parseInt(parts[idxGG].trim()) || null;
-                if (idxCaptain > -1 && parts[idxCaptain]) isCaptain = (parts[idxCaptain].trim() === 'Y');
+                if (idxG2 > -1 && parts[idxG2]) g2 = Number.parseInt(parts[idxG2].trim(), 10) || null;
+                if (idxG3 > -1 && parts[idxG3]) g3 = Number.parseInt(parts[idxG3].trim(), 10) || null;
+                if (idxG4 > -1 && parts[idxG4]) g4 = Number.parseInt(parts[idxG4].trim(), 10) || null;
+                if (idxGG > -1 && parts[idxGG]) gg = Number.parseInt(parts[idxGG].trim(), 10) || null;
 
                 if (idxPersonalRec > -1 && parts[idxPersonalRec]) {
-                    const parsed = parseFloat(parts[idxPersonalRec].trim());
-                    if(!isNaN(parsed)) recMs = Math.floor(parsed * 1000);
+                    const parsed = Number.parseFloat(parts[idxPersonalRec].trim());
+                    if(Number.isFinite(parsed)) recMs = Math.max(0, Math.round(parsed * 1000));
                 }
 
                 if (idxMemo > -1 && parts[idxMemo]) memo = parts[idxMemo].trim();
-                if (idxDismissal > -1 && parts[idxDismissal]) dismissalInfo = parts[idxDismissal].trim();
+                const isYes = index => index > -1 && parts[index]?.trim() === 'Y';
+                const legacyCaptain = isYes(idxLegacyCaptain);
+                const penaltyCard = idxPenaltyCard > -1 ? Math.min(2, Math.max(0, Number.parseInt(parts[idxPenaltyCard], 10) || 0)) : 0;
 
-                if (idxScores > -1 && parts[idxScores]) { try { newGroupScores[className] = JSON.parse(parts[idxScores].trim()); } catch(e){} }
-                if (idxRecords > -1 && parts[idxRecords]) { try { newGroupRecords[className] = JSON.parse(parts[idxRecords].trim()); } catch(e){} }
-
-                newData[className].push({ no: no || (newData[className].length + 1), name: name, gender: gender, ballSense: bs, attendance: attendance, score: score, recordMs: recMs, memo: memo, dismissalInfo: dismissalInfo, drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, captain_mixed4: isCaptain, captain_gender: false, group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg, penaltyCard: 0, selected: false });
+                newData[className].push({
+                    ...createStudentRecord(no, name, gender || '-'), ballSense: bs, attendance, score, recordMs, memo,
+                    captain_mixed2: isYes(idxCaptain2), captain_mixed3: isYes(idxCaptain3), captain_mixed4: isYes(idxCaptain4) || legacyCaptain,
+                    captain_gender: isYes(idxCaptainGender), group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg, penaltyCard
+                });
             }
 
             if (Object.keys(newData).length > 0) {
                 classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords; groupPenalties = newGroupPenalties;
+                classStamps = newClassStamps;
+                if (restoredSettings.jumpRopeData) jumpRopeData = restoredSettings.jumpRopeData;
+                if (restoredSettings.stampImage) globalStampImage = restoredSettings.stampImage;
+                migrateData();
                 activeTimers = {}; window.selectedGroupStudent = null;
                 window.renderClassSelect();
                 if (currentClass && !classData[currentClass]) {
@@ -2070,24 +2027,51 @@ window.handleAllCSVUpload = function(event) {
                     ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 }
 
-                if (userId && db) {
-                    isDebouncing = true;
-                    try {
-                        const docRef = doc(db, 'artifacts', 'running-measurement-app', 'sharedRooms', 'dongsan-school-db');
-                        await setDoc(docRef, { data: classData, scores: groupScores, records: groupRecords, stamps: classStamps, stampImage: globalStampImage, penalties: groupPenalties, jumpRope: jumpRopeData });
-                    } catch (error) { 
-                        console.error("즉시 저장 실패:", error); 
-                        window.showModal("저장 실패", "네트워크 또는 용량 문제로 클라우드 저장에 실패했습니다.");
-                    } 
-                    finally { isDebouncing = false; }
-                }
+                saveData({ immediate: true });
 
                 if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
                 window.showModal("완료", "모든 학급의 데이터를 성공적으로 복구했습니다.");
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
-            document.getElementById('csv-all-file-input').value = ''; 
+            resetFileInput();
         }, "전체 복구하기");
     };
+
+    if (/\.xlsx$/i.test(file.name)) {
+        if (!window.XLSX) { window.showModal('오류', '엑셀 모듈을 불러오지 못했습니다.'); resetFileInput(); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const workbook = window.XLSX.read(e.target.result, { type: 'array' });
+                const backupSheet = workbook.Sheets['백업데이터'];
+                if (!backupSheet) throw new Error('백업데이터 시트를 찾을 수 없습니다.');
+                const settingsSheet = workbook.Sheets['앱설정'];
+                let stampImage = '';
+                let restoredJumpRopeData = null;
+                if (settingsSheet) {
+                    const settingsRows = window.XLSX.utils.sheet_to_json(settingsSheet, { header: 1, defval: '' });
+                    const settingsDataRows = settingsRows.slice(1);
+                    stampImage = settingsDataRows
+                        .filter(row => String(row[0]).startsWith('스탬프이미지_'))
+                        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                        .map(row => String(row[1]))
+                        .join('');
+                    const jumpRopeJSON = settingsDataRows
+                        .filter(row => String(row[0]).startsWith('줄넘기JSON_'))
+                        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                        .map(row => String(row[1]))
+                        .join('');
+                    if (jumpRopeJSON) restoredJumpRopeData = JSON.parse(jumpRopeJSON);
+                }
+                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData });
+            } catch (error) {
+                console.error('엑셀 백업 읽기 실패:', error);
+                window.showModal('불러오기 실패', escapeHTML(error.message || '엑셀 파일을 읽을 수 없습니다.'));
+                resetFileInput();
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+    }
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -2171,7 +2155,17 @@ window.deleteStudent = function(studentNo) {
 
 window.toggleAttendance = function(studentNo) {
     const student = classData[currentClass].find(s => s.no == studentNo);
-    if (student) { student.attendance = !student.attendance; saveData(); window.renderStudentList(); window.renderGroups(); }
+    if (student) {
+        student.attendance = !student.attendance;
+        if (!student.attendance) {
+            student.selected = false;
+            student.drawn = false;
+            student.groupMemberDrawn = false;
+            ['mixed2', 'mixed3', 'mixed4', 'gender'].forEach(mode => { student[`captain_${mode}`] = false; });
+        }
+        normalizeGroupCaptains(currentGroupMode);
+        saveData(); window.renderStudentList(); window.renderGroups();
+    }
 }
 
 window.toggleCaptain = function(studentNo) {
@@ -2224,6 +2218,7 @@ window.cycleStudentGroup = function(studentNo) {
         const cycle = getGroupsCycle(); let currentVal = student[`group_${currentGroupMode}`];
         let currentIdx = cycle.indexOf(currentVal); if (currentIdx === -1) currentIdx = 0;
         const nextIdx = (currentIdx + 1) % cycle.length; student[`group_${currentGroupMode}`] = cycle[nextIdx];
+        normalizeGroupCaptains(currentGroupMode);
         saveData(); window.renderStudentList(); window.renderGroups();
     }
 }
@@ -2282,19 +2277,6 @@ window.renderStudentList = function() {
 
     if (typeof updateSortIcons === 'function') updateSortIcons();
 
-    const isRegular = isRegularClass(currentClass);
-    const dismissalHeader = document.getElementById('dismissal-header-placeholder');
-    if (dismissalHeader) {
-        if (!isRegular) {
-            dismissalHeader.classList.remove('hidden');
-            dismissalHeader.innerText = "하교지도";
-            dismissalHeader.className = "bg-slate-50 border-b border-slate-200 px-1 py-1.5 sm:p-2 text-center text-slate-500 font-semibold whitespace-nowrap text-[9px] sm:text-xs w-16 sm:w-24";
-        } else {
-            dismissalHeader.classList.add('hidden');
-            dismissalHeader.className = "hidden";
-        }
-    }
-
     allStudents.forEach((s) => {
         let rowBgClass = "hover:bg-slate-50"; const sGroup = s[`group_${currentGroupMode}`];
 
@@ -2332,15 +2314,6 @@ window.renderStudentList = function() {
 
         const drawnBadge = s.drawn ? '<span class="text-[9px] bg-purple-500 text-white px-1 py-0.5 rounded ml-1 font-bold align-middle">뽑힘</span>' : '';
 
-        let dismissalCell = '';
-        if (!isRegular) {
-            dismissalCell = `
-                <td class="px-0.5 py-1 sm:p-2 text-center">
-                    <input type="text" value="${escapeHTML(s.dismissalInfo || '')}" onblur="window.updateDismissal(${s.no}, this.value)" placeholder="하교입력" class="w-full min-w-[50px] text-[10px] sm:text-xs border border-slate-200 rounded p-1 focus:outline-blue-500 bg-white" ${!s.attendance ? 'disabled' : ''}>
-                </td>
-            `;
-        }
-
         const memoHighlight = s.memo ? 'bg-yellow-300 rounded-full ring-2 ring-yellow-400 shadow-sm text-blue-800 transform scale-110' : 'text-slate-300 hover:text-blue-400';
 
         tr.innerHTML = `
@@ -2359,8 +2332,6 @@ window.renderStudentList = function() {
                 </div>
             </td>
             
-            ${dismissalCell}
-
             <td class="px-0 py-1 sm:p-2 text-center w-5 sm:w-8">
                 <div class="flex flex-col items-center justify-center leading-none mt-1">
                         <span class="text-[9px] sm:text-[11px] font-bold px-1 py-0.5 rounded ${s.gender === '남' ? (s.attendance ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400') : (s.attendance ? 'bg-pink-100 text-pink-600' : 'bg-slate-100 text-slate-400')}">${escapeHTML(s.gender)}</span>
@@ -2398,6 +2369,7 @@ window.renderStudentList = function() {
 
 window.setGroupMode = function(mode, isInit = false) {
     if (!currentClass) return;
+    if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode)) mode = 'mixed4';
     
     let pinnedKey = `pinnedGroupMode_${currentClass}`;
     
@@ -2462,6 +2434,21 @@ window.resetCurrentGroup = function() {
 }
 
 window.generateCurrentGroup = function() {
+    if (!currentClass || !classData[currentClass]) { window.showModal('알림', '학급을 먼저 선택해주세요.'); return; }
+    const presentStudents = classData[currentClass].filter(student => student.attendance);
+    const requiredCount = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
+    if (currentGroupMode !== 'gender' && presentStudents.length < requiredCount) {
+        window.showModal('출석 인원 부족', `현재 출석 학생이 ${presentStudents.length}명입니다. 이 편성에는 최소 ${requiredCount}명이 필요합니다.`);
+        return;
+    }
+    if (currentGroupMode === 'gender') {
+        const boys = presentStudents.filter(student => student.gender === '남').length;
+        const girls = presentStudents.filter(student => student.gender === '여').length;
+        if (boys < 2 || girls < 2) {
+            window.showModal('출석 인원 부족', `동성 4팀은 출석한 남학생과 여학생이 각각 2명 이상 필요합니다.<br>현재 남 ${boys}명 · 여 ${girls}명`);
+            return;
+        }
+    }
     window.selectedGroupStudent = null;
     let title = "", callback = null;
     if (currentGroupMode === 'mixed2') { title = "혼성 2팀 편성"; callback = () => window.generateMixedGroups(2); }
@@ -2514,12 +2501,35 @@ window.updateGroupRecord = function(groupId, value) {
     saveData();
 }
 
+function shuffleCopy(items) {
+    const shuffled = [...items];
+    for (let index = shuffled.length - 1; index > 0; index--) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+    }
+    return shuffled;
+}
+
+function normalizeGroupCaptains(mode) {
+    if (!currentClass || !classData[currentClass]) return;
+    const occupiedGroups = new Set();
+    [...classData[currentClass]].sort((a, b) => a.no - b.no).forEach(student => {
+        const groupId = student[`group_${mode}`];
+        const captainKey = `captain_${mode}`;
+        if (!student.attendance || !groupId) {
+            student[captainKey] = false;
+        } else if (student[captainKey]) {
+            if (occupiedGroups.has(groupId)) student[captainKey] = false;
+            else occupiedGroups.add(groupId);
+        }
+    });
+}
+
 window.generateMixedGroups = function(numGroups) {
     const students = classData[currentClass];
-    if (!students || students.length < numGroups) { window.showModal("인원 부족", `학생 정보가 부족합니다. 최소 ${numGroups}명 이상 등록되어야 합니다.`); return; }
-
-    const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
-    const presentStudents = students.filter(s => s.attendance); shuffle(presentStudents);
+    if (!students) return;
+    const presentStudents = shuffleCopy(students.filter(s => s.attendance));
+    if (presentStudents.length < numGroups) { window.showModal("출석 인원 부족", `현재 출석 학생이 ${presentStudents.length}명입니다. ${numGroups}팀 편성에는 최소 ${numGroups}명이 필요합니다.`); return; }
     students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
     const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
@@ -2564,10 +2574,14 @@ window.generateMixedGroups = function(numGroups) {
 
 window.generateGenderGroups = function() {
     const students = classData[currentClass];
-    if (!students || students.length < 4) { window.showModal("인원 부족", "학생 정보가 부족합니다. 최소 4명 이상 등록되어야 합니다."); return; }
-
-    const shuffle = (array) => { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; };
-    const presentStudents = students.filter(s => s.attendance); shuffle(presentStudents);
+    if (!students) return;
+    const presentStudents = shuffleCopy(students.filter(s => s.attendance));
+    const presentBoys = presentStudents.filter(s => s.gender === '남').length;
+    const presentGirls = presentStudents.filter(s => s.gender === '여').length;
+    if (presentBoys < 2 || presentGirls < 2) {
+        window.showModal("출석 인원 부족", `동성 4팀은 출석한 남학생과 여학생이 각각 2명 이상 필요합니다.<br>현재 남 ${presentBoys}명 · 여 ${presentGirls}명`);
+        return;
+    }
     students.forEach(s => s.group_gender = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
@@ -2674,9 +2688,8 @@ window.drawFromClass = function() {
         else if (targetGirls > girls.length) { targetGirls = girls.length; targetBoys = finalCount - targetGirls; }
     }
 
-    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-    const pickedBoys = shuffle(boys).slice(0, targetBoys);
-    const pickedGirls = shuffle(girls).slice(0, targetGirls);
+    const pickedBoys = shuffleCopy(boys).slice(0, targetBoys);
+    const pickedGirls = shuffleCopy(girls).slice(0, targetGirls);
     const totalPicked = [...pickedBoys, ...pickedGirls];
 
     totalPicked.forEach(p => {
@@ -2711,7 +2724,7 @@ window.drawFromEachGroup = function() {
     for (let i = 1; i <= maxGroups; i++) {
         const groupPresentStudents = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance);
         if (groupPresentStudents.length > 0) {
-            const shuffled = [...groupPresentStudents].sort(() => Math.random() - 0.5);
+            const shuffled = shuffleCopy(groupPresentStudents);
             const chosen = shuffled.slice(0, Math.min(perGroupCount, groupPresentStudents.length));
             chosen.forEach(p => {
                 p.groupMemberDrawn = true;
@@ -3038,51 +3051,99 @@ window.renderGroups = function() {
 }
 
 // 엑셀 명단 파싱 및 등록 기능
+function createStudentRecord(no, name, gender) {
+    return {
+        no, name, gender, ballSense: '0', attendance: true, score: 0, recordMs: 0,
+        memo: '', drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false,
+        captain_mixed4: false, captain_gender: false, group_mixed2: null, group_mixed3: null,
+        group_mixed4: null, group_gender: null, penaltyCard: 0, selected: false
+    };
+}
+
+function parseRosterLine(line) {
+    const columns = line.includes('\t') ? line.split('\t').map(value => value.trim()) : line.trim().split(/\s+/);
+    if (columns.length < 2) return null;
+
+    const hasSchoolRosterColumns = columns.length >= 5
+        && /^\d+$/.test(columns[0])
+        && /^\d+$/.test(columns[1])
+        && /^\d+$/.test(columns[2]);
+
+    const offset = hasSchoolRosterColumns ? 2 : 0;
+    const no = Number.parseInt(columns[offset], 10);
+    const name = columns[offset + 1]?.trim();
+    const rawGender = columns[offset + 2]?.trim() || '-';
+    const gender = rawGender === '남자' ? '남' : (rawGender === '여자' ? '여' : rawGender);
+
+    if (!Number.isInteger(no) || no <= 0 || !name || !['남', '여', '-'].includes(gender)) return null;
+
+    let ballSense;
+    const rawBallSense = columns[offset + 3];
+    if (rawBallSense !== undefined) {
+        ballSense = (rawBallSense === '2' || rawBallSense === '상') ? '2' : ((rawBallSense === '1' || rawBallSense === '중') ? '1' : '0');
+    }
+
+    const recordSeconds = Number.parseFloat(columns[offset + 4]);
+    const group = Number.parseInt(columns[offset + 5], 10);
+
+    return {
+        sourceClass: hasSchoolRosterColumns ? normalizeClassName(`${Number.parseInt(columns[0], 10)}-${Number.parseInt(columns[1], 10)}`) : null,
+        no,
+        name,
+        gender,
+        ballSense,
+        recordMs: Number.isFinite(recordSeconds) ? Math.max(0, Math.round(recordSeconds * 1000)) : undefined,
+        group: Number.isInteger(group) && group > 0 ? group : undefined
+    };
+}
+
 window.importFromExcel = function() {
     const input = document.getElementById('excel-input').value.trim();
     if (!input) { window.showModal("알림", "입력된 데이터가 없습니다."); return; }
-    if (!currentClass) { window.showModal("알림", "먼저 학급을 선택하거나 생성해주세요."); return; }
+    if (!currentClass || !classData[currentClass]) { window.showModal("알림", "첫 화면에서 학급을 먼저 선택해주세요."); return; }
 
-    const lines = input.split('\n'); let addedCount = 0; let currentStudents = classData[currentClass] || [];
+    const lines = input.split(/\r?\n/).filter(line => line.trim());
+    let importedCount = 0;
+    let invalidCount = 0;
+    const mismatchedClasses = new Set();
+    const currentStudents = [...classData[currentClass]];
 
-    lines.forEach(line => {
-        const parts = line.trim().split(/\s+/);
-        if (parts.length >= 2) {
-            const no = parseInt(parts[0]); const name = parts[1];
-            let gender = parts.length > 2 ? parts[2] : '-';
-            let ballSense = '0'; let recordMs = 0; let group = null;
-
-            if (parts.length > 3) {
-                let bs = parts[3];
-                if(bs === '2' || bs === '상') ballSense = '2';
-                else if(bs === '1' || bs === '중') ballSense = '1';
-            }
-            if (parts.length > 4) {
-                const parsedRec = parseFloat(parts[4]);
-                if(!isNaN(parsedRec)) recordMs = Math.floor(parsedRec * 1000);
-            }
-            if (parts.length > 5) group = parseInt(parts[5]) || null;
-
-            if (!isNaN(no) && name) {
-                const existingIdx = currentStudents.findIndex(s => s.no === no);
-                const newStudent = { 
-                    no: no, name: name, gender: gender, ballSense: ballSense, attendance: true, score: 0, recordMs: recordMs, 
-                    memo: "", dismissalInfo: "", drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false, 
-                    captain_mixed4: false, captain_gender: false, group_mixed2: group, group_mixed3: group, group_mixed4: group, 
-                    group_gender: group, penaltyCard: 0, selected: false 
-                };
-
-                if (existingIdx > -1) currentStudents[existingIdx] = newStudent;
-                else currentStudents.push(newStudent);
-                addedCount++;
-            }
+    for (const line of lines) {
+        const parsed = parseRosterLine(line);
+        if (!parsed) {
+            invalidCount++;
+            continue;
         }
-    });
+        if (parsed.sourceClass && parsed.sourceClass !== normalizeClassName(currentClass)) {
+            mismatchedClasses.add(parsed.sourceClass);
+            continue;
+        }
 
-    if (addedCount > 0) {
-        classData[currentClass] = currentStudents; saveData(); window.renderStudentList();
+        const existingIndex = currentStudents.findIndex(student => student.no === parsed.no);
+        const student = existingIndex >= 0
+            ? { ...currentStudents[existingIndex], no: parsed.no, name: parsed.name, gender: parsed.gender }
+            : createStudentRecord(parsed.no, parsed.name, parsed.gender);
+
+        if (parsed.ballSense !== undefined) student.ballSense = parsed.ballSense;
+        if (parsed.recordMs !== undefined) student.recordMs = parsed.recordMs;
+        if (parsed.group !== undefined) student[`group_${currentGroupMode}`] = parsed.group;
+
+        if (existingIndex >= 0) currentStudents[existingIndex] = student;
+        else currentStudents.push(student);
+        importedCount++;
+    }
+
+    if (importedCount > 0) {
+        currentStudents.sort((a, b) => a.no - b.no || a.name.localeCompare(b.name, 'ko'));
+        classData[currentClass] = currentStudents; saveData(); window.renderStudentList(); window.renderGroups();
         document.getElementById('excel-input').value = "";
-        window.showModal("등록 완료", `${addedCount}명의 학생이 성공적으로 등록되었습니다.`);
+        const skippedMessage = mismatchedClasses.size > 0
+            ? `<br><span class="text-amber-600">다른 학급(${[...mismatchedClasses].map(escapeHTML).join(', ')}) 자료는 건너뛰었습니다.</span>`
+            : (invalidCount > 0 ? `<br><span class="text-amber-600">형식을 확인할 수 없는 ${invalidCount}줄은 건너뛰었습니다.</span>` : '');
+        window.showModal("명단 등록 완료", `${importedCount}명의 학생을 현재 학급에 등록했습니다.${skippedMessage}`);
+    } else {
+        const detail = mismatchedClasses.size > 0 ? '붙여넣은 자료의 학년·반과 현재 선택한 학급이 다릅니다.' : '학년·반·번호·이름·성별 열을 확인해주세요.';
+        window.showModal("등록할 학생 없음", detail);
     }
 }
 
