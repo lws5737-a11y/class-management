@@ -24,13 +24,19 @@ provider.setCustomParameters({
 });
 export const db = getFirestore(app);
 
-// [추가된 기능] 오프라인 자동저장(지속성) 활성화
-enableMultiTabIndexedDbPersistence(db)
+// 오프라인 저장 준비 결과를 앱 화면에서도 확인할 수 있도록 내보냅니다.
+export const firestorePersistenceState = { enabled: false, error: null };
+export const firestorePersistenceReady = enableMultiTabIndexedDbPersistence(db)
+  .then(() => {
+    firestorePersistenceState.enabled = true;
+    return true;
+  })
   .catch((err) => {
+    firestorePersistenceState.error = err;
     if (err.code == 'failed-precondition') {
       console.warn("여러 탭이 열려 있어 오프라인 모드를 한 탭에서만 활성화할 수 있습니다.");
     } else if (err.code == 'unimplemented') {
       console.warn("현재 브라우저가 오프라인 데이터 지속성을 지원하지 않습니다.");
     }
+    return false;
   });
-

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
+const firebaseConfig = await readFile(new URL('../firebase-config.js', import.meta.url), 'utf8');
 
 const allowedEmail = 'lws5737@seoul-dongsan.es.kr';
 assert.ok(app.includes(`const ALLOWED_EMAIL = '${allowedEmail}'`), '클라이언트 허용 계정 검사가 없습니다.');
@@ -36,6 +37,13 @@ assert.ok(html.includes('<span class="block">번호</span>') && html.includes('(
 assert.ok(html.includes('oninput="window.saveMemoImmediately()"') && !html.includes('onclick="window.saveMemo()"'), '메모 자동 저장 UI가 적용되지 않았습니다.');
 assert.ok(app.includes('window.dragOverUnassigned') && app.includes("closest?.('#unassigned-area')"), '미편성 드롭 중 자동 스크롤 방지 처리가 없습니다.');
 assert.ok(html.includes('href="./style.css"'), '모둠 드롭 영역 보완 스타일이 연결되지 않았습니다.');
+assert.ok(firebaseConfig.includes('enableMultiTabIndexedDbPersistence') && firebaseConfig.includes('firestorePersistenceReady'), 'Firestore 오프라인 지속 저장 상태를 확인할 수 없습니다.');
+assert.ok(app.includes("const RECOVERY_DB_NAME = 'smart-class-manager-recovery'") && app.includes('persistRecoveryRecord(record)'), '앱 전체 데이터의 IndexedDB 복구본이 없습니다.');
+assert.ok(app.includes('persistEmergencyRecoveryBeforeExit') && app.includes("window.addEventListener('pagehide'"), '종료 직전 긴급 복구 저장이 없습니다.');
+assert.ok(app.includes("window.addEventListener('online'") && app.includes("window.addEventListener('offline'"), '온라인 복귀 자동 동기화 처리가 없습니다.');
+assert.ok(app.includes('includeMetadataChanges: true') && app.includes('docSnap.metadata.hasPendingWrites'), '로컬 대기/서버 완료 상태를 구분하지 않습니다.');
+assert.ok(html.includes('id="sync-status-label"'), '사용자에게 저장 상태를 표시하지 않습니다.');
+assert.ok(app.includes('mergeAppPayloads') && app.includes('archiveConflictRecord'), '여러 기기의 오프라인 변경 충돌을 보관·병합하지 않습니다.');
 
 function extractFunctionSource(source, functionName) {
   const start = source.indexOf(`function ${functionName}`);
@@ -65,6 +73,18 @@ const getNextGroupActionState = new Function(
 assert.deepEqual(getNextGroupActionState([null, null], [null, null]), { type: 'start', index: 0 }, '다중 스톱워치 첫 출발 순서가 잘못되었습니다.');
 assert.deepEqual(getNextGroupActionState([10, 20], [null, null]), { type: 'stop', index: 0 }, '다중 스톱워치 도착 순서가 잘못되었습니다.');
 assert.deepEqual(getNextGroupActionState([10, 20], [30, 40]), { type: 'save', index: -1 }, '다중 스톱워치 저장 단계가 잘못되었습니다.');
+
+const mergeAppPayloads = new Function(
+  `const globalStampImage = 'default'; const getRecoveryDeviceId = () => 'test-device';\n${extractFunctionSource(app, 'cloneAppPayload')}\n${extractFunctionSource(app, 'mergeAppPayloads')}\nreturn mergeAppPayloads;`
+)();
+const mergedOfflinePayload = mergeAppPayloads(
+  { data: { '6-1': [{ no: 1 }], '6-2': [{ no: 2, name: '서버' }] }, jumpRope: { '1월 1주차': { '6-1': { male: 10 } } } },
+  { data: { '6-2': [{ no: 2, name: '기기' }], '6-3': [{ no: 3 }] }, jumpRope: { '1월 1주차': { '6-2': { female: 11 } } } },
+  99
+);
+assert.deepEqual(Object.keys(mergedOfflinePayload.data).sort(), ['6-1', '6-2', '6-3'], '기기 간 병합 시 한쪽 학급이 사라집니다.');
+assert.equal(mergedOfflinePayload.data['6-2'][0].name, '기기', '같은 학급 충돌에서 현재 기기 변경이 보존되지 않습니다.');
+assert.ok(mergedOfflinePayload.jumpRope['1월 1주차']['6-1'] && mergedOfflinePayload.jumpRope['1월 1주차']['6-2'], '줄넘기 자료가 학급별로 병합되지 않습니다.');
 assert.deepEqual(
   parseRosterLine('2 김나은 여'),
   { sourceClass: null, no: 2, name: '김나은', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
