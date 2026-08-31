@@ -250,9 +250,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 타이머 & 스톱워치 -->
                     <div class="bg-slate-800 p-5 rounded-2xl shadow-lg text-center flex flex-col items-center justify-center border-2 border-slate-700 relative">
-                        <button onclick="window.toggleJumpRopeTimerMode()" id="jumprope-mode-icon" class="absolute top-3 left-3 bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold hover:bg-slate-600 transition shadow-inner">⏱️ 스톱워치</button>
-                        
-                        <h4 class="text-slate-400 font-black text-xs mb-3 flex items-center gap-1 mt-4 sm:mt-0">⏱️ 측정 타이머</h4>
+                        <h4 class="text-slate-400 font-black text-xs mb-3 flex items-center gap-1">⏱️ 측정 타이머</h4>
                         <div id="jumprope-timer-display" onclick="window.editJumpRopeTimerTarget()" class="font-mono text-5xl sm:text-6xl font-black text-white tracking-wider mb-5 drop-shadow-md w-full cursor-pointer hover:text-blue-300 transition-colors" title="시간 터치 시 목표 설정">00:00.00</div>
                         <div class="flex gap-2 w-full">
                             <button id="jumprope-timer-btn" onclick="window.toggleJumpRopeTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base">시작</button>
@@ -333,8 +331,8 @@
         </div>
     </div>
 
-    <div id="card-overlay" class="fixed inset-0 z-[500] hidden items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer p-4 sm:p-8" onclick="window.closeCardOverlay()">
-        <img id="card-image" src="" class="w-full h-full object-contain drop-shadow-2xl" alt="Penalty Card">
+    <div id="card-overlay" class="fixed inset-0 z-[500] hidden items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer p-4 sm:p-8" onclick="window.closeCardOverlay()" role="dialog" aria-modal="true" aria-label="학생 경고 알림">
+        <img id="card-image" src="" class="w-full h-full object-contain drop-shadow-2xl" alt="학생 경고 알림">
     </div>
 
     <!-- 관리용 모달들 -->

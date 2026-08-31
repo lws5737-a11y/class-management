@@ -44,6 +44,11 @@ assert.ok(app.includes("window.addEventListener('online'") && app.includes("wind
 assert.ok(app.includes('includeMetadataChanges: true') && app.includes('docSnap.metadata.hasPendingWrites'), '로컬 대기/서버 완료 상태를 구분하지 않습니다.');
 assert.ok(html.includes('id="sync-status-label"'), '사용자에게 저장 상태를 표시하지 않습니다.');
 assert.ok(app.includes('mergeAppPayloads') && app.includes('archiveConflictRecord'), '여러 기기의 오프라인 변경 충돌을 보관·병합하지 않습니다.');
+assert.ok(!html.includes('jumprope-mode-icon') && !app.includes('jumprope-mode-btn'), '8자 줄넘기 스톱워치/타이머 전환 버튼이 남아 있습니다.');
+assert.ok(!app.includes('handleDropOnStudent') && !app.includes('handleDragOverStudent'), '모둠 학생 카드 간 교환용 드롭 처리가 남아 있습니다.');
+assert.ok(app.includes("window.showPenaltyCard('verbal')") && app.includes('% 4'), '입경고를 포함한 3단계 경고 순환이 적용되지 않았습니다.');
+assert.ok(app.includes('createPenaltyCardImage') && app.includes('playPenaltySound'), '입경고 이미지 또는 효과음 처리가 없습니다.');
+assert.ok(app.includes("header.indexOf('경고단계')") && app.includes("header.indexOf('벌점카드')"), '새 경고 백업과 기존 벌점카드 백업의 호환 처리가 없습니다.');
 
 function extractFunctionSource(source, functionName) {
   const start = source.indexOf(`function ${functionName}`);
@@ -61,6 +66,22 @@ function extractFunctionSource(source, functionName) {
 const parseRosterLine = new Function(
   `${extractFunctionSource(app, 'normalizeClassName')}\n${extractFunctionSource(app, 'parseRosterLine')}\nreturn parseRosterLine;`
 )();
+
+const getJumpRopeWeekValue = new Function(
+  `${extractFunctionSource(app, 'getJumpRopeWeekValue')}\nreturn getJumpRopeWeekValue;`
+)();
+assert.equal(getJumpRopeWeekValue(new Date(2026, 8, 1)), '9월 1주차', '월초의 줄넘기 주차 계산이 잘못되었습니다.');
+assert.equal(getJumpRopeWeekValue(new Date(2026, 8, 15)), '9월 3주차', '월중의 줄넘기 주차 계산이 잘못되었습니다.');
+assert.equal(getJumpRopeWeekValue(new Date(2026, 11, 31)), '12월 5주차', '월말의 줄넘기 주차 계산이 잘못되었습니다.');
+
+const normalizePenaltyCardState = new Function(
+  `const PENALTY_CARD_SYSTEM_VERSION = 3;\n${extractFunctionSource(app, 'normalizePenaltyCardState')}\nreturn normalizePenaltyCardState;`
+)();
+const legacyYellow = { penaltyCard: 1 };
+const legacyRed = { penaltyCard: 2 };
+assert.equal(normalizePenaltyCardState(legacyYellow), 2, '기존 옐로카드가 새 체계의 옐로카드로 보존되지 않습니다.');
+assert.equal(normalizePenaltyCardState(legacyRed), 3, '기존 레드카드가 새 체계의 레드카드로 보존되지 않습니다.');
+assert.equal(normalizePenaltyCardState({ penaltyCard: 1, penaltyCardSystem: 3 }), 1, '새 입경고 단계가 유지되지 않습니다.');
 assert.deepEqual(
   parseRosterLine('6\t2\t1\t강루미\t여'),
   { sourceClass: '6-2', no: 1, name: '강루미', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },

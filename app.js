@@ -35,17 +35,63 @@ function initAudio() {
 document.body.addEventListener('click', initAudio, { once: true });
 document.body.addEventListener('touchstart', initAudio, { once: true });
 
+const PENALTY_CARD_SYSTEM_VERSION = 3;
+const PENALTY_CARD_DETAILS = {
+    verbal: { label: '입경고', subtitle: '구두 경고', background: '#f59e0b', foreground: '#451a03', symbol: '!' },
+    yellow: { label: '옐로카드', subtitle: '주의', background: '#fde047', foreground: '#422006', symbol: '!' },
+    red: { label: '레드카드', subtitle: '최종 경고', background: '#ef4444', foreground: '#ffffff', symbol: '!' }
+};
+
+function createPenaltyCardImage(type) {
+    const detail = PENALTY_CARD_DETAILS[type] || PENALTY_CARD_DETAILS.verbal;
+    const isVerbal = type === 'verbal';
+    const shape = isVerbal
+        ? `<path d="M115 105h370a55 55 0 0 1 55 55v210a55 55 0 0 1-55 55H300l-88 78 22-78H115a55 55 0 0 1-55-55V160a55 55 0 0 1 55-55Z" fill="${detail.background}"/>`
+        : `<rect x="105" y="55" width="390" height="490" rx="34" fill="${detail.background}" transform="rotate(-5 300 300)"/>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+        <rect width="600" height="600" rx="56" fill="#0f172a" fill-opacity=".28"/>
+        ${shape}
+        <circle cx="300" cy="235" r="68" fill="${detail.foreground}" fill-opacity=".16"/>
+        <text x="300" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="112" font-weight="900" fill="${detail.foreground}">${detail.symbol}</text>
+        <text x="300" y="365" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="900" fill="${detail.foreground}">${detail.label}</text>
+        <text x="300" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="${detail.foreground}" fill-opacity=".82">${detail.subtitle}</text>
+    </svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function playPenaltySound(type) {
+    try {
+        const ctx = initAudio();
+        const patterns = type === 'verbal'
+            ? [[0, 660, 0.11], [0.16, 820, 0.13]]
+            : (type === 'yellow' ? [[0, 980, 0.18], [0.22, 1180, 0.2]] : [[0, 420, 0.2], [0.24, 350, 0.24], [0.52, 280, 0.32]]);
+        patterns.forEach(([delay, frequency, duration]) => {
+            const start = ctx.currentTime + delay;
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            oscillator.type = type === 'verbal' ? 'sine' : 'square';
+            oscillator.frequency.setValueAtTime(frequency, start);
+            if (type !== 'verbal') oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.82, start + duration);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(type === 'verbal' ? 0.13 : 0.2, start + 0.018);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            oscillator.connect(gain).connect(ctx.destination);
+            oscillator.start(start);
+            oscillator.stop(start + duration + 0.03);
+        });
+    } catch (error) {
+        console.log('경고 효과음 재생 실패:', error);
+    }
+}
+
 window.showPenaltyCard = function(type) {
     const overlay = document.getElementById('card-overlay');
     const img = document.getElementById('card-image');
-    
-    img.src = type === 'yellow' ? 'images/yellow card.png' : 'images/red card.png';
-    
-    try {
-        const soundFile = type === 'yellow' ? 'sound/referee-whistle01.mp3' : 'sound/referee-whistle02.mp3';
-        const audio = new Audio(soundFile);
-        audio.play().catch(e => console.log('호루라기 오디오 재생 막힘:', e));
-    } catch(e) {}
+    const detail = PENALTY_CARD_DETAILS[type] || PENALTY_CARD_DETAILS.verbal;
+
+    img.src = createPenaltyCardImage(type);
+    img.alt = `${detail.label} 알림`;
+    playPenaltySound(type);
 
     overlay.classList.remove('hidden');
     overlay.classList.add('flex');
@@ -620,17 +666,9 @@ window.handleTouchMove = function(e) {
     clearDropStyles();
 
     if (elemBelow) {
-        const studentCard = elemBelow.closest('.student-card');
         const groupArea = elemBelow.closest('.group-area');
-        
         if (groupArea) {
             groupArea.classList.add('drop-target-active', 'ring-[5px]', 'ring-red-500', 'shadow-[0_0_20px_rgba(239,68,68,0.6)]', 'scale-[1.02]', 'z-20');
-        }
-        if (studentCard) {
-            const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
-                studentCard.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
-            }
         }
     }
 };
@@ -651,17 +689,11 @@ window.handleTouchEnd = function(e) {
     window.hideFloatingUnassigned();
 
     if (elemBelow) {
-        const studentCard = elemBelow.closest('.student-card');
         const groupArea = elemBelow.closest('.group-area');
-        if (studentCard) {
-            const targetNo = parseInt(studentCard.getAttribute('data-student-no'));
-            if (!isNaN(targetNo) && targetNo !== window.draggedStudentNo) {
-                window.handleDropLogic(window.draggedStudentNo, targetNo, null);
-            }
-        } else if (groupArea) {
+        if (groupArea) {
             const targetGroupAttr = groupArea.getAttribute('data-group-id');
             if (targetGroupAttr !== null) {
-                window.handleDropLogic(window.draggedStudentNo, null, parseInt(targetGroupAttr));
+                window.handleDropLogic(window.draggedStudentNo, parseInt(targetGroupAttr));
             }
         }
     }
@@ -676,7 +708,7 @@ window.handleTouchEnd = function(e) {
     setTimeout(() => { window.isTouchDragging = false; }, 10);
 };
 
-window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
+window.handleDropLogic = function(draggedNo, targetGroup) {
     if (draggedNo === null || draggedNo === undefined) return;
     
     const students = classData[currentClass];
@@ -688,24 +720,7 @@ window.handleDropLogic = function(draggedNo, targetNo, targetGroup) {
 
     clearDropStyles();
 
-    if (targetNo !== null && targetNo !== draggedNo) {
-        const targetIndex = students.findIndex(s => s.no === targetNo);
-        if (targetIndex > -1) {
-            const targetStudent = students[targetIndex];
-            const dGroup = draggedStudent[`group_${currentGroupMode}`];
-            const tGroup = targetStudent[`group_${currentGroupMode}`];
-            
-            if (dGroup !== tGroup) { 
-                draggedStudent[`group_${currentGroupMode}`] = tGroup || null;
-                targetStudent[`group_${currentGroupMode}`] = dGroup || null;
-            } else { 
-                students.splice(draggedIndex, 1); 
-                const newTargetIndex = students.findIndex(s => s.no === targetNo);
-                students.splice(newTargetIndex, 0, draggedStudent);
-            }
-            changed = true;
-        }
-    } else if (targetGroup !== null) { 
+    if (targetGroup !== null) {
         let newGroup = targetGroup === 0 ? null : targetGroup;
         if (draggedStudent[`group_${currentGroupMode}`] !== newGroup) {
             draggedStudent[`group_${currentGroupMode}`] = newGroup;
@@ -756,29 +771,9 @@ window.handleDragLeaveGroup = function(e) {
     }
 };
 
-window.handleDragOverStudent = function(e, studentNo) {
-    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    if (studentNo !== window.draggedStudentNo) {
-        e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
-    }
-    const groupArea = e.currentTarget.closest('.group-area');
-    if (groupArea) {
-        groupArea.classList.add('drop-target-active', 'ring-[5px]', 'ring-red-500', 'shadow-[0_0_20px_rgba(239,68,68,0.6)]', 'scale-[1.02]', 'z-20');
-    }
-};
-window.handleDragLeaveStudent = function(e) {
-    e.currentTarget.classList.remove('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
-};
-
-window.handleDropOnStudent = function(e, targetStudentNo) {
-    e.preventDefault(); e.stopPropagation(); 
-    window.handleDropLogic(window.draggedStudentNo, targetStudentNo, null);
-    window.draggedStudentNo = null;
-};
-
 window.handleDropOnGroup = function(e, targetGroupId) {
     e.preventDefault();
-    window.handleDropLogic(window.draggedStudentNo, null, targetGroupId);
+    window.handleDropLogic(window.draggedStudentNo, targetGroupId);
     window.draggedStudentNo = null;
 };
 
@@ -1489,6 +1484,13 @@ async function flushSaveData() {
 // ==========================================
 // 8자 줄넘기 기능 구현 (신규 탭 - 모드 및 그래프 추가)
 // ==========================================
+function getJumpRopeWeekValue(date = new Date()) {
+    const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+    const month = safeDate.getMonth() + 1;
+    const week = Math.min(5, Math.floor((safeDate.getDate() - 1) / 7) + 1);
+    return `${month}월 ${week}주차`;
+}
+
 function initJumpRopeWeeks() {
     const select = document.getElementById('jumprope-week-select');
     if (!select) return;
@@ -1502,11 +1504,7 @@ function initJumpRopeWeeks() {
     }
     select.innerHTML = html;
     
-    const now = new Date();
-    let currentMonth = now.getMonth() + 1;
-    let targetMonth = currentMonth < 1 ? 1 : (currentMonth > 12 ? 12 : currentMonth);
-    let opt = Array.from(select.options).find(o => o.value.startsWith(`${targetMonth}월`));
-    if(opt) opt.selected = true;
+    select.value = getJumpRopeWeekValue(new Date());
 }
 document.addEventListener('DOMContentLoaded', initJumpRopeWeeks);
 
@@ -1575,23 +1573,6 @@ window.renderJumpRopeTab = function() {
 
     renderList(maleRanking, 'jumprope-male-ranking');
     renderList(femaleRanking, 'jumprope-female-ranking');
-
-    window.injectJumpRopeUI();
-};
-
-// 동적 UI 생성(타이머 전환 및 분석 버튼)
-window.injectJumpRopeUI = function() {
-    if (!document.getElementById('jumprope-mode-btn')) {
-        const timerDisplay = document.getElementById('jumprope-timer-display');
-        if(timerDisplay) {
-            const modeBtn = document.createElement('button');
-            modeBtn.id = 'jumprope-mode-btn';
-            modeBtn.className = "text-xl sm:text-2xl hover:scale-110 transition shrink-0 ml-2 bg-slate-100 rounded px-2 py-1 flex items-center justify-center border border-slate-200 shadow-sm";
-            modeBtn.innerText = jumpRopeTimerMode === 'stopwatch' ? '⏱️' : '⏳';
-            modeBtn.onclick = window.toggleJumpRopeTimerMode;
-            timerDisplay.parentNode.insertBefore(modeBtn, timerDisplay.nextSibling);
-        }
-    }
 
 };
 
@@ -1674,28 +1655,6 @@ window.saveJumpRopeRecord = function() {
     window.showModal("저장 완료", `<b>${week}</b> 기록이 성공적으로 저장되었습니다.`);
 };
 
-window.toggleJumpRopeTimerMode = function() {
-    if (jumpRopeInterval) return; 
-    jumpRopeTimerMode = jumpRopeTimerMode === 'stopwatch' ? 'timer' : 'stopwatch';
-    const modeBtn = document.getElementById('jumprope-mode-btn');
-    if (modeBtn) modeBtn.innerText = jumpRopeTimerMode === 'stopwatch' ? '⏱️' : '⏳';
-
-    if (jumpRopeTimerMode === 'timer') {
-        let input = prompt("타이머 시간을 초 단위 또는 분:초로 입력하세요. (예: 60 또는 1:00)", "60");
-        if (input !== null && input.trim() !== '') {
-            jumpRopeTargetMs = window.parseTime(input);
-            jumpRopeTimerMs = jumpRopeTargetMs;
-        } else {
-            jumpRopeTimerMode = 'stopwatch';
-            if(modeBtn) modeBtn.innerText = '⏱️';
-            jumpRopeTimerMs = 0;
-        }
-    } else {
-        jumpRopeTimerMs = 0;
-    }
-    document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
-};
-
 window.editJumpRopeTimerTarget = function() {
     if (jumpRopeInterval) {
         window.showModal('타이머 설정', '측정을 일시정지한 뒤 목표 시간을 변경해주세요.');
@@ -1712,8 +1671,6 @@ window.editJumpRopeTimerTarget = function() {
     jumpRopeTimerMode = 'timer';
     jumpRopeTargetMs = parsed;
     jumpRopeTimerMs = parsed;
-    const modeBtn = document.getElementById('jumprope-mode-btn');
-    if (modeBtn) modeBtn.innerText = '⏳';
     document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
 };
 
@@ -1942,9 +1899,11 @@ window.cyclePenaltyCard = function(studentNo) {
     if (!currentClass || !classData[currentClass]) return;
     const student = classData[currentClass].find(s => s.no === studentNo);
     if (student) {
-        student.penaltyCard = ((student.penaltyCard || 0) + 1) % 3;
-        if (student.penaltyCard === 1) window.showPenaltyCard('yellow');
-        else if (student.penaltyCard === 2) window.showPenaltyCard('red');
+        normalizePenaltyCardState(student);
+        student.penaltyCard = (student.penaltyCard + 1) % 4;
+        if (student.penaltyCard === 1) window.showPenaltyCard('verbal');
+        else if (student.penaltyCard === 2) window.showPenaltyCard('yellow');
+        else if (student.penaltyCard === 3) window.showPenaltyCard('red');
         else window.playEraseSound();
         saveData();
         window.renderGroups();
@@ -2056,6 +2015,16 @@ window.updateGroupDrawSelect = function() {
     if(!sel) return;
 }
 
+function normalizePenaltyCardState(student) {
+    let level = Math.max(0, Number.parseInt(student?.penaltyCard, 10) || 0);
+    if (student.penaltyCardSystem !== PENALTY_CARD_SYSTEM_VERSION) {
+        level = level === 1 ? 2 : (level === 2 ? 3 : 0);
+    }
+    student.penaltyCard = Math.min(3, level);
+    student.penaltyCardSystem = PENALTY_CARD_SYSTEM_VERSION;
+    return student.penaltyCard;
+}
+
 function migrateData() {
     for (const className in classData) {
         if (!groupScores[className] || groupScores[className][1] !== undefined) {
@@ -2095,7 +2064,7 @@ function migrateData() {
             if (s.memo === undefined) s.memo = "";
             delete s.dismissalInfo;
             if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
-            if (s.penaltyCard === undefined) s.penaltyCard = 0; 
+            normalizePenaltyCardState(s);
             if (s.selected === undefined) s.selected = false;
 
             delete s.group_partner;
@@ -2153,7 +2122,7 @@ function buildExcelBackup(classNames, scope, sourceClass = '') {
     }
 
     const displayRows = [['학급', '번호', '이름', '성별', '출석', '볼센스', '개인점수', '순발력(초)', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '메모']];
-    const backupRows = [['학급', '번호', '이름', '성별', '볼센스', '참석상태', '개인점수', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '그룹점수JSON', '그룹기록JSON', '혼성2부장', '혼성3부장', '혼성4부장', '동성부장', '순발력(초)', '메모', '벌점카드', '그룹벌점JSON', '도장JSON']];
+    const backupRows = [['학급', '번호', '이름', '성별', '볼센스', '참석상태', '개인점수', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠', '그룹점수JSON', '그룹기록JSON', '혼성2부장', '혼성3부장', '혼성4부장', '동성부장', '순발력(초)', '메모', '경고단계', '그룹벌점JSON', '도장JSON']];
     const sortedClasses = [...classNames].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
 
     for (const className of sortedClasses) {
@@ -2280,7 +2249,8 @@ function handleExcelUpload(event, importTarget) {
             const idxG2 = header.indexOf('혼성2모둠'); const idxG3 = header.indexOf('혼성3모둠'); const idxG4 = header.indexOf('혼성4모둠'); const idxGG = header.indexOf('동성모둠');
             const idxScores = header.indexOf('그룹점수JSON'); const idxRecords = header.indexOf('그룹기록JSON'); const idxLegacyCaptain = header.indexOf('체육부장');
             const idxCaptain2 = header.indexOf('혼성2부장'); const idxCaptain3 = header.indexOf('혼성3부장'); const idxCaptain4 = header.indexOf('혼성4부장'); const idxCaptainGender = header.indexOf('동성부장');
-            const idxPenalties = header.indexOf('그룹벌점JSON'); const idxStamps = header.indexOf('도장JSON'); const idxPenaltyCard = header.indexOf('벌점카드');
+            const idxPenalties = header.indexOf('그룹벌점JSON'); const idxStamps = header.indexOf('도장JSON');
+            const idxNewPenaltyCard = header.indexOf('경고단계'); const idxLegacyPenaltyCard = header.indexOf('벌점카드');
             
             let idxPersonalRec = header.indexOf('순발력(초)');
             if(idxPersonalRec === -1) idxPersonalRec = header.indexOf('달리기(초)');
@@ -2344,12 +2314,17 @@ function handleExcelUpload(event, importTarget) {
                 if (idxMemo > -1 && parts[idxMemo]) memo = parts[idxMemo].trim();
                 const isYes = index => index > -1 && parts[index]?.trim() === 'Y';
                 const legacyCaptain = isYes(idxLegacyCaptain);
-                const penaltyCard = idxPenaltyCard > -1 ? Math.min(2, Math.max(0, Number.parseInt(parts[idxPenaltyCard], 10) || 0)) : 0;
+                let penaltyCard = idxNewPenaltyCard > -1 ? Math.min(3, Math.max(0, Number.parseInt(parts[idxNewPenaltyCard], 10) || 0)) : 0;
+                if (idxNewPenaltyCard < 0 && idxLegacyPenaltyCard > -1) {
+                    const legacyLevel = Math.min(2, Math.max(0, Number.parseInt(parts[idxLegacyPenaltyCard], 10) || 0));
+                    penaltyCard = legacyLevel === 1 ? 2 : (legacyLevel === 2 ? 3 : 0);
+                }
 
                 newData[className].push({
                     ...createStudentRecord(no, name, gender || '-'), ballSense: bs, attendance, score, recordMs, memo,
                     captain_mixed2: isYes(idxCaptain2), captain_mixed3: isYes(idxCaptain3), captain_mixed4: isYes(idxCaptain4) || legacyCaptain,
-                    captain_gender: isYes(idxCaptainGender), group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg, penaltyCard
+                    captain_gender: isYes(idxCaptainGender), group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg,
+                    penaltyCard, penaltyCardSystem: PENALTY_CARD_SYSTEM_VERSION
                 });
             }
 
@@ -3137,6 +3112,22 @@ window.drawFromEachGroup = function() {
     }
 };
 
+function renderPenaltyIndicator(student) {
+    const level = normalizePenaltyCardState(student);
+    const labels = ['경고 없음', '입경고', '옐로카드', '레드카드'];
+    const verbalStyle = level >= 1 ? 'bg-amber-500 border-amber-700 text-white shadow-sm' : 'bg-slate-200 border-slate-300 text-slate-400';
+    const yellowStyle = level >= 2 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
+    const redStyle = level >= 3 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
+    return `
+        <button type="button" class="flex gap-0.5 ml-1.5 items-center rounded p-0.5 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                onclick="event.stopPropagation(); window.cyclePenaltyCard(${student.no})"
+                title="입경고 → 옐로카드 → 레드카드 → 해제" aria-label="현재 ${labels[level]}. 다음 경고 단계로 변경">
+            <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 border ${verbalStyle} rounded-full text-[9px] sm:text-[10px] font-black leading-none flex items-center justify-center transition-colors duration-200">!</span>
+            <span class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${yellowStyle} rounded-[2px] transition-colors duration-200"></span>
+            <span class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${redStyle} rounded-[2px] transition-colors duration-200"></span>
+        </button>`;
+}
+
 window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -3272,23 +3263,11 @@ window.renderGroups = function() {
 
                     let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
-                    let pCard = s.penaltyCard || 0;
-                    let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
-                    let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
-                    
-                    let penaltyCardsHtml = `
-                        <div class="flex gap-0.5 ml-1.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
-                            <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card1} rounded-[2px] transition-colors duration-200"></div>
-                            <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card2} rounded-[2px] transition-colors duration-200"></div>
-                        </div>
-                    `;
+                    const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                     return `
                     <div draggable="true" data-student-no="${s.no}" 
                          ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
-                         ondragover="window.handleDragOverStudent(event, ${s.no})"
-                         ondragleave="window.handleDragLeaveStudent(event)"
-                         ondrop="window.handleDropOnStudent(event, ${s.no})" 
                          ontouchstart="window.handleTouchStart(event, ${s.no})"
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
@@ -3389,23 +3368,11 @@ window.renderGroups = function() {
                 
                 let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
-                let pCard = s.penaltyCard || 0;
-                let card1 = pCard >= 1 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
-                let card2 = pCard >= 2 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
-                
-                let penaltyCardsHtml = `
-                    <div class="flex gap-0.5 ml-1.5 cursor-pointer items-center" onclick="event.stopPropagation(); window.cyclePenaltyCard(${s.no})" title="옐로우/레드 카드 부여">
-                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card1} rounded-[2px] transition-colors duration-200"></div>
-                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${card2} rounded-[2px] transition-colors duration-200"></div>
-                    </div>
-                `;
+                const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                 return `
                 <div draggable="true" data-student-no="${s.no}" 
                      ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
-                     ondragover="window.handleDragOverStudent(event, ${s.no})"
-                     ondragleave="window.handleDragLeaveStudent(event)"
-                     ondrop="window.handleDropOnStudent(event, ${s.no})" 
                      ontouchstart="window.handleTouchStart(event, ${s.no})"
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
@@ -3445,7 +3412,7 @@ function createStudentRecord(no, name, gender) {
         no, name, gender, ballSense: '0', attendance: true, score: 0, recordMs: 0,
         memo: '', drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false,
         captain_mixed4: false, captain_gender: false, group_mixed2: null, group_mixed3: null,
-        group_mixed4: null, group_gender: null, penaltyCard: 0, selected: false
+        group_mixed4: null, group_gender: null, penaltyCard: 0, penaltyCardSystem: PENALTY_CARD_SYSTEM_VERSION, selected: false
     };
 }
 
