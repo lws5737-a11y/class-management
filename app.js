@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs?v=20260902-3';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable } from './class-utils.mjs?v=20260903-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2082,7 +2082,10 @@ window.showModal = function(title, message, isConfirm = false, confirmCallback =
 
     if (isConfirm) {
         confirmBtn.classList.remove('hidden'); cancelBtn.classList.remove('hidden'); alertOkBtn.classList.add('hidden');
-        confirmBtn.onclick = () => { if (confirmCallback) confirmCallback(); window.closeModal(); };
+        confirmBtn.onclick = () => {
+            window.closeModal();
+            if (confirmCallback) confirmCallback();
+        };
         cancelBtn.onclick = window.closeModal;
     } else {
         confirmBtn.classList.add('hidden'); cancelBtn.classList.add('hidden'); alertOkBtn.classList.remove('hidden');
@@ -2266,7 +2269,7 @@ function handleExcelUpload(event, importTarget) {
             if (importTarget === 'class') {
                 let selectedRecords = records;
                 if (sourceClasses.length > 1) {
-                    selectedRecords = records.filter(record => record.sourceClass === normalizeClassName(currentClass));
+                    selectedRecords = records.filter(record => normalizeClassIdentity(record.sourceClass) === normalizeClassIdentity(currentClass));
                 }
                 if (selectedRecords.length === 0) {
                     window.showModal('현재 학급 자료 없음', `파일에서 <b>${escapeHTML(currentClass)}</b> 학급 학생을 찾지 못했습니다.`);
@@ -2422,9 +2425,15 @@ function handleExcelUpload(event, importTarget) {
 
             const importedClasses = Object.keys(newData);
             if (importedClasses.length > 0) {
-                const rosterOverrideCount = applyRosterOverrides(newData, restoredSettings.rosterRecords);
+                const rosterOverrideCount = applyRosterOverrides(newData, restoredSettings.rosterRecords, {
+                    createMissingStudent: record => createStudentRecord(record.no, record.name, record.gender)
+                });
+                Object.values(newData).forEach(students => {
+                    students.sort((left, right) => left.no - right.no || (left.name || '').localeCompare(right.name || '', 'ko'));
+                });
                 if (importTarget === 'class') {
-                    const sourceClass = newData[currentClass] ? currentClass : (importedClasses.length === 1 ? importedClasses[0] : '');
+                    const sourceClass = importedClasses.find(className => normalizeClassIdentity(className) === normalizeClassIdentity(currentClass))
+                        || (importedClasses.length === 1 ? importedClasses[0] : '');
                     if (!sourceClass) {
                         window.showModal('학급을 찾을 수 없음', `이 파일에는 <b>${escapeHTML(currentClass)}</b> 학급 자료가 없습니다. 전체 학급 불러오기를 이용해주세요.`);
                         resetFileInput();
@@ -2476,8 +2485,9 @@ function handleExcelUpload(event, importTarget) {
                 saveData({ immediate: true });
 
                 if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
-                const rosterMessage = Array.isArray(restoredSettings.rosterRecords)
-                    ? `<br><span class="font-bold text-emerald-600">학생명단 편집값 ${rosterOverrideCount}명 반영</span>`
+                const rosterRecordCount = Array.isArray(restoredSettings.rosterRecords) ? restoredSettings.rosterRecords.length : 0;
+                const rosterMessage = rosterRecordCount > 0
+                    ? `<br><span class="font-bold ${rosterOverrideCount === rosterRecordCount ? 'text-emerald-600' : 'text-amber-600'}">학생명단 편집값 ${rosterOverrideCount}/${rosterRecordCount}명 반영</span>`
                     : '';
                 const doneMessage = (importTarget === 'class'
                     ? `${escapeHTML(currentClass)} 학급 자료를 복구했습니다.`
@@ -3535,7 +3545,7 @@ window.importFromExcel = function() {
             invalidCount++;
             continue;
         }
-        if (parsed.sourceClass && parsed.sourceClass !== normalizeClassName(currentClass)) {
+        if (parsed.sourceClass && normalizeClassIdentity(parsed.sourceClass) !== normalizeClassIdentity(currentClass)) {
             mismatchedClasses.add(parsed.sourceClass);
             continue;
         }
@@ -3873,3 +3883,4 @@ function saveTargetElement(target) {
       }
   }
 }
+

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from '../class-utils.mjs';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable } from '../class-utils.mjs';
 
 function seededRandom(seed = 123456) {
     return () => {
@@ -8,6 +8,12 @@ function seededRandom(seed = 123456) {
         return seed / 4294967296;
     };
 }
+
+test('normalizeClassIdentity treats common class-name styles as the same class', () => {
+    assert.equal(normalizeClassIdentity('6학년 2반'), '6-2');
+    assert.equal(normalizeClassIdentity('="6-2"'), '6-2');
+    assert.equal(normalizeClassIdentity('5–1'), '5-1');
+});
 
 test('parseRosterTable reads an ordinary school roster workbook', () => {
     const result = parseRosterTable([
@@ -85,6 +91,44 @@ test('visible agility edits apply independently across an all-class backup', () 
     assert.equal(classData['6-2'][0].recordMs, 0);
 });
 
+test('visible agility edits match equivalent Korean and hyphenated class names', () => {
+    const classData = {
+        '6학년 2반': [{ no: 1, name: '강루미', gender: '여', recordMs: 15000 }],
+        '5–1': [{ no: 2, name: '김체육', gender: '남', recordMs: 16000 }]
+    };
+    const records = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '순발력(초)'],
+        ['6-2', 1, '강루미', '여', 11.27],
+        ['5학년 1반', 2, '김체육', '남', 12.34]
+    ]).records;
+
+    assert.equal(applyRosterOverrides(classData, records), 2);
+    assert.equal(classData['6학년 2반'][0].recordMs, 11270);
+    assert.equal(classData['5–1'][0].recordMs, 12340);
+});
+
+test('backup import can restore a student that exists only on the visible roster sheet', () => {
+    const classData = {
+        '2-3': [{ no: 1, name: '기존학생', gender: '남', recordMs: 23980 }]
+    };
+    const records = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '순발력(초)'],
+        ['2-3', 1, '기존학생', '남', 26.98],
+        ['2-3', 32, '추가학생', '남', '']
+    ]).records;
+    const createMissingStudent = record => ({
+        no: record.no, name: record.name, gender: record.gender, recordMs: 0,
+        attendance: true, ballSense: '0', score: 0, memo: ''
+    });
+
+    assert.equal(applyRosterOverrides(classData, records, { createMissingStudent }), 2);
+    assert.equal(classData['2-3'][0].recordMs, 26980);
+    assert.deepEqual(classData['2-3'][1], {
+        no: 32, name: '추가학생', gender: '남', recordMs: 0,
+        attendance: true, ballSense: '0', score: 0, memo: ''
+    });
+});
+
 test('buildBalancedTeamPlan balances headcount, gender, and ability', () => {
     const students = Array.from({ length: 25 }, (_, index) => ({
         no: index + 1,
@@ -130,3 +174,4 @@ test('buildBalancedTeamPlan preserves balance across common class sizes', () => 
         }
     }
 });
+

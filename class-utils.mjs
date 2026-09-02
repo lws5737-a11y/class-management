@@ -6,10 +6,14 @@ function normalizeHeader(value) {
     return cleanCell(value).replace(/\s+/g, '').toLowerCase();
 }
 
-function normalizeClassName(value) {
-    const raw = cleanCell(value).replace(/^=["']?|["']$/g, '');
-    const compact = raw.replace(/\s+/g, '');
-    const match = compact.match(/^(\d+)학년(\d+)반$/);
+export function normalizeClassIdentity(value) {
+    let raw = cleanCell(value);
+    if (raw.startsWith('=')) raw = raw.slice(1).trim();
+    if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+        raw = raw.slice(1, -1);
+    }
+    const compact = raw.replace(/\s+/g, '').replace(/[‐‑‒–—―−]/g, '-');
+    const match = compact.match(/^(\d+)(?:학년)?-?(\d+)(?:반)?$/);
     return match ? `${Number(match[1])}-${Number(match[2])}` : compact;
 }
 
@@ -71,7 +75,7 @@ function parseFallbackRow(row, defaultClassName) {
 
     const seconds = parseSeconds(cells[offset + 4]);
     return {
-        sourceClass: isSchoolFormat ? normalizeClassName(`${cells[0]}-${cells[1]}`) : normalizeClassName(defaultClassName),
+        sourceClass: isSchoolFormat ? normalizeClassIdentity(`${cells[0]}-${cells[1]}`) : normalizeClassIdentity(defaultClassName),
         no,
         name,
         gender: normalizeGender(cells[offset + 2]),
@@ -125,13 +129,13 @@ export function parseRosterTable(rows, defaultClassName = '') {
         const name = cleanCell(row[indexes.name]);
         if (!no || !name) { invalidCount++; continue; }
 
-        let sourceClass = indexes.className >= 0 ? normalizeClassName(row[indexes.className]) : '';
+        let sourceClass = indexes.className >= 0 ? normalizeClassIdentity(row[indexes.className]) : '';
         if (!sourceClass && indexes.grade >= 0 && indexes.room >= 0) {
             const grade = parsePositiveInteger(row[indexes.grade]);
             const room = parsePositiveInteger(row[indexes.room]);
             if (grade && room) sourceClass = `${grade}-${room}`;
         }
-        if (!sourceClass) sourceClass = normalizeClassName(defaultClassName);
+        if (!sourceClass) sourceClass = normalizeClassIdentity(defaultClassName);
 
         const recordCell = indexes.record >= 0 ? cleanCell(row[indexes.record]) : null;
         const seconds = indexes.record >= 0 ? parseSeconds(recordCell) : undefined;
@@ -160,16 +164,34 @@ export function parseRosterTable(rows, defaultClassName = '') {
     return { records, invalidCount };
 }
 
-export function applyRosterOverrides(classData, records) {
+export function applyRosterOverrides(classData, records, options = {}) {
     if (!classData || !Array.isArray(records)) return 0;
+    const createMissingStudent = typeof options.createMissingStudent === 'function'
+        ? options.createMissingStudent
+        : null;
+
+    const classKeyMap = new Map();
+    for (const existingClassName of Object.keys(classData)) {
+        const normalized = normalizeClassIdentity(existingClassName);
+        if (!classKeyMap.has(normalized) || existingClassName === normalized) {
+            classKeyMap.set(normalized, existingClassName);
+        }
+    }
 
     let appliedCount = 0;
     for (const record of records) {
-        const className = normalizeClassName(record?.sourceClass);
+        const normalizedClassName = normalizeClassIdentity(record?.sourceClass);
+        const className = Object.hasOwn(classData, record?.sourceClass)
+            ? record.sourceClass
+            : classKeyMap.get(normalizedClassName);
         const students = classData[className];
         if (!Array.isArray(students)) continue;
 
-        const student = students.find(item => item.no === record.no);
+        let student = students.find(item => item.no === record.no);
+        if (!student && createMissingStudent) {
+            student = createMissingStudent(record, className);
+            if (student && typeof student === 'object') students.push(student);
+        }
         if (!student) continue;
 
         student.name = record.name;
@@ -306,3 +328,4 @@ export function buildBalancedTeamPlan(students, teamCount, getPower, random = Ma
     }
     return bestPlan || [];
 }
+
