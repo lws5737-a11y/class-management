@@ -38,6 +38,9 @@ assert.ok(app.includes("workbook.Sheets['학생명단']") && app.includes('parse
 assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(presentStudents.filter'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
 assert.ok(app.includes('학생명단 편집값 ${rosterOverrideCount}/${rosterRecordCount}명 반영'), '엑셀 편집값 반영 결과가 사용자에게 표시되지 않습니다.');
 assert.ok(app.includes('createMissingStudent: record => createStudentRecord'), '보이는 학생명단에만 있는 학생을 백업 복구 시 추가하지 않습니다.');
+assert.ok(app.includes("parseStructuredJson(value, fallback, 'object')") && app.includes("parseStructuredJson(value, fallback, 'array')"), '손상된 백업 JSON 값을 방어하지 않습니다.');
+assert.ok(app.includes('const cloudSaved = await saveData({ immediate: true })'), '엑셀 복구 후 Firebase 저장 완료를 기다리지 않습니다.');
+assert.ok(app.includes("importTarget === 'class' ? '현재 학급 복구하기'"), '현재 학급 복구 버튼 문구가 명확하지 않습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');

@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable } from './class-utils.mjs?v=20260903-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260903-2';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -1441,7 +1441,7 @@ async function writeAppData(docRef, payload) {
 }
 
 async function flushSaveData() {
-    if (!userId || !db || saveInFlight || !saveRequested) return;
+    if (!userId || !db || saveInFlight || !saveRequested) return false;
     saveRequested = false;
     saveInFlight = true;
     const payload = pendingCloudPayload || cloneAppPayload(createAppPayload(nextLocalRevision()));
@@ -1480,6 +1480,7 @@ async function flushSaveData() {
             setSyncStatus('saved', 'Firebase 저장 완료');
         }
     }
+    return writeSucceeded;
 }
 
 // ==========================================
@@ -2082,9 +2083,14 @@ window.showModal = function(title, message, isConfirm = false, confirmCallback =
 
     if (isConfirm) {
         confirmBtn.classList.remove('hidden'); cancelBtn.classList.remove('hidden'); alertOkBtn.classList.add('hidden');
-        confirmBtn.onclick = () => {
+        confirmBtn.onclick = async () => {
             window.closeModal();
-            if (confirmCallback) confirmCallback();
+            try {
+                if (confirmCallback) await confirmCallback();
+            } catch (error) {
+                console.error('확인 작업 처리 실패:', error);
+                window.showModal('처리 실패', escapeHTML(error?.message || '요청을 처리하는 중 오류가 발생했습니다.'));
+            }
         };
         cancelBtn.onclick = window.closeModal;
     } else {
@@ -2227,9 +2233,11 @@ function handleExcelUpload(event, importTarget) {
     }
 
     const resetFileInput = () => { event.target.value = ''; };
-    const readJSON = (value, fallback) => {
-        if (!value) return fallback;
-        try { return JSON.parse(value.trim()); } catch (error) { return fallback; }
+    const readObjectJSON = (value, fallback) => parseStructuredJson(value, fallback, 'object');
+    const readArrayJSON = (value, fallback) => parseStructuredJson(value, fallback, 'array');
+    const parseGroupCell = (value, maximum) => {
+        const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+        return Number.isInteger(parsed) && parsed >= 1 && parsed <= maximum ? parsed : null;
     };
 
     const mergeRosterStudent = (record, targetClass) => {
@@ -2374,10 +2382,10 @@ function handleExcelUpload(event, importTarget) {
                     newClassStamps[className] = idxStamps >= 0 ? Array(TOTAL_STAMP_CELLS).fill(false) : (classStamps[className] || Array(TOTAL_STAMP_CELLS).fill(false));
                 }
 
-                if (idxScores > -1 && parts[idxScores]) newGroupScores[className] = readJSON(parts[idxScores], newGroupScores[className]);
-                if (idxRecords > -1 && parts[idxRecords]) newGroupRecords[className] = readJSON(parts[idxRecords], newGroupRecords[className]);
-                if (idxPenalties > -1 && parts[idxPenalties]) newGroupPenalties[className] = readJSON(parts[idxPenalties], newGroupPenalties[className]);
-                if (idxStamps > -1 && parts[idxStamps]) newClassStamps[className] = readJSON(parts[idxStamps], newClassStamps[className]);
+                if (idxScores > -1 && parts[idxScores]) newGroupScores[className] = readObjectJSON(parts[idxScores], newGroupScores[className]);
+                if (idxRecords > -1 && parts[idxRecords]) newGroupRecords[className] = readObjectJSON(parts[idxRecords], newGroupRecords[className]);
+                if (idxPenalties > -1 && parts[idxPenalties]) newGroupPenalties[className] = readObjectJSON(parts[idxPenalties], newGroupPenalties[className]);
+                if (idxStamps > -1 && parts[idxStamps]) newClassStamps[className] = readArrayJSON(parts[idxStamps], newClassStamps[className]);
 
                 const no = Number.parseInt(parts[1]?.trim(), 10); const name = parts[2]?.trim(); const gender = parts[3]?.trim();
                 if (!Number.isInteger(no) || !name) continue;
@@ -2396,10 +2404,10 @@ function handleExcelUpload(event, importTarget) {
                 if(attIdx > -1 && parts[attIdx]) attendance = (parts[attIdx].trim() === '출석' || parts[attIdx].trim() === '참석');
                 if(scoreIdx > -1 && parts[scoreIdx]) score = Number.parseInt(parts[scoreIdx].trim(), 10) || 0;
 
-                if (idxG2 > -1 && parts[idxG2]) g2 = Number.parseInt(parts[idxG2].trim(), 10) || null;
-                if (idxG3 > -1 && parts[idxG3]) g3 = Number.parseInt(parts[idxG3].trim(), 10) || null;
-                if (idxG4 > -1 && parts[idxG4]) g4 = Number.parseInt(parts[idxG4].trim(), 10) || null;
-                if (idxGG > -1 && parts[idxGG]) gg = Number.parseInt(parts[idxGG].trim(), 10) || null;
+                if (idxG2 > -1 && parts[idxG2]) g2 = parseGroupCell(parts[idxG2], 2);
+                if (idxG3 > -1 && parts[idxG3]) g3 = parseGroupCell(parts[idxG3], 3);
+                if (idxG4 > -1 && parts[idxG4]) g4 = parseGroupCell(parts[idxG4], 4);
+                if (idxGG > -1 && parts[idxGG]) gg = parseGroupCell(parts[idxGG], 4);
 
                 if (idxPersonalRec > -1 && parts[idxPersonalRec]) {
                     const parsed = Number.parseFloat(parts[idxPersonalRec].trim());
@@ -2482,9 +2490,11 @@ function handleExcelUpload(event, importTarget) {
                     ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 }
 
-                saveData({ immediate: true });
-
                 if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
+                const cloudSaved = await saveData({ immediate: true });
+                if (!cloudSaved && navigator.onLine) {
+                    throw new Error('불러온 자료를 Firebase에 저장하지 못했습니다. 화면 위쪽 저장 상태를 확인한 뒤 다시 시도해주세요.');
+                }
                 const rosterRecordCount = Array.isArray(restoredSettings.rosterRecords) ? restoredSettings.rosterRecords.length : 0;
                 const rosterMessage = rosterRecordCount > 0
                     ? `<br><span class="font-bold ${rosterOverrideCount === rosterRecordCount ? 'text-emerald-600' : 'text-amber-600'}">학생명단 편집값 ${rosterOverrideCount}/${rosterRecordCount}명 반영</span>`
@@ -2495,7 +2505,7 @@ function handleExcelUpload(event, importTarget) {
                 window.showModal("완료", doneMessage);
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
             resetFileInput();
-        }, "전체 복구하기");
+        }, importTarget === 'class' ? '현재 학급 복구하기' : (scopeIsClass ? '학급 복구하기' : '전체 복구하기'));
     };
 
     if (/\.xlsx?$/i.test(file.name)) {
@@ -2537,7 +2547,7 @@ function handleExcelUpload(event, importTarget) {
                         .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
                         .map(row => String(row[1]))
                         .join('');
-                    if (jumpRopeJSON) restoredJumpRopeData = JSON.parse(jumpRopeJSON);
+                    if (jumpRopeJSON) restoredJumpRopeData = parseStructuredJson(jumpRopeJSON, null, 'object');
                 }
                 processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, backupScope, sourceClass, rosterRecords });
             } catch (error) {

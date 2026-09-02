@@ -17,6 +17,20 @@ export function normalizeClassIdentity(value) {
     return match ? `${Number(match[1])}-${Number(match[2])}` : compact;
 }
 
+export function parseStructuredJson(value, fallback, expectedType = 'object') {
+    if (value === undefined || value === null || String(value).trim() === '') return fallback;
+    try {
+        const parsed = typeof value === 'string' ? JSON.parse(value.trim()) : value;
+        if (expectedType === 'array') return Array.isArray(parsed) ? parsed : fallback;
+        if (expectedType === 'object') {
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+        }
+        return fallback;
+    } catch (error) {
+        return fallback;
+    }
+}
+
 function normalizeGender(value) {
     const gender = cleanCell(value);
     if (['남', '남자', '남학생', 'm', 'male'].includes(gender.toLowerCase())) return '남';
@@ -27,6 +41,11 @@ function normalizeGender(value) {
 function parsePositiveInteger(value) {
     const parsed = Number.parseInt(cleanCell(value), 10);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseGroupNumber(value, maximum) {
+    const parsed = parsePositiveInteger(value);
+    return parsed !== undefined && parsed <= maximum ? parsed : undefined;
 }
 
 function parseSeconds(value) {
@@ -81,7 +100,7 @@ function parseFallbackRow(row, defaultClassName) {
         gender: normalizeGender(cells[offset + 2]),
         ballSense: parseBallSense(cells[offset + 3]),
         recordMs: seconds === undefined ? undefined : Math.round(seconds * 1000),
-        group: parsePositiveInteger(cells[offset + 5])
+        group: parseGroupNumber(cells[offset + 5], 4)
     };
 }
 
@@ -152,12 +171,12 @@ export function parseRosterTable(rows, defaultClassName = '') {
             attendance: indexes.attendance >= 0 ? parseAttendance(row[indexes.attendance]) : undefined,
             score: Number.isFinite(score) ? score : undefined,
             memo: indexes.memo >= 0 ? cleanCell(row[indexes.memo]) : undefined,
-            group: indexes.genericGroup >= 0 ? parsePositiveInteger(row[indexes.genericGroup]) : undefined,
+            group: indexes.genericGroup >= 0 ? parseGroupNumber(row[indexes.genericGroup], 4) : undefined,
             groups: {
-                mixed2: indexes.mixed2 >= 0 ? parsePositiveInteger(row[indexes.mixed2]) : undefined,
-                mixed3: indexes.mixed3 >= 0 ? parsePositiveInteger(row[indexes.mixed3]) : undefined,
-                mixed4: indexes.mixed4 >= 0 ? parsePositiveInteger(row[indexes.mixed4]) : undefined,
-                gender: indexes.genderGroup >= 0 ? parsePositiveInteger(row[indexes.genderGroup]) : undefined
+                mixed2: indexes.mixed2 >= 0 ? parseGroupNumber(row[indexes.mixed2], 2) : undefined,
+                mixed3: indexes.mixed3 >= 0 ? parseGroupNumber(row[indexes.mixed3], 3) : undefined,
+                mixed4: indexes.mixed4 >= 0 ? parseGroupNumber(row[indexes.mixed4], 4) : undefined,
+                gender: indexes.genderGroup >= 0 ? parseGroupNumber(row[indexes.genderGroup], 4) : undefined
             }
         });
     }
