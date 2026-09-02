@@ -41,6 +41,7 @@ assert.ok(app.includes('createMissingStudent: record => createStudentRecord'), '
 assert.ok(app.includes("parseStructuredJson(value, fallback, 'object')") && app.includes("parseStructuredJson(value, fallback, 'array')"), '손상된 백업 JSON 값을 방어하지 않습니다.');
 assert.ok(app.includes('const cloudSaved = await saveData({ immediate: true })'), '엑셀 복구 후 Firebase 저장 완료를 기다리지 않습니다.');
 assert.ok(app.includes("importTarget === 'class' ? '현재 학급 복구하기'"), '현재 학급 복구 버튼 문구가 명확하지 않습니다.');
+assert.ok(app.includes('recordMs: recMs') && !app.includes('attendance, score, recordMs, memo'), '엑셀 복구의 순발력 변수명이 일치하지 않습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');
