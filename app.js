@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs?v=20260902-2';
+import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs?v=20260902-3';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 

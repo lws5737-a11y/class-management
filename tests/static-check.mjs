@@ -6,6 +6,10 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
 const firebaseConfig = await readFile(new URL('../firebase-config.js', import.meta.url), 'utf8');
 
+const appVersion = html.match(/app\.js\?v=([\w.-]+)/)?.[1];
+const utilsVersion = app.match(/class-utils\.mjs\?v=([\w.-]+)/)?.[1];
+assert.ok(appVersion && utilsVersion && appVersion === utilsVersion, 'app.js와 class-utils.mjs의 캐시 갱신 버전이 일치하지 않습니다.');
+
 const allowedEmail = 'lws5737@seoul-dongsan.es.kr';
 assert.ok(app.includes(`const ALLOWED_EMAIL = '${allowedEmail}'`), '클라이언트 허용 계정 검사가 없습니다.');
 assert.ok(rules.includes(`request.auth.token.email == '${allowedEmail}'`), 'Firestore 허용 계정 검사가 없습니다.');
@@ -33,7 +37,6 @@ assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '�
 assert.ok(app.includes("workbook.Sheets['학생명단']") && app.includes('parseRosterTable(rows'), '일반 엑셀 학생명단 시트를 불러오는 처리가 없습니다.');
 assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(presentStudents.filter'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
 assert.ok(app.includes('학생명단 편집값 ${rosterOverrideCount}명 반영'), '엑셀 편집값 반영 결과가 사용자에게 표시되지 않습니다.');
-assert.ok(html.includes('app.js?v=20260902-2') && app.includes('class-utils.mjs?v=20260902-2'), '엑셀 불러오기 수정본의 캐시 버전이 연결되지 않았습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');
