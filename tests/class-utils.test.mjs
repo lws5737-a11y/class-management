@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBalancedTeamPlan, parseRosterTable } from '../class-utils.mjs';
+import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from '../class-utils.mjs';
 
 function seededRandom(seed = 123456) {
     return () => {
@@ -33,6 +33,25 @@ test('parseRosterTable reads the app student-list worksheet', () => {
     assert.equal(result.records[0].attendance, false);
     assert.equal(result.records[0].score, 7);
     assert.equal(result.records[0].groups.mixed2, 2);
+});
+
+test('applyRosterOverrides applies visible worksheet edits without losing backup-only data', () => {
+    const classData = {
+        '5-1': [{
+            no: 3, name: '기존이름', gender: '남', attendance: true, ballSense: '0', score: 1,
+            recordMs: 15000, group_mixed2: 1, memo: '', penaltyCard: 2, captain_mixed2: true
+        }]
+    };
+    const records = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '출석', '볼센스', '개인점수', '순발력(초)', '혼성2모둠', '메모'],
+        ['5-1', 3, '박체육', '여', '불참', '상', 9, 11.27, 2, '수정됨']
+    ]).records;
+
+    assert.equal(applyRosterOverrides(classData, records), 1);
+    assert.deepEqual(classData['5-1'][0], {
+        no: 3, name: '박체육', gender: '여', attendance: false, ballSense: '2', score: 9,
+        recordMs: 11270, group_mixed2: 2, memo: '수정됨', penaltyCard: 2, captain_mixed2: true
+    });
 });
 
 test('buildBalancedTeamPlan balances headcount, gender, and ability', () => {

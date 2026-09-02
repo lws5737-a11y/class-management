@@ -157,6 +157,35 @@ export function parseRosterTable(rows, defaultClassName = '') {
     return { records, invalidCount };
 }
 
+export function applyRosterOverrides(classData, records) {
+    if (!classData || !Array.isArray(records)) return 0;
+
+    let appliedCount = 0;
+    for (const record of records) {
+        const className = normalizeClassName(record?.sourceClass);
+        const students = classData[className];
+        if (!Array.isArray(students)) continue;
+
+        const student = students.find(item => item.no === record.no);
+        if (!student) continue;
+
+        student.name = record.name;
+        student.gender = record.gender;
+        if (record.ballSense !== undefined) student.ballSense = record.ballSense;
+        if (record.recordMs !== undefined) student.recordMs = record.recordMs;
+        if (record.attendance !== undefined) student.attendance = record.attendance;
+        if (record.score !== undefined) student.score = record.score;
+        if (record.memo !== undefined) student.memo = record.memo;
+        if (record.group !== undefined) student.group = record.group;
+        if (record.groups?.mixed2 !== undefined) student.group_mixed2 = record.groups.mixed2;
+        if (record.groups?.mixed3 !== undefined) student.group_mixed3 = record.groups.mixed3;
+        if (record.groups?.mixed4 !== undefined) student.group_mixed4 = record.groups.mixed4;
+        if (record.groups?.gender !== undefined) student.group_gender = record.groups.gender;
+        appliedCount++;
+    }
+    return appliedCount;
+}
+
 function genderBucket(student) {
     return student.gender === '남' ? 'male' : (student.gender === '여' ? 'female' : 'other');
 }

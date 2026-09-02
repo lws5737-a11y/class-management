@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs';
+import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2422,6 +2422,7 @@ function handleExcelUpload(event, importTarget) {
 
             const importedClasses = Object.keys(newData);
             if (importedClasses.length > 0) {
+                applyRosterOverrides(newData, restoredSettings.rosterRecords);
                 if (importTarget === 'class') {
                     const sourceClass = newData[currentClass] ? currentClass : (importedClasses.length === 1 ? importedClasses[0] : '');
                     if (!sourceClass) {
@@ -2498,6 +2499,10 @@ function handleExcelUpload(event, importTarget) {
                     processRosterRows(rosterRows);
                     return;
                 }
+                const rosterSheet = workbook.Sheets['학생명단'];
+                const rosterRecords = rosterSheet
+                    ? parseRosterTable(window.XLSX.utils.sheet_to_json(rosterSheet, { header: 1, defval: '', raw: false })).records
+                    : [];
                 const settingsSheet = workbook.Sheets['앱설정'];
                 let stampImage = '';
                 let restoredJumpRopeData = null;
@@ -2521,7 +2526,7 @@ function handleExcelUpload(event, importTarget) {
                         .join('');
                     if (jumpRopeJSON) restoredJumpRopeData = JSON.parse(jumpRopeJSON);
                 }
-                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, backupScope, sourceClass });
+                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, backupScope, sourceClass, rosterRecords });
             } catch (error) {
                 console.error('엑셀 백업 읽기 실패:', error);
                 window.showModal('불러오기 실패', escapeHTML(error.message || '엑셀 파일을 읽을 수 없습니다.'));
