@@ -23,13 +23,15 @@ assert.ok(app.includes('deleteButton.innerHTML') && app.includes('aria-hidden="t
 assert.ok(!html.includes('id="modal-class-list"'), '명단·백업 화면에 학급 선택 UI가 남아 있습니다.');
 assert.ok(!html.includes('id="new-class-input"'), '명단·백업 화면에 새 학급 추가 UI가 남아 있습니다.');
 assert.ok(html.includes('학생 명단 및 백업') && html.includes('명단·백업'), '자료 관리 명칭이 이해하기 쉽게 바뀌지 않았습니다.');
-assert.ok(html.includes('cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js') && html.includes('accept=".xlsx,.csv"'), 'XLSX 저장·불러오기 모듈이 연결되지 않았습니다.');
+assert.ok(html.includes('cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js') && html.includes('accept=".xlsx,.xls,.csv"'), 'XLS/XLSX 저장·불러오기 모듈이 연결되지 않았습니다.');
 assert.ok(html.includes('exportAllToExcel()') && html.includes('exportCurrentClassToExcel()'), '전체/현재 학급 엑셀 저장 기능이 분리되지 않았습니다.');
 assert.ok(html.includes('handleAllCSVUpload(event)') && html.includes('handleClassExcelUpload(event)'), '전체/현재 학급 엑셀 불러오기 기능이 분리되지 않았습니다.');
 assert.ok(app.includes("['백업범위', scope]") && app.includes("scopeIsClass"), '학급/전체 백업 간 호환 범위 정보가 없습니다.');
 assert.ok(app.includes("book_append_sheet(workbook, displaySheet, '학생명단')"), '보기 좋은 학생명단 시트가 없습니다.');
 assert.ok(app.includes("book_append_sheet(workbook, backupSheet, '백업데이터')"), '복구용 백업 시트가 없습니다.');
 assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '학년·반·번호·이름·성별 붙여넣기 형식을 처리하지 않습니다.');
+assert.ok(app.includes("workbook.Sheets['학생명단']") && app.includes('parseRosterTable(rows'), '일반 엑셀 학생명단 시트를 불러오는 처리가 없습니다.');
+assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(presentStudents.filter'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');

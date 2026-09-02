@@ -1,6 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2228,6 +2229,97 @@ function handleExcelUpload(event, importTarget) {
         try { return JSON.parse(value.trim()); } catch (error) { return fallback; }
     };
 
+    const mergeRosterStudent = (record, targetClass) => {
+        const students = classData[targetClass] || [];
+        const existing = students.find(student => student.no === record.no);
+        const student = existing
+            ? { ...existing, no: record.no, name: record.name, gender: record.gender }
+            : createStudentRecord(record.no, record.name, record.gender);
+        if (record.ballSense !== undefined) student.ballSense = record.ballSense;
+        if (record.recordMs !== undefined) student.recordMs = record.recordMs;
+        if (record.attendance !== undefined) student.attendance = record.attendance;
+        if (record.score !== undefined) student.score = record.score;
+        if (record.memo !== undefined) student.memo = record.memo;
+        if (record.group !== undefined) student[`group_${currentGroupMode}`] = record.group;
+        for (const mode of ['mixed2', 'mixed3', 'mixed4', 'gender']) {
+            if (record.groups?.[mode] !== undefined) student[`group_${mode}`] = record.groups[mode];
+        }
+        return student;
+    };
+
+    const processRosterRows = (rows) => {
+        const { records, invalidCount } = parseRosterTable(rows, importTarget === 'class' ? currentClass : '');
+        if (records.length === 0) {
+            window.showModal('불러오기 실패', '번호와 이름이 포함된 학생 명단을 찾지 못했습니다. 첫 행의 번호·이름·성별 열을 확인해주세요.');
+            resetFileInput();
+            return;
+        }
+
+        const sourceClasses = [...new Set(records.map(record => record.sourceClass).filter(Boolean))];
+        const title = importTarget === 'class' ? `${currentClass} 명단 불러오기` : '전체 학급 명단 불러오기';
+        const message = importTarget === 'class'
+            ? `엑셀에서 찾은 <b>${records.length}명</b>을 현재 학급 명단에 등록하거나 갱신합니다.`
+            : `엑셀에서 찾은 <b>${records.length}명 · ${sourceClasses.length}개 학급</b>을 등록하거나 갱신합니다.`;
+
+        window.showModal(title, message, true, () => {
+            const recordsByClass = new Map();
+            if (importTarget === 'class') {
+                let selectedRecords = records;
+                if (sourceClasses.length > 1) {
+                    selectedRecords = records.filter(record => record.sourceClass === normalizeClassName(currentClass));
+                }
+                if (selectedRecords.length === 0) {
+                    window.showModal('현재 학급 자료 없음', `파일에서 <b>${escapeHTML(currentClass)}</b> 학급 학생을 찾지 못했습니다.`);
+                    resetFileInput();
+                    return;
+                }
+                recordsByClass.set(currentClass, selectedRecords);
+            } else {
+                records.forEach(record => {
+                    if (!record.sourceClass) return;
+                    if (!recordsByClass.has(record.sourceClass)) recordsByClass.set(record.sourceClass, []);
+                    recordsByClass.get(record.sourceClass).push(record);
+                });
+                if (recordsByClass.size === 0) {
+                    window.showModal('학급 정보 없음', '전체 학급 불러오기는 학급 열 또는 학년·반 열이 필요합니다.');
+                    resetFileInput();
+                    return;
+                }
+            }
+
+            let importedCount = 0;
+            recordsByClass.forEach((classRecords, className) => {
+                const merged = [...(classData[className] || [])];
+                classRecords.forEach(record => {
+                    const student = mergeRosterStudent(record, className);
+                    const index = merged.findIndex(existing => existing.no === record.no);
+                    if (index >= 0) merged[index] = student;
+                    else merged.push(student);
+                    importedCount++;
+                });
+                merged.sort((a, b) => a.no - b.no || a.name.localeCompare(b.name, 'ko'));
+                classData[className] = merged;
+            });
+
+            migrateData();
+            saveData({ immediate: true });
+            window.renderClassSelect();
+            if (currentClass) { window.renderStudentList(); window.renderGroups(); }
+            resetFileInput();
+            const skipped = invalidCount > 0 ? `<br><span class="text-amber-600">형식을 확인할 수 없는 ${invalidCount}행은 건너뛰었습니다.</span>` : '';
+            window.showModal('명단 불러오기 완료', `${importedCount}명의 학생을 등록하거나 갱신했습니다.${skipped}`);
+        }, '명단 불러오기');
+    };
+
+    const processCSVOrRoster = (text) => {
+        const normalized = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
+        const lines = normalized.split('\n').filter(line => line.trim());
+        const firstRow = lines.length > 0 ? parseCSVLine(lines[0]) : [];
+        const isBackup = firstRow.includes('그룹점수JSON') || firstRow.includes('그룹기록JSON') || firstRow.includes('도장JSON');
+        if (isBackup) processCSV(normalized);
+        else processRosterRows(lines.map(line => line.includes('\t') ? line.split('\t') : parseCSVLine(line)));
+    };
+
     const processCSV = function(text, restoredSettings = {}) {
         text = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
         const lines = text.split('\n').filter(l => l.trim() !== '');
@@ -2392,14 +2484,20 @@ function handleExcelUpload(event, importTarget) {
         }, "전체 복구하기");
     };
 
-    if (/\.xlsx$/i.test(file.name)) {
+    if (/\.xlsx?$/i.test(file.name)) {
         if (!window.XLSX) { window.showModal('오류', '엑셀 모듈을 불러오지 못했습니다.'); resetFileInput(); return; }
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const workbook = window.XLSX.read(e.target.result, { type: 'array' });
                 const backupSheet = workbook.Sheets['백업데이터'];
-                if (!backupSheet) throw new Error('백업데이터 시트를 찾을 수 없습니다.');
+                if (!backupSheet) {
+                    const rosterSheet = workbook.Sheets['학생명단'] || workbook.Sheets[workbook.SheetNames[0]];
+                    if (!rosterSheet) throw new Error('학생 명단 시트를 찾을 수 없습니다.');
+                    const rosterRows = window.XLSX.utils.sheet_to_json(rosterSheet, { header: 1, defval: '', raw: false });
+                    processRosterRows(rosterRows);
+                    return;
+                }
                 const settingsSheet = workbook.Sheets['앱설정'];
                 let stampImage = '';
                 let restoredJumpRopeData = null;
@@ -2440,11 +2538,11 @@ function handleExcelUpload(event, importTarget) {
         if (text.includes('\uFFFD')) {
             const eucReader = new FileReader();
             eucReader.onload = function(e2) {
-                processCSV(e2.target.result);
+                processCSVOrRoster(e2.target.result);
             };
             eucReader.readAsText(file, "euc-kr");
         } else {
-            processCSV(text);
+            processCSVOrRoster(text);
         }
     };
     reader.readAsText(file, "utf-8");
@@ -2892,37 +2990,13 @@ function normalizeGroupCaptains(mode) {
 window.generateMixedGroups = function(numGroups) {
     const students = classData[currentClass];
     if (!students) return;
-    const presentStudents = shuffleCopy(students.filter(s => s.attendance));
+    const presentStudents = students.filter(s => s.attendance);
     if (presentStudents.length < numGroups) { window.showModal("출석 인원 부족", `현재 출석 학생이 ${presentStudents.length}명입니다. ${numGroups}팀 편성에는 최소 ${numGroups}명이 필요합니다.`); return; }
     students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
-    const groups = Array.from({ length: numGroups }, (_, i) => ({ id: i + 1, total: 0, male: 0, female: 0, totalScore: 0 }));
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
-
-    const assignToOptimalGroup = (student) => {
-        let stScore = getStudentPower(student, validRecords);
-        const isMale = student.gender === '남';
-
-        let minTotal = Math.min(...groups.map(g => g.total));
-        let candidates = groups.filter(g => g.total === minTotal);
-
-        let minGender = Math.min(...candidates.map(g => isMale ? g.male : g.female));
-        let genderCandidates = candidates.filter(g => (isMale ? g.male : g.female) === minGender);
-        if (genderCandidates.length > 0) candidates = genderCandidates;
-
-        let minTotalScore = Math.min(...candidates.map(g => g.totalScore));
-        let scoreCandidates = candidates.filter(g => g.totalScore === minTotalScore);
-        if (scoreCandidates.length > 0) candidates = scoreCandidates;
-
-        const targetGroup = candidates[Math.floor(Math.random() * candidates.length)];
-        student[`group_${currentGroupMode}`] = targetGroup.id;
-        targetGroup.total++;
-        if (isMale) targetGroup.male++; else targetGroup.female++;
-        targetGroup.totalScore += stScore;
-    };
-
-    const sortedStudents = [...presentStudents].sort((a, b) => getStudentPower(b, validRecords) - getStudentPower(a, validRecords));
-    sortedStudents.forEach(s => assignToOptimalGroup(s));
+    const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords));
+    plan.forEach(team => team.members.forEach(student => { student[`group_${currentGroupMode}`] = team.id; }));
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
     groupScores[currentClass][currentGroupMode] = {};
@@ -2939,7 +3013,7 @@ window.generateMixedGroups = function(numGroups) {
 window.generateGenderGroups = function() {
     const students = classData[currentClass];
     if (!students) return;
-    const presentStudents = shuffleCopy(students.filter(s => s.attendance));
+    const presentStudents = students.filter(s => s.attendance);
     const presentBoys = presentStudents.filter(s => s.gender === '남').length;
     const presentGirls = presentStudents.filter(s => s.gender === '여').length;
     if (presentBoys < 2 || presentGirls < 2) {
@@ -2949,28 +3023,11 @@ window.generateGenderGroups = function() {
     students.forEach(s => s.group_gender = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
-    const boys = presentStudents.filter(s => s.gender === '남').sort((a, b) => getStudentPower(b, validRecords) - getStudentPower(a, validRecords));
-    const girls = presentStudents.filter(s => s.gender === '여').sort((a, b) => getStudentPower(b, validRecords) - getStudentPower(a, validRecords));
-
-    const assignToGroups = (studentList, groupA, groupB) => {
-        let scoreA = 0, scoreB = 0;
-        let countA = 0, countB = 0;
-        studentList.forEach(student => {
-            let stScore = getStudentPower(student, validRecords);
-            let targetGroup;
-            if (countA < countB) targetGroup = groupA;
-            else if (countB < countA) targetGroup = groupB;
-            else if (scoreA <= scoreB) targetGroup = groupA;
-            else targetGroup = groupB;
-
-            student.group_gender = targetGroup;
-            if (targetGroup === groupA) { scoreA += stScore; countA++; }
-            else { scoreB += stScore; countB++; }
-        });
-    };
-
-    assignToGroups(boys, 1, 2);
-    assignToGroups(girls, 3, 4);
+    const powerOf = student => getStudentPower(student, validRecords);
+    const boysPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '남'), 2, powerOf);
+    const girlsPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '여'), 2, powerOf);
+    boysPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id; }));
+    girlsPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id + 2; }));
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
     groupScores[currentClass]['gender'] = {1:0, 2:0, 3:0, 4:0};
