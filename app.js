@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260903-2';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260903-3';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2424,7 +2424,7 @@ function handleExcelUpload(event, importTarget) {
                 }
 
                 newData[className].push({
-                    ...createStudentRecord(no, name, gender || '-'), ballSense: bs, attendance, score, recordMs, memo,
+                    ...createStudentRecord(no, name, gender || '-'), ballSense: bs, attendance, score, recordMs: recMs, memo,
                     captain_mixed2: isYes(idxCaptain2), captain_mixed3: isYes(idxCaptain3), captain_mixed4: isYes(idxCaptain4) || legacyCaptain,
                     captain_gender: isYes(idxCaptainGender), group_mixed2: g2, group_mixed3: g3, group_mixed4: g4, group_gender: gg,
                     penaltyCard, penaltyCardSystem: PENALTY_CARD_SYSTEM_VERSION
