@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable } from '../class-utils.mjs';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from '../class-utils.mjs';
 
 function seededRandom(seed = 123456) {
     return () => {
@@ -39,6 +39,23 @@ test('parseRosterTable reads the app student-list worksheet', () => {
     assert.equal(result.records[0].attendance, false);
     assert.equal(result.records[0].score, 7);
     assert.equal(result.records[0].groups.mixed2, 2);
+});
+
+test('invalid backup JSON primitives and impossible group numbers are ignored', () => {
+    const scoreFallback = { mixed2: { 1: 0, 2: 0 } };
+    const stampFallback = [false, true];
+    assert.equal(parseStructuredJson('17', scoreFallback, 'object'), scoreFallback);
+    assert.equal(parseStructuredJson('17', stampFallback, 'array'), stampFallback);
+    assert.deepEqual(parseStructuredJson('{"mixed2":{"1":3}}', scoreFallback, 'object'), { mixed2: { 1: 3 } });
+    assert.deepEqual(parseStructuredJson('[true,false]', stampFallback, 'array'), [true, false]);
+
+    const result = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '혼성2모둠', '혼성3모둠', '혼성4모둠', '동성모둠'],
+        ['2-3', 1, '강수민', '남', 17, 17, 17, 17]
+    ]);
+    assert.deepEqual(result.records[0].groups, {
+        mixed2: undefined, mixed3: undefined, mixed4: undefined, gender: undefined
+    });
 });
 
 test('applyRosterOverrides applies visible worksheet edits without losing backup-only data', () => {
