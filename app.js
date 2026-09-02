@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs';
+import { applyRosterOverrides, buildBalancedTeamPlan, parseRosterTable } from './class-utils.mjs?v=20260902-2';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2422,7 +2422,7 @@ function handleExcelUpload(event, importTarget) {
 
             const importedClasses = Object.keys(newData);
             if (importedClasses.length > 0) {
-                applyRosterOverrides(newData, restoredSettings.rosterRecords);
+                const rosterOverrideCount = applyRosterOverrides(newData, restoredSettings.rosterRecords);
                 if (importTarget === 'class') {
                     const sourceClass = newData[currentClass] ? currentClass : (importedClasses.length === 1 ? importedClasses[0] : '');
                     if (!sourceClass) {
@@ -2476,9 +2476,12 @@ function handleExcelUpload(event, importTarget) {
                 saveData({ immediate: true });
 
                 if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
-                const doneMessage = importTarget === 'class'
+                const rosterMessage = Array.isArray(restoredSettings.rosterRecords)
+                    ? `<br><span class="font-bold text-emerald-600">학생명단 편집값 ${rosterOverrideCount}명 반영</span>`
+                    : '';
+                const doneMessage = (importTarget === 'class'
                     ? `${escapeHTML(currentClass)} 학급 자료를 복구했습니다.`
-                    : scopeIsClass ? '학급 자료를 추가하거나 교체했습니다.' : '모든 학급 자료를 복구했습니다.';
+                    : scopeIsClass ? '학급 자료를 추가하거나 교체했습니다.' : '모든 학급 자료를 복구했습니다.') + rosterMessage;
                 window.showModal("완료", doneMessage);
             } else { window.showModal("오류", "올바른 데이터를 찾을 수 없습니다."); }
             resetFileInput();

@@ -32,6 +32,8 @@ assert.ok(app.includes("book_append_sheet(workbook, backupSheet, '백업데이�
 assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '학년·반·번호·이름·성별 붙여넣기 형식을 처리하지 않습니다.');
 assert.ok(app.includes("workbook.Sheets['학생명단']") && app.includes('parseRosterTable(rows'), '일반 엑셀 학생명단 시트를 불러오는 처리가 없습니다.');
 assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(presentStudents.filter'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
+assert.ok(app.includes('학생명단 편집값 ${rosterOverrideCount}명 반영'), '엑셀 편집값 반영 결과가 사용자에게 표시되지 않습니다.');
+assert.ok(html.includes('app.js?v=20260902-2') && app.includes('class-utils.mjs?v=20260902-2'), '엑셀 불러오기 수정본의 캐시 버전이 연결되지 않았습니다.');
 assert.ok(!html.includes('하교지도') && !app.includes('window.updateDismissal'), '하교 입력 기능이 남아 있습니다.');
 assert.ok(!app.includes('Math.random() - 0.5'), '편향된 랜덤 정렬 방식이 남아 있습니다.');
 assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(mode))"), '잘못된 모둠 모드를 방어하지 않습니다.');
