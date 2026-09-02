@@ -133,7 +133,8 @@ export function parseRosterTable(rows, defaultClassName = '') {
         }
         if (!sourceClass) sourceClass = normalizeClassName(defaultClassName);
 
-        const seconds = indexes.record >= 0 ? parseSeconds(row[indexes.record]) : undefined;
+        const recordCell = indexes.record >= 0 ? cleanCell(row[indexes.record]) : null;
+        const seconds = indexes.record >= 0 ? parseSeconds(recordCell) : undefined;
         const score = indexes.score >= 0 && cleanCell(row[indexes.score]) !== '' ? Number(row[indexes.score]) : undefined;
         records.push({
             sourceClass,
@@ -141,7 +142,9 @@ export function parseRosterTable(rows, defaultClassName = '') {
             name,
             gender: indexes.gender >= 0 ? normalizeGender(row[indexes.gender]) : '-',
             ballSense: indexes.ballSense >= 0 ? parseBallSense(row[indexes.ballSense]) : undefined,
-            recordMs: seconds === undefined ? undefined : Math.round(seconds * 1000),
+            // 내보낸 학생명단에서 순발력 셀을 비운 것은 기존 기록을
+            // 유지하라는 뜻이 아니라 기록을 삭제(0ms)하라는 명시적 편집이다.
+            recordMs: indexes.record < 0 ? undefined : (recordCell === '' ? 0 : (seconds === undefined ? undefined : Math.round(seconds * 1000))),
             attendance: indexes.attendance >= 0 ? parseAttendance(row[indexes.attendance]) : undefined,
             score: Number.isFinite(score) ? score : undefined,
             memo: indexes.memo >= 0 ? cleanCell(row[indexes.memo]) : undefined,

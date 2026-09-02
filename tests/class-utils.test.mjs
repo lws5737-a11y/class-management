@@ -54,6 +54,37 @@ test('applyRosterOverrides applies visible worksheet edits without losing backup
     });
 });
 
+test('applyRosterOverrides clears an existing agility record when the visible cell is blank', () => {
+    const classData = {
+        '6-2': [{ no: 1, name: '강루미', gender: '여', recordMs: 12350, penaltyCard: 2 }]
+    };
+    const records = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '순발력(초)'],
+        ['6-2', 1, '강루미', '여', '']
+    ]).records;
+
+    assert.equal(records[0].recordMs, 0);
+    assert.equal(applyRosterOverrides(classData, records), 1);
+    assert.equal(classData['6-2'][0].recordMs, 0);
+    assert.equal(classData['6-2'][0].penaltyCard, 2);
+});
+
+test('visible agility edits apply independently across an all-class backup', () => {
+    const classData = {
+        '5-1': [{ no: 1, name: '김체육', gender: '남', recordMs: 15000 }],
+        '6-2': [{ no: 1, name: '박체육', gender: '여', recordMs: 14000 }]
+    };
+    const records = parseRosterTable([
+        ['학급', '번호', '이름', '성별', '순발력(초)'],
+        ['5-1', 1, '김체육', '남', 11.27],
+        ['6-2', 1, '박체육', '여', '']
+    ]).records;
+
+    assert.equal(applyRosterOverrides(classData, records), 2);
+    assert.equal(classData['5-1'][0].recordMs, 11270);
+    assert.equal(classData['6-2'][0].recordMs, 0);
+});
+
 test('buildBalancedTeamPlan balances headcount, gender, and ability', () => {
     const students = Array.from({ length: 25 }, (_, index) => ({
         no: index + 1,
