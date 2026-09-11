@@ -60,6 +60,9 @@ assert.ok(!html.includes('jumprope-mode-icon') && !app.includes('jumprope-mode-b
 assert.ok(app.includes('handleDropOnStudent') && app.includes('handleDragOverStudent') && app.includes('handleStudentDropLogic'), '모바일/PC 학생 이동·교체용 드롭 처리가 없습니다.');
 assert.ok(app.includes('getCaptainLimit') && app.includes("mode === 'mixed2' ? 2") && app.includes("mode === 'mixed3' ? 3"), '편성별 체육부장 최대 인원이 적용되지 않았습니다.');
 assert.ok(html.includes("generateCurrentGroup('ball')") && html.includes("generateCurrentGroup('agility')"), '볼센스/순발력 우선 편성 버튼이 분리되지 않았습니다.');
+assert.ok(html.includes('grid-cols-3') && html.includes('볼센스 편성') && html.includes('순발력 편성'), '모바일 편성 버튼 3개가 한 줄에 배치되지 않았습니다.');
+assert.ok(html.includes('<details id="random-draw-details"') && !html.includes('<details id="random-draw-details" open'), '랜덤 뽑기가 기본 접힘 상태가 아닙니다.');
+assert.ok(app.includes("'max-h-[180px]'"), '터치 이동 중 미편성 영역 내부 높이가 확장되지 않았습니다.');
 assert.ok(html.includes('reviewJumpRopeResults()') && app.includes('jumpRopeAwards') && app.includes('addStampsToClass'), '줄넘기 순위 보상 및 중복 방지 처리가 없습니다.');
 assert.ok(app.includes('mission-complete-v2.jpg') && !app.includes("bigImg.src = 'images/stamps/complete01.jpg'"), '새 미션 완료 이미지가 연결되지 않았습니다.');
 assert.ok(app.includes("window.showPenaltyCard('verbal')") && app.includes('% 4'), '입경고를 포함한 3단계 경고 순환이 적용되지 않았습니다.');
