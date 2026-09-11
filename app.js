@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260903-3';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -16,6 +16,7 @@ let groupLoopId = null;
 
 // 8자 줄넘기 상태
 let jumpRopeData = {}; 
+let jumpRopeAwards = {};
 let jumpRopeTimerMs = 0;
 let jumpRopeTimerStart = 0;
 let jumpRopeInterval = null;
@@ -273,14 +274,16 @@ window.getAbilityHTML = function(type, val) {
     return `<span class="text-slate-300 text-[10px] font-bold">-</span>`;
 };
 
-const getStudentPower = (student, validRecords) => {
-    let bs = (parseInt(student.ballSense) || 0) * 60; 
-    let rs = 0;
+const getStudentPower = (student, validRecords, priority = 'ball') => {
+    const ballScore = parseInt(student.ballSense) || 0;
+    let agilityScore = 0;
     if (student.recordMs > 0 && validRecords.length > 0) {
         let rank = validRecords.indexOf(student.recordMs);
-        rs = 100 - (rank / validRecords.length * 100);
+        agilityScore = 100 - (rank / validRecords.length * 100);
     }
-    return bs + rs; 
+    return priority === 'agility'
+        ? (agilityScore * 100) + ballScore
+        : (ballScore * 1000) + agilityScore;
 };
 
 let currentClass = "";
@@ -667,6 +670,11 @@ window.handleTouchMove = function(e) {
     clearDropStyles();
 
     if (elemBelow) {
+        const studentCard = elemBelow.closest('.student-card[data-student-no]');
+        if (studentCard && Number(studentCard.dataset.studentNo) !== Number(window.draggedStudentNo)) {
+            studentCard.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
+            return;
+        }
         const groupArea = elemBelow.closest('.group-area');
         if (groupArea) {
             groupArea.classList.add('drop-target-active', 'ring-[5px]', 'ring-red-500', 'shadow-[0_0_20px_rgba(239,68,68,0.6)]', 'scale-[1.02]', 'z-20');
@@ -690,12 +698,17 @@ window.handleTouchEnd = function(e) {
     window.hideFloatingUnassigned();
 
     if (elemBelow) {
+        const studentCard = elemBelow.closest('.student-card[data-student-no]');
+        if (studentCard && Number(studentCard.dataset.studentNo) !== Number(window.draggedStudentNo)) {
+            window.handleStudentDropLogic(window.draggedStudentNo, Number(studentCard.dataset.studentNo));
+        } else {
         const groupArea = elemBelow.closest('.group-area');
         if (groupArea) {
             const targetGroupAttr = groupArea.getAttribute('data-group-id');
             if (targetGroupAttr !== null) {
                 window.handleDropLogic(window.draggedStudentNo, parseInt(targetGroupAttr));
             }
+        }
         }
     }
 
@@ -737,6 +750,27 @@ window.handleDropLogic = function(draggedNo, targetGroup) {
     window.renderGroups();
 };
 
+window.handleStudentDropLogic = function(draggedNo, targetNo) {
+    if (draggedNo === null || draggedNo === undefined || Number(draggedNo) === Number(targetNo)) return;
+    const students = classData[currentClass] || [];
+    const draggedStudent = students.find(student => Number(student.no) === Number(draggedNo));
+    const targetStudent = students.find(student => Number(student.no) === Number(targetNo));
+    if (!draggedStudent || !targetStudent) return;
+
+    const groupKey = `group_${currentGroupMode}`;
+    const sourceGroup = draggedStudent[groupKey] ?? null;
+    const targetGroup = targetStudent[groupKey] ?? null;
+    if (sourceGroup === targetGroup) return;
+
+    draggedStudent[groupKey] = targetGroup;
+    targetStudent[groupKey] = sourceGroup;
+    clearDropStyles();
+    normalizeGroupCaptains(currentGroupMode);
+    saveData();
+    window.renderStudentList();
+    window.renderGroups();
+};
+
 window.handleDragStart = function(e, studentNo) {
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
@@ -775,6 +809,22 @@ window.handleDragLeaveGroup = function(e) {
 window.handleDropOnGroup = function(e, targetGroupId) {
     e.preventDefault();
     window.handleDropLogic(window.draggedStudentNo, targetGroupId);
+    window.draggedStudentNo = null;
+};
+
+window.handleDragOverStudent = function(e) {
+    if (Number(e.currentTarget.dataset.studentNo) === Number(window.draggedStudentNo)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    clearDropStyles();
+    e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
+};
+
+window.handleDropOnStudent = function(e, targetStudentNo) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.handleStudentDropLogic(window.draggedStudentNo, targetStudentNo);
     window.draggedStudentNo = null;
 };
 
@@ -1052,6 +1102,7 @@ function createAppPayload(revision = latestLocalRevision) {
         stampImage: globalStampImage,
         penalties: groupPenalties,
         jumpRope: jumpRopeData,
+        jumpRopeAwards,
         syncMeta: {
             revision,
             updatedAt: new Date().toISOString(),
@@ -1072,6 +1123,7 @@ function applyAppPayload(payload) {
     classStamps = payload.stamps || {};
     groupPenalties = payload.penalties || {};
     jumpRopeData = payload.jumpRope || {};
+    jumpRopeAwards = payload.jumpRopeAwards || {};
     if (payload.stampImage) {
         globalStampImage = payload.stampImage;
         localStorage.setItem('customStamp', globalStampImage);
@@ -1086,6 +1138,10 @@ function mergeAppPayloads(serverPayload, localPayload, revision) {
     Object.entries(localPayload.jumpRope || {}).forEach(([week, classes]) => {
         mergedJumpRope[week] = { ...(mergedJumpRope[week] || {}), ...(classes || {}) };
     });
+    const mergedJumpRopeAwards = { ...(serverPayload.jumpRopeAwards || {}) };
+    Object.entries(localPayload.jumpRopeAwards || {}).forEach(([week, grades]) => {
+        mergedJumpRopeAwards[week] = { ...(mergedJumpRopeAwards[week] || {}), ...(grades || {}) };
+    });
     return cloneAppPayload({
         data: mergeMap(serverPayload.data, localPayload.data),
         scores: mergeMap(serverPayload.scores, localPayload.scores),
@@ -1094,6 +1150,7 @@ function mergeAppPayloads(serverPayload, localPayload, revision) {
         stampImage: localPayload.stampImage || serverPayload.stampImage || globalStampImage,
         penalties: mergeMap(serverPayload.penalties, localPayload.penalties),
         jumpRope: mergedJumpRope,
+        jumpRopeAwards: mergedJumpRopeAwards,
         syncMeta: { revision, updatedAt: new Date().toISOString(), deviceId: getRecoveryDeviceId(), mergedConflict: true }
     });
 }
@@ -1330,7 +1387,7 @@ onAuthStateChanged(auth, async (user) => {
         const loginBtn = document.getElementById('btn-login');
         if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Google 계정으로 시작하기'; }
         
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {};
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; jumpRopeAwards = {};
         currentClass = ""; window.renderClassSelect();
     }
 });
@@ -1385,7 +1442,7 @@ function setupFirestoreListener() {
                 if (!saveRequested && !saveInFlight) setSyncStatus('saved', 'Firebase 저장 완료');
             }
         } else if (!latestRecoveryRecord?.dirty) {
-            classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; groupPenalties = {}; jumpRopeData = {};
+            classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; groupPenalties = {}; jumpRopeData = {}; jumpRopeAwards = {};
         }
         window.renderClassSelect();
         if (currentClass && classData[currentClass]) {
@@ -1560,9 +1617,9 @@ window.renderJumpRopeTab = function() {
             
             // 랭킹 보상 도장 아이콘
             let reward = '';
-            if(idx === 0) reward = '<span class="text-xs ml-1 tracking-tighter">💮💮💮</span>';
-            else if(idx === 1) reward = '<span class="text-xs ml-1 tracking-tighter">💮💮</span>';
-            else if(idx === 2) reward = '<span class="text-xs ml-1 tracking-tighter">💮</span>';
+            if(idx === 0) reward = '<span class="text-xs ml-1 tracking-tighter" title="도장 2개">💮💮</span>';
+            else if(idx === 1) reward = '<span class="text-xs ml-1 tracking-tighter" title="도장 1개">💮</span>';
+            else if(idx === 2) reward = '<span class="text-[10px] ml-1 text-slate-400">도장 0개</span>';
 
             html += `
                 <li class="flex justify-between items-center px-2 py-1 ${highlight}">
@@ -1576,6 +1633,77 @@ window.renderJumpRopeTab = function() {
     renderList(maleRanking, 'jumprope-male-ranking');
     renderList(femaleRanking, 'jumprope-female-ranking');
 
+};
+
+function getJumpRopeRankings(week, grade) {
+    const rankings = { male: [], female: [] };
+    Object.entries(jumpRopeData[week] || {}).forEach(([className, record]) => {
+        const match = className.match(/^(\d+)/);
+        if (!match || match[1] !== String(grade)) return;
+        if (Number(record?.male) > 0) rankings.male.push({ cls: className, score: Number(record.male) });
+        if (Number(record?.female) > 0) rankings.female.push({ cls: className, score: Number(record.female) });
+    });
+    const sorter = (left, right) => right.score - left.score || left.cls.localeCompare(right.cls, 'ko', { numeric: true });
+    rankings.male.sort(sorter);
+    rankings.female.sort(sorter);
+    return rankings;
+}
+
+window.reviewJumpRopeResults = function() {
+    if (!currentClass) return window.showModal('알림', '학급을 먼저 선택해주세요.');
+    const grade = currentClass.match(/^(\d+)/)?.[1];
+    if (!grade) return window.showModal('결과 확인', '학급명에서 학년을 확인할 수 없습니다. 예: 6-2');
+    const week = document.getElementById('jumprope-week-select').value;
+    const alreadyAwarded = jumpRopeAwards[week]?.[grade];
+    if (alreadyAwarded) {
+        window.showModal('이미 적립 완료', `<b>${escapeHTML(week)} ${grade}학년</b> 결과는 이미 도장판에 반영되었습니다.<br><span class="text-xs text-slate-500">중복 적립을 막기 위해 다시 적용하지 않습니다.</span>`);
+        return;
+    }
+
+    const rankings = getJumpRopeRankings(week, grade);
+    if (rankings.male.length === 0 && rankings.female.length === 0) {
+        window.showModal('결과 확인', '이 주차에 저장된 동학년 기록이 없습니다. 먼저 각 학급 기록을 저장해주세요.');
+        return;
+    }
+
+    const rewardByClass = {};
+    const rewardForRank = rank => rank === 1 ? 2 : (rank === 2 ? 1 : 0);
+    const renderResult = (label, items, color) => {
+        const topThree = items.slice(0, 3);
+        if (topThree.length === 0) return `<div class="text-xs text-slate-400">${label}: 기록 없음</div>`;
+        return `<div class="text-left rounded-xl border p-3 ${color}"><div class="font-black mb-1">${label}</div>${topThree.map((item, index) => {
+            const reward = rewardForRank(index + 1);
+            rewardByClass[item.cls] = (rewardByClass[item.cls] || 0) + reward;
+            return `<div class="flex justify-between gap-3 text-xs py-0.5"><span>${index + 1}위 ${escapeHTML(item.cls)} · ${item.score}개</span><b>도장 ${reward}개</b></div>`;
+        }).join('')}</div>`;
+    };
+    const resultHtml = `${renderResult('👦 남학생', rankings.male, 'bg-blue-50 border-blue-200')}${renderResult('👧 여학생', rankings.female, 'bg-pink-50 border-pink-200')}`;
+    const rewardSummary = Object.entries(rewardByClass).filter(([, count]) => count > 0)
+        .map(([className, count]) => `<span class="inline-block bg-amber-100 text-amber-800 rounded-full px-2 py-1 mr-1 mt-1 font-black">${escapeHTML(className)} +${count}</span>`).join('');
+
+    window.showModal(`${week} 결과`, `${resultHtml}<div class="mt-3 text-left"><b>도장 적립</b><br>${rewardSummary || '<span class="text-slate-400">적립 대상 없음</span>'}</div>`, true, async () => {
+        if (jumpRopeAwards[week]?.[grade]) return window.showModal('이미 적립 완료', '이 결과는 이미 반영되었습니다.');
+        const completedClasses = [];
+        Object.entries(rewardByClass).forEach(([className, count]) => {
+            if (count <= 0) return;
+            const result = addStampsToClass(className, count);
+            if (result.completions > 0) completedClasses.push({ className, ...result });
+        });
+        if (!jumpRopeAwards[week]) jumpRopeAwards[week] = {};
+        jumpRopeAwards[week][grade] = {
+            awardedAt: new Date().toISOString(),
+            rewards: rewardByClass,
+            male: rankings.male.slice(0, 3),
+            female: rankings.female.slice(0, 3)
+        };
+        const cloudSaved = await saveData({ immediate: true });
+        window.renderStampBoard();
+        if (completedClasses.length > 0) {
+            showMissionComplete(completedClasses.map(item => item.className), completedClasses.reduce((sum, item) => sum + item.completions, 0));
+        } else {
+            window.showModal('도장 적립 완료', `순위 보상을 도장판에 반영했습니다.${cloudSaved ? '' : '<br><span class="text-amber-600 text-xs">오프라인 저장됨 · 온라인 연결 시 자동 전송</span>'}`);
+        }
+    }, '도장 적립하기');
 };
 
 window.openJumpRopeAnalysisModal = function() {
@@ -1779,7 +1907,7 @@ window.renderStampBoard = () => {
         bigImg.classList.add('hidden');
         placeholder.classList.remove('hidden');
     } else if (stampedCount >= TOTAL_STAMP_CELLS) {
-        bigImg.src = 'images/stamps/complete01.jpg';
+        bigImg.src = 'images/stamps/mission-complete-v2.jpg';
         bigImg.classList.remove('hidden');
         placeholder.classList.add('hidden');
     } else {
@@ -1789,32 +1917,39 @@ window.renderStampBoard = () => {
     }
 };
 
+function addStampsToClass(className, amount) {
+    const safeAmount = Math.max(0, Number.parseInt(amount, 10) || 0);
+    const currentCount = Array.isArray(classStamps[className]) ? classStamps[className].filter(Boolean).length : 0;
+    const totalCount = currentCount + safeAmount;
+    const completions = Math.floor(totalCount / TOTAL_STAMP_CELLS);
+    const remaining = totalCount % TOTAL_STAMP_CELLS;
+    classStamps[className] = Array(TOTAL_STAMP_CELLS).fill(false).map((_, index) => index < remaining);
+    return { completions, remaining };
+}
+
+function showMissionComplete(classNames, completions = 1) {
+    const names = classNames.map(escapeHTML).join(', ');
+    window.playOlympicFanfare();
+    window.fireConfetti();
+    window.showModal('🎉 미션 컴플리트!', `<img src="images/stamps/mission-complete-v2.jpg" alt="체육 수업 미션 성공" class="w-full rounded-xl mb-3 shadow-md"><b>${names}</b> 학급이 도장 20개를 달성했습니다.${completions > 1 ? `<br>총 ${completions}회 달성` : ''}<br><span class="text-xs text-emerald-700">도장판은 초기화되었고 초과 도장은 이어서 적립되었습니다.</span>`);
+}
+
 window.addOneStamp = () => {
-    if (!currentClass || !classStamps[currentClass]) {
+    if (!currentClass) {
         window.showModal("알림", "학급을 먼저 선택해주세요.");
         return;
     }
-    let currentCount = classStamps[currentClass].filter(Boolean).length;
-    
-    if (currentCount < TOTAL_STAMP_CELLS) {
-        classStamps[currentClass][currentCount] = true;
-        
-        const img = document.getElementById('big-stamp-img');
-        if(img) {
-            img.classList.remove('animate-pop-in');
-            void img.offsetWidth; 
-            img.classList.add('animate-pop-in');
-        }
-        
-        window.playStampSound();
-        saveData();
-        window.renderStampBoard();
-        
-        if (currentCount + 1 === TOTAL_STAMP_CELLS) {
-            setTimeout(() => window.playOlympicFanfare(), 300);
-            window.fireConfetti();
-        }
+    const result = addStampsToClass(currentClass, 1);
+    const img = document.getElementById('big-stamp-img');
+    if(img) {
+        img.classList.remove('animate-pop-in');
+        void img.offsetWidth;
+        img.classList.add('animate-pop-in');
     }
+    window.playStampSound();
+    saveData();
+    window.renderStampBoard();
+    if (result.completions > 0) setTimeout(() => showMissionComplete([currentClass], result.completions), 200);
 };
 
 window.removeOneStamp = () => {
@@ -2113,7 +2248,7 @@ window.deleteAllClasses = function() {
         Object.keys(classData).forEach(className => localStorage.removeItem(`pinnedGroupMode_${className}`));
         localStorage.removeItem('classOrder');
         localStorage.removeItem('classVisibility');
-        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; saveData({ immediate: true }); currentClass = ""; window.selectedGroupStudent = null;
+        classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; jumpRopeAwards = {}; saveData({ immediate: true }); currentClass = ""; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
         ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -2176,13 +2311,16 @@ function buildExcelBackup(classNames, scope, sourceClass = '') {
         ? Object.fromEntries(Object.entries(jumpRopeData).map(([week, records]) => [week, sourceClass && records?.[sourceClass] ? { [sourceClass]: records[sourceClass] } : {}]))
         : jumpRopeData;
     const jumpRopeChunks = JSON.stringify(scopedJumpRopeData).match(/[\s\S]{1,30000}/g) || [];
+    const scopedJumpRopeAwards = scope === '학급' ? {} : jumpRopeAwards;
+    const jumpRopeAwardChunks = JSON.stringify(scopedJumpRopeAwards).match(/[\s\S]{1,30000}/g) || [];
     const settingsSheet = window.XLSX.utils.aoa_to_sheet([
         ['항목', '값'],
         ['백업범위', scope],
         ['원본학급', sourceClass],
         ['백업형식버전', 2],
         ...stampChunks.map((chunk, index) => [`스탬프이미지_${String(index + 1).padStart(4, '0')}`, chunk]),
-        ...jumpRopeChunks.map((chunk, index) => [`줄넘기JSON_${String(index + 1).padStart(4, '0')}`, chunk])
+        ...jumpRopeChunks.map((chunk, index) => [`줄넘기JSON_${String(index + 1).padStart(4, '0')}`, chunk]),
+        ...jumpRopeAwardChunks.map((chunk, index) => [`줄넘기보상JSON_${String(index + 1).padStart(4, '0')}`, chunk])
     ]);
     window.XLSX.utils.book_append_sheet(workbook, displaySheet, '학생명단');
     window.XLSX.utils.book_append_sheet(workbook, backupSheet, '백업데이터');
@@ -2475,10 +2613,16 @@ function handleExcelUpload(event, importTarget) {
                             });
                         });
                     }
+                    if (restoredSettings.jumpRopeAwards) {
+                        Object.entries(restoredSettings.jumpRopeAwards).forEach(([week, grades]) => {
+                            jumpRopeAwards[week] = { ...(jumpRopeAwards[week] || {}), ...(grades || {}) };
+                        });
+                    }
                 } else {
                     classData = newData; groupScores = newGroupScores; groupRecords = newGroupRecords; groupPenalties = newGroupPenalties;
                     classStamps = newClassStamps;
                     if (restoredSettings.jumpRopeData) jumpRopeData = restoredSettings.jumpRopeData;
+                    if (restoredSettings.jumpRopeAwards) jumpRopeAwards = restoredSettings.jumpRopeAwards;
                 }
                 if (restoredSettings.stampImage) globalStampImage = restoredSettings.stampImage;
                 migrateData();
@@ -2529,6 +2673,7 @@ function handleExcelUpload(event, importTarget) {
                 const settingsSheet = workbook.Sheets['앱설정'];
                 let stampImage = '';
                 let restoredJumpRopeData = null;
+                let restoredJumpRopeAwards = null;
                 let backupScope = '';
                 let sourceClass = '';
                 if (settingsSheet) {
@@ -2548,8 +2693,14 @@ function handleExcelUpload(event, importTarget) {
                         .map(row => String(row[1]))
                         .join('');
                     if (jumpRopeJSON) restoredJumpRopeData = parseStructuredJson(jumpRopeJSON, null, 'object');
+                    const jumpRopeAwardsJSON = settingsDataRows
+                        .filter(row => String(row[0]).startsWith('줄넘기보상JSON_'))
+                        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+                        .map(row => String(row[1]))
+                        .join('');
+                    if (jumpRopeAwardsJSON) restoredJumpRopeAwards = parseStructuredJson(jumpRopeAwardsJSON, null, 'object');
                 }
-                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, backupScope, sourceClass, rosterRecords });
+                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, jumpRopeAwards: restoredJumpRopeAwards, backupScope, sourceClass, rosterRecords });
             } catch (error) {
                 console.error('엑셀 백업 읽기 실패:', error);
                 window.showModal('불러오기 실패', escapeHTML(error.message || '엑셀 파일을 읽을 수 없습니다.'));
@@ -2665,13 +2816,11 @@ window.toggleCaptain = function(studentNo) {
         const isTurningOn = !student[captainProp];
 
         if (isTurningOn) {
-            const groupId = student[`group_${currentGroupMode}`];
-            if (groupId !== null && groupId !== undefined) {
-                classData[currentClass].forEach(s => {
-                    if (s[`group_${currentGroupMode}`] === groupId) {
-                        s[captainProp] = false;
-                    }
-                });
+            const captainCount = classData[currentClass].filter(s => s.attendance && s[captainProp]).length;
+            const captainLimit = getCaptainLimit(currentGroupMode);
+            if (captainCount >= captainLimit) {
+                window.showModal('체육부장 지정', `이 편성에서는 체육부장을 최대 <b>${captainLimit}명</b>까지 지정할 수 있습니다.`);
+                return;
             }
         }
 
@@ -2891,12 +3040,12 @@ window.setGroupMode = function(mode, isInit = false) {
         }
     });
 
-    const descEl = document.getElementById('group-mode-desc'); const btnText = document.getElementById('generate-btn-text');
+    const descEl = document.getElementById('group-mode-desc');
 
-    if (mode === 'mixed2') { descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다."; btnText.innerText = "혼성 2팀 편성하기"; } 
-    else if (mode === 'mixed3') { descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다."; btnText.innerText = "혼성 3팀 편성하기"; } 
-    else if (mode === 'mixed4') { descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다."; btnText.innerText = "혼성 4팀 편성하기"; } 
-    else if (mode === 'gender') { descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다."; btnText.innerText = "동성 4팀 편성하기"; }
+    if (mode === 'mixed2') descEl.innerHTML = "<b>혼성 2팀</b> 편성 결과입니다.";
+    else if (mode === 'mixed3') descEl.innerHTML = "<b>혼성 3팀</b> 편성 결과입니다.";
+    else if (mode === 'mixed4') descEl.innerHTML = "<b>혼성 4팀</b> 편성 결과입니다.";
+    else if (mode === 'gender') descEl.innerHTML = "<b>동성 4팀 (남2/여2)</b> 편성 결과입니다.";
 
     window.updateGroupDrawSelect(); 
     if(!isInit) window.renderStudentList();
@@ -2923,7 +3072,7 @@ window.resetCurrentGroup = function() {
     });
 }
 
-window.generateCurrentGroup = function() {
+window.generateCurrentGroup = function(priority = 'ball') {
     if (!currentClass || !classData[currentClass]) { window.showModal('알림', '학급을 먼저 선택해주세요.'); return; }
     const presentStudents = classData[currentClass].filter(student => student.attendance);
     const requiredCount = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
@@ -2941,10 +3090,11 @@ window.generateCurrentGroup = function() {
     }
     window.selectedGroupStudent = null;
     let title = "", callback = null;
-    if (currentGroupMode === 'mixed2') { title = "혼성 2팀 편성"; callback = () => window.generateMixedGroups(2); }
-    else if (currentGroupMode === 'mixed3') { title = "혼성 3팀 편성"; callback = () => window.generateMixedGroups(3); }
-    else if (currentGroupMode === 'mixed4') { title = "혼성 4팀 편성"; callback = () => window.generateMixedGroups(4); }
-    else if (currentGroupMode === 'gender') { title = "동성 4팀 편성"; callback = () => window.generateGenderGroups(); }
+    const priorityName = priority === 'agility' ? '순발력 우선' : '볼센스 우선';
+    if (currentGroupMode === 'mixed2') { title = `혼성 2팀 ${priorityName} 편성`; callback = () => window.generateMixedGroups(2, priority); }
+    else if (currentGroupMode === 'mixed3') { title = `혼성 3팀 ${priorityName} 편성`; callback = () => window.generateMixedGroups(3, priority); }
+    else if (currentGroupMode === 'mixed4') { title = `혼성 4팀 ${priorityName} 편성`; callback = () => window.generateMixedGroups(4, priority); }
+    else if (currentGroupMode === 'gender') { title = `동성 4팀 ${priorityName} 편성`; callback = () => window.generateGenderGroups(priority); }
 
     window.showModal(title, `새롭게 ${title}을(를) 진행하시겠습니까?<br><br><span class='text-red-500 font-bold'>현재 모드의 기존 편성 결과와 점수가 초기화됩니다.</span><br><span class='text-slate-500 text-xs'>(다른 모드의 결과는 그대로 유지됩니다.)</span>`, true, () => {
         document.getElementById('group-shuffle-overlay').classList.remove('hidden');
@@ -2963,7 +3113,6 @@ window.generateCurrentGroup = function() {
             }
             classData[currentClass].forEach(s => {
                 s.groupMemberDrawn = false;
-                s[`captain_${currentGroupMode}`] = false;
                 s.penaltyCard = 0; 
             });
 
@@ -3000,22 +3149,26 @@ function shuffleCopy(items) {
     return shuffled;
 }
 
+function getCaptainLimit(mode) {
+    return mode === 'mixed2' ? 2 : (mode === 'mixed3' ? 3 : 4);
+}
+
 function normalizeGroupCaptains(mode) {
     if (!currentClass || !classData[currentClass]) return;
-    const occupiedGroups = new Set();
+    const captainLimit = getCaptainLimit(mode);
+    let captainCount = 0;
     [...classData[currentClass]].sort((a, b) => a.no - b.no).forEach(student => {
-        const groupId = student[`group_${mode}`];
         const captainKey = `captain_${mode}`;
-        if (!student.attendance || !groupId) {
+        if (!student.attendance) {
             student[captainKey] = false;
         } else if (student[captainKey]) {
-            if (occupiedGroups.has(groupId)) student[captainKey] = false;
-            else occupiedGroups.add(groupId);
+            captainCount++;
+            if (captainCount > captainLimit) student[captainKey] = false;
         }
     });
 }
 
-window.generateMixedGroups = function(numGroups) {
+window.generateMixedGroups = function(numGroups, priority = 'ball') {
     const students = classData[currentClass];
     if (!students) return;
     const presentStudents = students.filter(s => s.attendance);
@@ -3023,7 +3176,7 @@ window.generateMixedGroups = function(numGroups) {
     students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
-    const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords));
+    const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords, priority));
     plan.forEach(team => team.members.forEach(student => { student[`group_${currentGroupMode}`] = team.id; }));
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
@@ -3033,12 +3186,13 @@ window.generateMixedGroups = function(numGroups) {
     if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
     groupRecords[currentClass][currentGroupMode] = {};
 
+    normalizeGroupCaptains(currentGroupMode);
     saveData(); 
     window.renderStudentList(); 
     window.renderGroups();
 }
 
-window.generateGenderGroups = function() {
+window.generateGenderGroups = function(priority = 'ball') {
     const students = classData[currentClass];
     if (!students) return;
     const presentStudents = students.filter(s => s.attendance);
@@ -3051,7 +3205,7 @@ window.generateGenderGroups = function() {
     students.forEach(s => s.group_gender = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
-    const powerOf = student => getStudentPower(student, validRecords);
+    const powerOf = student => getStudentPower(student, validRecords, priority);
     const boysPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '남'), 2, powerOf);
     const girlsPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '여'), 2, powerOf);
     boysPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id; }));
@@ -3063,6 +3217,7 @@ window.generateGenderGroups = function() {
     if (!groupRecords[currentClass]) groupRecords[currentClass] = {};
     groupRecords[currentClass]['gender'] = {};
 
+    normalizeGroupCaptains(currentGroupMode);
     saveData(); 
     window.renderStudentList(); 
     window.renderGroups();
@@ -3230,6 +3385,9 @@ window.renderGroups = function() {
     let validRecordsAll = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
     let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
     let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
+    const captainKey = `captain_${currentGroupMode}`;
+    const captainLimit = getCaptainLimit(currentGroupMode);
+    const captainCount = presentStudents.filter(s => s[captainKey]).length;
 
     const colors = [
         { bg: 'bg-indigo-50', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
@@ -3250,8 +3408,6 @@ window.renderGroups = function() {
         let presentBoys = groupStudents.filter(s => s.gender === '남' && s.attendance).length;
         let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
         let presentTotal = presentBoys + presentGirls;
-
-        let groupHasCaptain = groupStudents.some(st => st[`captain_${currentGroupMode}`] && st.attendance);
 
         const color = colors[(i-1) % colors.length];
         let gScore = 0;
@@ -3283,7 +3439,7 @@ window.renderGroups = function() {
              ondrop="window.handleDropOnGroup(event, ${i})" 
              onclick="window.handleGroupAreaClick(${i})">
             
-            <div class="${color.header} px-2 py-2 sm:px-3 sm:py-3 flex flex-col sm:flex-row justify-between items-center border-b-[3px] border-slate-900 gap-1 sm:gap-0">
+            <div class="${color.header} px-2 py-2 sm:px-3 sm:py-3 flex justify-center items-center border-b-[3px] border-slate-900">
                 
                 <h3 class="font-black text-base sm:text-xl ${color.text} flex items-center gap-2 whitespace-nowrap">
                     <span>${i}모둠</span>
@@ -3293,12 +3449,6 @@ window.renderGroups = function() {
                         <button onclick="window.updateGroupScore(${i}, 1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold ${color.btn} text-white transition">+</button>
                     </div>
                 </h3>
-                
-                <div class="flex items-center mt-1 sm:mt-0">
-                    <div class="text-xs sm:text-sm text-slate-700 bg-white/70 px-2 py-1 rounded shadow-sm border border-slate-200 whitespace-nowrap">
-                        참석 <span class="font-bold text-blue-600">${presentTotal}</span>명 <span class="text-slate-400 mx-1">|</span> 남 ${presentBoys} 여 ${presentGirls}
-                    </div>
-                </div>
             </div>
             
             <div class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1.5 sm:gap-2 items-stretch relative">
@@ -3338,7 +3488,7 @@ window.renderGroups = function() {
                     if (isCaptain && s.attendance) {
                         // C 버튼만 강력하게 강조 (선택 1번 요청사항 반영)
                         captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-400 text-white border-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400" title="체육부장 해제">C</button>`;
-                    } else if (!groupHasCaptain && s.attendance) {
+                    } else if (captainCount < captainLimit && s.attendance) {
                         captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
                     }
 
@@ -3351,8 +3501,9 @@ window.renderGroups = function() {
                     const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                     return `
-                    <div draggable="true" data-student-no="${s.no}" 
+                    <div draggable="true" data-student-no="${s.no}" data-group-id="${i}"
                          ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
+                         ondragover="window.handleDragOverStudent(event)" ondrop="window.handleDropOnStudent(event, ${s.no})"
                          ontouchstart="window.handleTouchStart(event, ${s.no})"
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
@@ -3363,8 +3514,8 @@ window.renderGroups = function() {
                         ${captainBtnHtml}
                         ${memberDrawnBadge}
                         
-                        <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                        <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-7 sm:px-8 min-w-0">
+                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis min-w-0 ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                             ${penaltyCardsHtml}
                         </div>
 
@@ -3450,14 +3601,21 @@ window.renderGroups = function() {
                 let attText = s.attendance ? 'O' : 'X';
                 let attColor = s.attendance ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-red-500 bg-red-100 border-red-300';
                 let attendanceBtnHtml = `<button onclick="event.stopPropagation(); window.toggleAttendance(${s.no})" class="absolute top-1 left-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[10px] sm:text-xs font-black rounded-full border shadow-sm z-20 ${attColor}" title="출석/불참 토글">${attText}</button>`;
+                let captainBtnHtml = '';
+                if (s[captainKey] && s.attendance) {
+                    captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-400 text-white border-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400" title="체육부장 해제">C</button>`;
+                } else if (captainCount < captainLimit && s.attendance) {
+                    captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
+                }
                 
                 let memberDrawnBadge = s.groupMemberDrawn ? '<div class="absolute -bottom-2 -right-2 bg-fuchsia-500 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow z-20 font-bold animate-pop-in">당첨</div>' : '';
 
                 const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                 return `
-                <div draggable="true" data-student-no="${s.no}" 
+                <div draggable="true" data-student-no="${s.no}" data-group-id="0"
                      ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
+                     ondragover="window.handleDragOverStudent(event)" ondrop="window.handleDropOnStudent(event, ${s.no})"
                      ontouchstart="window.handleTouchStart(event, ${s.no})"
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
@@ -3465,10 +3623,11 @@ window.renderGroups = function() {
                      class="student-card w-[110px] sm:w-[140px] relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[55px] sm:min-h-[65px]">
                     
                     ${attendanceBtnHtml}
+                    ${captainBtnHtml}
                     ${memberDrawnBadge}
                     
-                    <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-1">
-                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                    <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-7 sm:px-8 min-w-0">
+                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis min-w-0 ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                         ${penaltyCardsHtml}
                     </div>
 
@@ -3893,4 +4052,3 @@ function saveTargetElement(target) {
       }
   }
 }
-
