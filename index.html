@@ -150,17 +150,19 @@
                     </div>
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4 bg-slate-50 p-2 sm:p-3 rounded-xl border border-slate-200 mb-4">
                         <div id="group-mode-desc" class="text-[10px] sm:text-sm text-slate-600"></div>
-                        <div class="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
-                            <button onclick="window.resetCurrentGroup()" class="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-3 py-2 rounded-lg text-xs sm:text-sm transition">↻ 초기화</button>
-                            <button onclick="window.generateCurrentGroup('ball')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1">⚽ 볼센스 우선</button>
-                            <button onclick="window.generateCurrentGroup('agility')" class="col-span-2 flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black px-3 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1">⚡ 순발력 우선</button>
+                        <div class="grid grid-cols-3 sm:flex gap-1.5 sm:gap-2 w-full sm:w-auto">
+                            <button onclick="window.resetCurrentGroup()" class="min-w-0 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-1.5 sm:px-3 py-2 rounded-lg text-[11px] sm:text-sm transition whitespace-nowrap">↻ 초기화</button>
+                            <button onclick="window.generateCurrentGroup('ball')" class="min-w-0 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-1.5 sm:px-3 py-2 rounded-lg shadow-md text-[11px] sm:text-sm transition flex items-center justify-center whitespace-nowrap">⚽ 볼센스 편성</button>
+                            <button onclick="window.generateCurrentGroup('agility')" class="min-w-0 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black px-1.5 sm:px-3 py-2 rounded-lg shadow-md text-[11px] sm:text-sm transition flex items-center justify-center whitespace-nowrap">⚡ 순발력 편성</button>
                         </div>
                     </div>
                     
                     <div id="group-result"></div>
                     
-                    <!-- 랜덤 뽑기 Helper -->
-                    <div id="random-draw-box" class="mt-6 bg-slate-50 border-[3px] border-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm">
+                    <!-- 랜덤 뽑기 Helper: 기본 접힘 -->
+                    <details id="random-draw-details" class="mt-6 group">
+                        <summary class="cursor-pointer list-none bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 rounded-xl px-4 py-3 font-black text-sm text-slate-700 text-center transition select-none">🎲 랜덤 뽑기 열기 <span class="inline-block transition-transform group-open:rotate-180">▼</span></summary>
+                    <div id="random-draw-box" class="mt-2 bg-slate-50 border-[3px] border-slate-900 rounded-2xl p-3 sm:p-4 shadow-sm">
                         <h3 class="font-black text-sm sm:text-base text-slate-800 mb-3 flex items-center gap-2">🎲 랜덤 뽑기 Helper</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
@@ -190,6 +192,7 @@
                             <button onclick="window.resetGroupDraws()" class="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-sm whitespace-nowrap">↻ 당첨 초기화</button>
                         </div>
                     </div>
+                    </details>
                 </div>
             </div>
 
@@ -410,6 +413,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260911-1"></script>
+    <script type="module" src="app.js?v=20260911-2"></script>
 </body>
 </html>

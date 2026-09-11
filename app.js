@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-2';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -388,7 +388,7 @@ window.showFloatingUnassigned = function() {
         const innerCont = el.querySelector('div.flex.flex-wrap, div.flex-wrap');
         if (innerCont) {
             innerCont.classList.remove('flex-wrap');
-            innerCont.classList.add('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[80px]', 'py-1');
+            innerCont.classList.add('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[180px]', 'py-1');
         }
     }
 };
@@ -406,7 +406,7 @@ window.hideFloatingUnassigned = function() {
         
         const innerCont = el.querySelector('div.flex.flex-row, div.flex-row');
         if (innerCont) {
-            innerCont.classList.remove('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[80px]', 'py-1');
+            innerCont.classList.remove('flex-row', 'overflow-x-auto', 'flex-nowrap', 'no-scrollbar', 'max-h-[180px]', 'py-1');
             innerCont.classList.add('flex-wrap');
         }
     }
@@ -3508,16 +3508,16 @@ window.renderGroups = function() {
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                         class="student-card relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[55px] sm:min-h-[65px]">
+                         class="student-card relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[76px] sm:min-h-[80px]">
                         
                         ${attendanceBtnHtml}
                         ${captainBtnHtml}
                         ${memberDrawnBadge}
                         
-                        <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-7 sm:px-8 min-w-0">
-                            <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis min-w-0 ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                            ${penaltyCardsHtml}
+                        <div class="flex items-center justify-center pt-5 z-10 w-full px-1 min-w-0">
+                            <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words block w-full text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                         </div>
+                        <div class="flex justify-center w-full mt-0.5">${penaltyCardsHtml}</div>
 
                         <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
                             <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
@@ -3620,16 +3620,16 @@ window.renderGroups = function() {
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                     class="student-card w-[110px] sm:w-[140px] relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[55px] sm:min-h-[65px]">
+                     class="student-card w-[120px] sm:w-[150px] relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[76px] sm:min-h-[80px]">
                     
                     ${attendanceBtnHtml}
                     ${captainBtnHtml}
                     ${memberDrawnBadge}
                     
-                    <div class="flex items-center justify-center mt-2.5 sm:mt-1 z-10 w-full px-7 sm:px-8 min-w-0">
-                        <span class="font-black text-sm sm:text-base whitespace-nowrap overflow-hidden text-ellipsis min-w-0 ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                        ${penaltyCardsHtml}
+                    <div class="flex items-center justify-center pt-5 z-10 w-full px-1 min-w-0">
+                        <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words block w-full text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
                     </div>
+                    <div class="flex justify-center w-full mt-0.5">${penaltyCardsHtml}</div>
 
                     <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
                         <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
