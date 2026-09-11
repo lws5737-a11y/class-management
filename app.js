@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-2';
+import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-3';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -17,11 +17,10 @@ let groupLoopId = null;
 // 8자 줄넘기 상태
 let jumpRopeData = {}; 
 let jumpRopeAwards = {};
-let jumpRopeTimerMs = 0;
+let jumpRopeTimerMs = 60000;
 let jumpRopeTimerStart = 0;
 let jumpRopeInterval = null;
 let jumpRopeCount = 0;
-let jumpRopeTimerMode = 'stopwatch'; // 'stopwatch' or 'timer'
 let jumpRopeTargetMs = 60000;
 
 // ==========================================
@@ -886,7 +885,7 @@ window.renderClassLanding = function() {
 
     if (isLoading) {
         const loading = document.createElement('div');
-        loading.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-10 text-center font-bold text-blue-600';
+        loading.className = 'col-span-2 lg:col-span-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-10 text-center font-bold text-blue-600';
         loading.textContent = '학급 정보를 불러오는 중입니다…';
         container.appendChild(loading);
         return;
@@ -897,7 +896,7 @@ window.renderClassLanding = function() {
     if (exportAllButton) exportAllButton.disabled = classes.length === 0 || isLoading;
     if (classes.length === 0) {
         const empty = document.createElement('div');
-        empty.className = 'sm:col-span-2 lg:col-span-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center';
+        empty.className = 'col-span-2 lg:col-span-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center';
         const title = document.createElement('p');
         title.className = 'font-black text-slate-500';
         title.textContent = '등록된 학급이 없습니다.';
@@ -911,28 +910,28 @@ window.renderClassLanding = function() {
 
     classes.forEach((className) => {
         const card = document.createElement('article');
-        card.className = 'group flex min-h-24 items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md';
+        card.className = 'group flex min-h-16 items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:min-h-24 sm:rounded-2xl';
 
         const selectButton = document.createElement('button');
         selectButton.type = 'button';
-        selectButton.className = 'flex flex-1 items-center gap-3 px-4 py-4 text-left outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-100';
+        selectButton.className = 'flex min-w-0 flex-1 items-center gap-1 px-2 py-2 text-left outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-100 sm:gap-3 sm:px-4 sm:py-4';
         selectButton.setAttribute('aria-label', `${className} 학급 선택`);
         selectButton.addEventListener('click', () => window.selectClass(className));
 
         const icon = document.createElement('span');
-        icon.className = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-xl group-hover:bg-blue-100';
+        icon.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-base group-hover:bg-blue-100 sm:h-11 sm:w-11 sm:rounded-xl sm:text-xl';
         icon.textContent = '🏫';
         const name = document.createElement('span');
-        name.className = 'min-w-0 flex-1 truncate text-lg font-black text-slate-800';
+        name.className = 'min-w-0 flex-1 truncate text-sm font-black text-slate-800 sm:text-lg';
         name.textContent = className;
         const arrow = document.createElement('span');
-        arrow.className = 'text-lg font-black text-slate-300 group-hover:text-blue-500';
+        arrow.className = 'hidden text-lg font-black text-slate-300 group-hover:text-blue-500 sm:inline';
         arrow.textContent = '›';
         selectButton.append(icon, name, arrow);
 
         const deleteButton = document.createElement('button');
         deleteButton.type = 'button';
-        deleteButton.className = 'flex w-12 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:bg-red-50 focus-visible:text-red-600';
+        deleteButton.className = 'flex w-9 shrink-0 items-center justify-center border-l border-slate-100 text-slate-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:bg-red-50 focus-visible:text-red-600 sm:w-12';
         deleteButton.innerHTML = '<svg aria-hidden="true" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-10 0 1 13h6l1-13M9 7V4h6v3" /></svg>';
         deleteButton.setAttribute('aria-label', `${className} 학급 삭제`);
         deleteButton.addEventListener('click', () => window.deleteClassFromSelection(className));
@@ -1719,13 +1718,14 @@ window.openJumpRopeAnalysisModal = function() {
                 let d = jumpRopeData[wk][currentClass];
                 if (d.male !== null || d.female !== null) {
                     labels.push(wk);
-                    let mScore = d.male || 0; let fScore = d.female || 0;
+                    let mScore = Number(d.male) > 0 ? Number(d.male) : null;
+                    let fScore = Number(d.female) > 0 ? Number(d.female) : null;
                     maleData.push(mScore); femaleData.push(fScore);
-                    if(mScore > 0 || fScore > 0) hasData = true;
-                    if(mScore > maxScore) maxScore = mScore;
-                    if(fScore > maxScore) maxScore = fScore;
-                    if(mScore > 0 && mScore < minScore) minScore = mScore;
-                    if(fScore > 0 && fScore < minScore) minScore = fScore;
+                    if(mScore !== null || fScore !== null) hasData = true;
+                    if(mScore !== null && mScore > maxScore) maxScore = mScore;
+                    if(fScore !== null && fScore > maxScore) maxScore = fScore;
+                    if(mScore !== null && mScore < minScore) minScore = mScore;
+                    if(fScore !== null && fScore < minScore) minScore = fScore;
                 }
             }
         }
@@ -1734,33 +1734,51 @@ window.openJumpRopeAnalysisModal = function() {
     if (!hasData) return window.showModal('기록 분석', '아직 입력된 줄넘기 기록이 없습니다.');
     if (minScore === Infinity) minScore = 0;
 
+    const chartWidth = Math.max(560, labels.length * 82);
+    const chartHeight = 250;
+    const plot = { left: 48, right: 20, top: 24, bottom: 48 };
+    const plotWidth = chartWidth - plot.left - plot.right;
+    const plotHeight = chartHeight - plot.top - plot.bottom;
+    const yMax = Math.max(10, Math.ceil(maxScore * 1.1 / 10) * 10);
+    const xAt = index => plot.left + (labels.length <= 1 ? plotWidth / 2 : index * plotWidth / (labels.length - 1));
+    const yAt = value => plot.top + plotHeight - (value / yMax * plotHeight);
+    const makePath = values => {
+        let path = ''; let drawing = false;
+        values.forEach((value, index) => {
+            if (value === null) { drawing = false; return; }
+            path += `${drawing ? ' L' : 'M'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`;
+            drawing = true;
+        });
+        return path;
+    };
+    const renderPoints = (values, color, label) => values.map((value, index) => value === null ? '' :
+        `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4.5" fill="white" stroke="${color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${label} ${value}개</title></circle>`
+    ).join('');
+    const horizontalGrid = Array.from({ length: 6 }, (_, index) => {
+        const value = Math.round(yMax * (5 - index) / 5);
+        const y = plot.top + plotHeight * index / 5;
+        return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/><text x="${plot.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
+    }).join('');
+    const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 18}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
+
     let html = `<div class="flex flex-col gap-4 w-full">
         <div class="flex justify-between bg-slate-100 p-3 rounded-lg text-sm shadow-inner border border-slate-200">
             <div class="font-bold text-slate-700">🏆 최고 기록: <span class="text-blue-600">${maxScore}개</span></div>
             <div class="font-bold text-slate-700">📉 최저 기록: <span class="text-red-500">${minScore}개</span></div>
         </div>
-        <div class="flex items-end gap-3 overflow-x-auto pb-2 h-48 border-b-2 border-slate-300 w-full whitespace-nowrap pt-4">`;
-
-    labels.forEach((w, i) => {
-        let mH = maxScore > 0 ? (maleData[i] / maxScore * 100) : 0;
-        let fH = maxScore > 0 ? (femaleData[i] / maxScore * 100) : 0;
-        html += `<div class="flex flex-col items-center gap-1 min-w-[50px] shrink-0">
-            <div class="flex items-end gap-1 w-full h-36 justify-center">
-                <div class="w-4 bg-blue-400 rounded-t-sm relative group flex items-end justify-center transition-all hover:bg-blue-500" style="height: ${mH}%">
-                    <span class="absolute -top-5 text-[10px] hidden group-hover:block bg-slate-800 text-white px-1 rounded z-10">${maleData[i]}</span>
-                </div>
-                <div class="w-4 bg-pink-400 rounded-t-sm relative group flex items-end justify-center transition-all hover:bg-pink-500" style="height: ${fH}%">
-                    <span class="absolute -top-5 text-[10px] hidden group-hover:block bg-slate-800 text-white px-1 rounded z-10">${femaleData[i]}</span>
-                </div>
-            </div>
-            <span class="text-[10px] font-bold text-slate-500 w-full text-center mt-1">${w.replace('주차','')}</span>
-        </div>`;
-    });
-
-    html += `</div>
+        <div class="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-inner">
+            <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width:${chartWidth}px;max-width:none;height:250px" role="img" aria-label="남학생과 여학생 8자 줄넘기 기록 변화 선 그래프">
+                ${horizontalGrid}
+                <path d="${makePath(maleData)}" fill="none" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="${makePath(femaleData)}" fill="none" stroke="#ec4899" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                ${renderPoints(maleData, '#3b82f6', '남학생')}
+                ${renderPoints(femaleData, '#ec4899', '여학생')}
+                ${xLabels}
+            </svg>
+        </div>
         <div class="flex justify-center gap-4 text-xs mt-2 font-bold text-slate-600">
-            <span class="flex items-center gap-1.5"><div class="w-3 h-3 bg-blue-400 rounded-sm shadow-sm"></div> 남학생</span>
-            <span class="flex items-center gap-1.5"><div class="w-3 h-3 bg-pink-400 rounded-sm shadow-sm"></div> 여학생</span>
+            <span class="flex items-center gap-1.5"><span class="w-5 h-1 bg-blue-500 rounded-full"></span> 남학생</span>
+            <span class="flex items-center gap-1.5"><span class="w-5 h-1 bg-pink-500 rounded-full"></span> 여학생</span>
         </div>
     </div>`;
 
@@ -1798,7 +1816,6 @@ window.editJumpRopeTimerTarget = function() {
         window.showModal('타이머 설정', '0보다 큰 올바른 시간을 입력해주세요.');
         return;
     }
-    jumpRopeTimerMode = 'timer';
     jumpRopeTargetMs = parsed;
     jumpRopeTimerMs = parsed;
     document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
@@ -1807,22 +1824,18 @@ window.editJumpRopeTimerTarget = function() {
 function jumpRopeTimerLoop() {
     if(jumpRopeInterval) {
         let elapsed = Date.now() - jumpRopeTimerStart;
-        if (jumpRopeTimerMode === 'timer') {
-            jumpRopeTimerMs = jumpRopeTargetMs - elapsed;
-            if (jumpRopeTimerMs <= 0) {
-                jumpRopeTimerMs = 0;
-                jumpRopeInterval = false;
-                document.getElementById('jumprope-timer-display').innerText = window.formatTime(0);
-                const btn = document.getElementById('jumprope-timer-btn');
-                if (btn) {
-                    btn.innerText = '시작';
-                    btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
-                }
-                try { window.playOlympicFanfare(); } catch(e){}
-                return; 
+        jumpRopeTimerMs = jumpRopeTargetMs - elapsed;
+        if (jumpRopeTimerMs <= 0) {
+            jumpRopeTimerMs = 0;
+            jumpRopeInterval = false;
+            document.getElementById('jumprope-timer-display').innerText = window.formatTime(0);
+            const btn = document.getElementById('jumprope-timer-btn');
+            if (btn) {
+                btn.innerText = '시작';
+                btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
             }
-        } else {
-            jumpRopeTimerMs = elapsed;
+            try { window.playOlympicFanfare(); } catch(e){}
+            return;
         }
         document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
         requestAnimationFrame(jumpRopeTimerLoop);
@@ -1837,12 +1850,8 @@ window.toggleJumpRopeTimer = function() {
         btn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
     } else {
         jumpRopeInterval = true;
-        if (jumpRopeTimerMode === 'timer') {
-            if (jumpRopeTimerMs <= 0) jumpRopeTimerMs = jumpRopeTargetMs;
-            jumpRopeTimerStart = Date.now() - (jumpRopeTargetMs - jumpRopeTimerMs);
-        } else {
-            jumpRopeTimerStart = Date.now() - jumpRopeTimerMs;
-        }
+        if (jumpRopeTimerMs <= 0) jumpRopeTimerMs = jumpRopeTargetMs;
+        jumpRopeTimerStart = Date.now() - (jumpRopeTargetMs - jumpRopeTimerMs);
         requestAnimationFrame(jumpRopeTimerLoop);
         btn.innerText = '일시정지';
         btn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base";
@@ -1851,7 +1860,7 @@ window.toggleJumpRopeTimer = function() {
 
 window.resetJumpRopeTimer = function() {
     jumpRopeInterval = false;
-    jumpRopeTimerMs = jumpRopeTimerMode === 'timer' ? jumpRopeTargetMs : 0;
+    jumpRopeTimerMs = jumpRopeTargetMs;
     document.getElementById('jumprope-timer-display').innerText = window.formatTime(jumpRopeTimerMs);
     const btn = document.getElementById('jumprope-timer-btn');
     btn.innerText = '시작';

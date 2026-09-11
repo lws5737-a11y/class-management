@@ -59,14 +59,14 @@
                 <button onclick="window.signOutApp()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600">로그아웃</button>
             </div>
         </header>
-        <main class="mx-auto flex min-h-[calc(100vh-70px)] max-w-5xl items-start justify-center p-4 pt-8 sm:p-8 sm:pt-14">
-            <section class="w-full max-w-3xl rounded-3xl border border-white bg-white/95 p-5 shadow-xl shadow-slate-200/50 sm:p-8" aria-labelledby="class-selection-title">
-                <div class="mb-6 text-center sm:mb-8">
-                    <h2 id="class-selection-title" class="text-2xl font-black text-slate-800 sm:text-3xl">학급을 선택하세요</h2>
-                    <p class="mt-2 text-sm font-medium text-slate-400">수업을 시작할 학급을 누르세요.</p>
+        <main class="mx-auto flex min-h-[calc(100vh-70px)] max-w-5xl items-start justify-center p-2 pt-3 sm:p-8 sm:pt-14">
+            <section class="w-full max-w-3xl rounded-2xl border border-white bg-white/95 p-3 shadow-xl shadow-slate-200/50 sm:rounded-3xl sm:p-8" aria-labelledby="class-selection-title">
+                <div class="mb-3 text-center sm:mb-8">
+                    <h2 id="class-selection-title" class="text-xl font-black text-slate-800 sm:text-3xl">학급을 선택하세요</h2>
+                    <p class="mt-1 text-xs font-medium text-slate-400 sm:mt-2 sm:text-sm">수업을 시작할 학급을 누르세요.</p>
                 </div>
-                <div id="class-selection-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></div>
-                <div class="my-7 h-px bg-slate-100"></div>
+                <div id="class-selection-list" class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3" aria-live="polite"></div>
+                <div class="my-4 h-px bg-slate-100 sm:my-7"></div>
                 <form id="class-add-form" class="flex flex-col gap-2 sm:flex-row" onsubmit="event.preventDefault(); window.addClassFromSelection()">
                     <label for="class-selection-new-input" class="sr-only">새 학급 이름</label>
                     <input id="class-selection-new-input" type="text" maxlength="30" autocomplete="off" placeholder="새 학급 이름 (예: 6-1)" class="min-h-12 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
@@ -257,8 +257,9 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 타이머 & 스톱워치 -->
                     <div class="bg-slate-800 p-5 rounded-2xl shadow-lg text-center flex flex-col items-center justify-center border-2 border-slate-700 relative">
-                        <h4 class="text-slate-400 font-black text-xs mb-3 flex items-center gap-1">⏱️ 측정 타이머</h4>
-                        <div id="jumprope-timer-display" onclick="window.editJumpRopeTimerTarget()" class="font-mono text-5xl sm:text-6xl font-black text-white tracking-wider mb-5 drop-shadow-md w-full cursor-pointer hover:text-blue-300 transition-colors" title="시간 터치 시 목표 설정">00:00.00</div>
+                        <h4 class="text-slate-300 font-black text-xs mb-1 flex items-center gap-1">⏳ 1분 타이머</h4>
+                        <p class="text-slate-500 text-[10px] font-bold mb-2">시간을 누르면 변경할 수 있습니다.</p>
+                        <div id="jumprope-timer-display" onclick="window.editJumpRopeTimerTarget()" class="font-mono text-5xl sm:text-6xl font-black text-white tracking-wider mb-5 drop-shadow-md w-full cursor-pointer hover:text-blue-300 transition-colors" title="시간 터치 시 목표 설정">01:00.00</div>
                         <div class="flex gap-2 w-full">
                             <button id="jumprope-timer-btn" onclick="window.toggleJumpRopeTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 rounded-xl transition shadow-md text-sm sm:text-base">시작</button>
                             <button onclick="window.resetJumpRopeTimer()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold px-4 py-3 rounded-xl transition text-sm sm:text-base">초기화</button>
@@ -413,6 +414,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260911-2"></script>
+    <script type="module" src="app.js?v=20260911-3"></script>
 </body>
 </html>
