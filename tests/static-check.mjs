@@ -57,6 +57,9 @@ assert.ok(app.includes('includeMetadataChanges: true') && app.includes('docSnap.
 assert.ok(html.includes('id="sync-status-label"'), '사용자에게 저장 상태를 표시하지 않습니다.');
 assert.ok(app.includes('mergeAppPayloads') && app.includes('archiveConflictRecord'), '여러 기기의 오프라인 변경 충돌을 보관·병합하지 않습니다.');
 assert.ok(!html.includes('jumprope-mode-icon') && !app.includes('jumprope-mode-btn'), '8자 줄넘기 스톱워치/타이머 전환 버튼이 남아 있습니다.');
+assert.ok(app.includes('let jumpRopeTimerMs = 60000') && app.includes('let jumpRopeTargetMs = 60000') && !app.includes('jumpRopeTimerMode'), '8자 줄넘기 기본 1분 타이머가 적용되지 않았습니다.');
+assert.ok(app.includes('<path d="${makePath(maleData)}"') && app.includes('<path d="${makePath(femaleData)}"'), '줄넘기 기록 분석이 선 그래프로 표시되지 않습니다.');
+assert.ok(html.includes('id="class-selection-list" class="grid grid-cols-2'), '스마트폰 학급 선택 목록이 2열로 구성되지 않았습니다.');
 assert.ok(app.includes('handleDropOnStudent') && app.includes('handleDragOverStudent') && app.includes('handleStudentDropLogic'), '모바일/PC 학생 이동·교체용 드롭 처리가 없습니다.');
 assert.ok(app.includes('getCaptainLimit') && app.includes("mode === 'mixed2' ? 2") && app.includes("mode === 'mixed3' ? 3"), '편성별 체육부장 최대 인원이 적용되지 않았습니다.');
 assert.ok(html.includes("generateCurrentGroup('ball')") && html.includes("generateCurrentGroup('agility')"), '볼센스/순발력 우선 편성 버튼이 분리되지 않았습니다.');
