@@ -150,9 +150,10 @@
                     </div>
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4 bg-slate-50 p-2 sm:p-3 rounded-xl border border-slate-200 mb-4">
                         <div id="group-mode-desc" class="text-[10px] sm:text-sm text-slate-600"></div>
-                        <div class="flex gap-2 w-full sm:w-auto">
+                        <div class="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
                             <button onclick="window.resetCurrentGroup()" class="flex-1 sm:flex-none bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold px-3 py-2 rounded-lg text-xs sm:text-sm transition">↻ 초기화</button>
-                            <button onclick="window.generateCurrentGroup()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black px-4 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1"><span id="generate-btn-text">편성하기</span> 🎲</button>
+                            <button onclick="window.generateCurrentGroup('ball')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1">⚽ 볼센스 우선</button>
+                            <button onclick="window.generateCurrentGroup('agility')" class="col-span-2 flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-black px-3 py-2 rounded-lg shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1">⚡ 순발력 우선</button>
                         </div>
                     </div>
                     
@@ -216,6 +217,9 @@
                     
                     <button onclick="window.saveJumpRopeRecord()" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2">
                         💾 현재 학급 기록 저장 및 업데이트
+                    </button>
+                    <button onclick="window.reviewJumpRopeResults()" class="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2">
+                        🏆 8자 줄넘기 결과 확인
                     </button>
                     
                     <!-- 팀별 기록 분석 버튼 & 그래프 영역 -->
@@ -406,7 +410,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260903-3"></script>
+    <script type="module" src="app.js?v=20260911-1"></script>
 </body>
 </html>
-
