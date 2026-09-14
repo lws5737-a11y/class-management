@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const utils = await readFile(new URL('../class-utils.mjs', import.meta.url), 'utf8');
 const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
 const firebaseConfig = await readFile(new URL('../firebase-config.js', import.meta.url), 'utf8');
 
@@ -35,7 +36,7 @@ assert.ok(app.includes("book_append_sheet(workbook, displaySheet, '학생명단'
 assert.ok(app.includes("book_append_sheet(workbook, backupSheet, '백업데이터')"), '복구용 백업 시트가 없습니다.');
 assert.ok(app.includes('const hasSchoolRosterColumns = columns.length >= 5'), '학년·반·번호·이름·성별 붙여넣기 형식을 처리하지 않습니다.');
 assert.ok(app.includes("workbook.Sheets['학생명단']") && app.includes('parseRosterTable(rows'), '일반 엑셀 학생명단 시트를 불러오는 처리가 없습니다.');
-assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(presentStudents.filter'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
+assert.ok(app.includes('buildBalancedTeamPlan(presentStudents, numGroups') && app.includes('buildBalancedTeamPlan(boys, 2') && app.includes('buildBalancedTeamPlan(girls, 2'), '인원·성별·능력치를 함께 고려하는 팀 편성기가 연결되지 않았습니다.');
 assert.ok(app.includes('학생명단 편집값 ${rosterOverrideCount}/${rosterRecordCount}명 반영'), '엑셀 편집값 반영 결과가 사용자에게 표시되지 않습니다.');
 assert.ok(app.includes('createMissingStudent: record => createStudentRecord'), '보이는 학생명단에만 있는 학생을 백업 복구 시 추가하지 않습니다.');
 assert.ok(app.includes("parseStructuredJson(value, fallback, 'object')") && app.includes("parseStructuredJson(value, fallback, 'array')"), '손상된 백업 JSON 값을 방어하지 않습니다.');
@@ -61,7 +62,8 @@ assert.ok(app.includes('let jumpRopeTimerMs = 60000') && app.includes('let jumpR
 assert.ok(app.includes('<path d="${makePath(maleData)}"') && app.includes('<path d="${makePath(femaleData)}"'), '줄넘기 기록 분석이 선 그래프로 표시되지 않습니다.');
 assert.ok(html.includes('id="class-selection-list" class="grid grid-cols-2'), '스마트폰 학급 선택 목록이 2열로 구성되지 않았습니다.');
 assert.ok(app.includes('handleDropOnStudent') && app.includes('handleDragOverStudent') && app.includes('handleStudentDropLogic'), '모바일/PC 학생 이동·교체용 드롭 처리가 없습니다.');
-assert.ok(app.includes('getCaptainLimit') && app.includes("mode === 'mixed2' ? 2") && app.includes("mode === 'mixed3' ? 3"), '편성별 체육부장 최대 인원이 적용되지 않았습니다.');
+assert.ok(utils.includes('canDesignateCaptain') && utils.includes('enforceCaptainLimits') && utils.includes("mode === 'gender'"), '편성별 체육부장 인원 제한이 적용되지 않았습니다.');
+assert.ok(app.includes('sortStudentsForGroupDisplay') && app.includes('{ captains }'), '체육부장 우선 정렬 또는 모둠별 자동 분산이 연결되지 않았습니다.');
 assert.ok(html.includes("generateCurrentGroup('ball')") && html.includes("generateCurrentGroup('agility')"), '볼센스/순발력 우선 편성 버튼이 분리되지 않았습니다.');
 assert.ok(html.includes('grid-cols-3') && html.includes('볼센스 편성') && html.includes('순발력 편성'), '모바일 편성 버튼 3개가 한 줄에 배치되지 않았습니다.');
 assert.ok(html.includes('<details id="random-draw-details"') && !html.includes('<details id="random-draw-details" open'), '랜덤 뽑기가 기본 접힘 상태가 아닙니다.');

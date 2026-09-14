@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from './class-utils.mjs?v=20260911-3';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260914-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -2825,10 +2825,12 @@ window.toggleCaptain = function(studentNo) {
         const isTurningOn = !student[captainProp];
 
         if (isTurningOn) {
-            const captainCount = classData[currentClass].filter(s => s.attendance && s[captainProp]).length;
-            const captainLimit = getCaptainLimit(currentGroupMode);
-            if (captainCount >= captainLimit) {
-                window.showModal('체육부장 지정', `이 편성에서는 체육부장을 최대 <b>${captainLimit}명</b>까지 지정할 수 있습니다.`);
+            const eligibility = canDesignateCaptain(classData[currentClass], student, currentGroupMode);
+            if (!eligibility.allowed) {
+                const message = currentGroupMode === 'gender'
+                    ? '동성 4팀 체육부장은 남학생 2명, 여학생 2명까지 지정할 수 있습니다.'
+                    : `이 편성에서는 체육부장을 최대 <b>${getCaptainLimit(currentGroupMode)}명</b>까지 지정할 수 있습니다.`;
+                window.showModal('체육부장 지정', message);
                 return;
             }
         }
@@ -3158,23 +3160,9 @@ function shuffleCopy(items) {
     return shuffled;
 }
 
-function getCaptainLimit(mode) {
-    return mode === 'mixed2' ? 2 : (mode === 'mixed3' ? 3 : 4);
-}
-
 function normalizeGroupCaptains(mode) {
     if (!currentClass || !classData[currentClass]) return;
-    const captainLimit = getCaptainLimit(mode);
-    let captainCount = 0;
-    [...classData[currentClass]].sort((a, b) => a.no - b.no).forEach(student => {
-        const captainKey = `captain_${mode}`;
-        if (!student.attendance) {
-            student[captainKey] = false;
-        } else if (student[captainKey]) {
-            captainCount++;
-            if (captainCount > captainLimit) student[captainKey] = false;
-        }
-    });
+    enforceCaptainLimits(classData[currentClass], mode);
 }
 
 window.generateMixedGroups = function(numGroups, priority = 'ball') {
@@ -3182,10 +3170,13 @@ window.generateMixedGroups = function(numGroups, priority = 'ball') {
     if (!students) return;
     const presentStudents = students.filter(s => s.attendance);
     if (presentStudents.length < numGroups) { window.showModal("출석 인원 부족", `현재 출석 학생이 ${presentStudents.length}명입니다. ${numGroups}팀 편성에는 최소 ${numGroups}명이 필요합니다.`); return; }
+    normalizeGroupCaptains(currentGroupMode);
     students.forEach(s => s[`group_${currentGroupMode}`] = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
-    const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords, priority));
+    const captainKey = `captain_${currentGroupMode}`;
+    const captains = presentStudents.filter(student => student[captainKey]);
+    const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords, priority), Math.random, 80, { captains });
     plan.forEach(team => team.members.forEach(student => { student[`group_${currentGroupMode}`] = team.id; }));
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
@@ -3211,12 +3202,16 @@ window.generateGenderGroups = function(priority = 'ball') {
         window.showModal("출석 인원 부족", `동성 4팀은 출석한 남학생과 여학생이 각각 2명 이상 필요합니다.<br>현재 남 ${presentBoys}명 · 여 ${presentGirls}명`);
         return;
     }
+    normalizeGroupCaptains(currentGroupMode);
     students.forEach(s => s.group_gender = null);
 
     let validRecords = presentStudents.filter(s => s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
     const powerOf = student => getStudentPower(student, validRecords, priority);
-    const boysPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '남'), 2, powerOf);
-    const girlsPlan = buildBalancedTeamPlan(presentStudents.filter(s => s.gender === '여'), 2, powerOf);
+    const captainKey = 'captain_gender';
+    const boys = presentStudents.filter(s => s.gender === '남');
+    const girls = presentStudents.filter(s => s.gender === '여');
+    const boysPlan = buildBalancedTeamPlan(boys, 2, powerOf, Math.random, 80, { captains: boys.filter(student => student[captainKey]) });
+    const girlsPlan = buildBalancedTeamPlan(girls, 2, powerOf, Math.random, 80, { captains: girls.filter(student => student[captainKey]) });
     boysPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id; }));
     girlsPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id + 2; }));
 
@@ -3395,8 +3390,6 @@ window.renderGroups = function() {
     let validRecordsMale = presentStudents.filter(s => s.gender === '남' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
     let validRecordsFemale = presentStudents.filter(s => s.gender === '여' && s.recordMs > 0).map(s => s.recordMs).sort((a,b) => a - b);
     const captainKey = `captain_${currentGroupMode}`;
-    const captainLimit = getCaptainLimit(currentGroupMode);
-    const captainCount = presentStudents.filter(s => s[captainKey]).length;
 
     const colors = [
         { bg: 'bg-indigo-50', text: 'text-indigo-800', header: 'bg-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-300' },
@@ -3411,8 +3404,7 @@ window.renderGroups = function() {
     }
 
     for (let i = 1; i <= maxGroups; i++) {
-        const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
-        groupStudents.sort((a, b) => a.no - b.no);
+        const groupStudents = sortStudentsForGroupDisplay(students.filter(s => s[`group_${currentGroupMode}`] === i), captainKey);
         
         let presentBoys = groupStudents.filter(s => s.gender === '남' && s.attendance).length;
         let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
@@ -3497,7 +3489,7 @@ window.renderGroups = function() {
                     if (isCaptain && s.attendance) {
                         // C 버튼만 강력하게 강조 (선택 1번 요청사항 반영)
                         captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-400 text-white border-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400" title="체육부장 해제">C</button>`;
-                    } else if (captainCount < captainLimit && s.attendance) {
+                    } else if (canDesignateCaptain(students, s, currentGroupMode).allowed) {
                         captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
                     }
 
@@ -3560,8 +3552,7 @@ window.renderGroups = function() {
         </div>`;
     }
 
-    const unassignedStudents = students.filter(s => !s[`group_${currentGroupMode}`]);
-    unassignedStudents.sort((a, b) => a.no - b.no);
+    const unassignedStudents = sortStudentsForGroupDisplay(students.filter(s => !s[`group_${currentGroupMode}`]), captainKey);
 
     html += `
     <div id="unassigned-area" class="col-span-full mt-2 bg-slate-100/80 border-[3px] border-dashed border-slate-900 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
@@ -3613,7 +3604,7 @@ window.renderGroups = function() {
                 let captainBtnHtml = '';
                 if (s[captainKey] && s.attendance) {
                     captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 bg-yellow-400 text-white border-yellow-500 shadow-[0_0_10px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400" title="체육부장 해제">C</button>`;
-                } else if (captainCount < captainLimit && s.attendance) {
+                } else if (canDesignateCaptain(students, s, currentGroupMode).allowed) {
                     captainBtnHtml = `<button onclick="event.stopPropagation(); window.toggleCaptain(${s.no})" class="absolute top-1 right-1 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-black rounded z-20 hover:bg-slate-200 text-slate-400 bg-slate-100/50" title="체육부장 지정">c</button>`;
                 }
                 

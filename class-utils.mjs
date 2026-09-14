@@ -234,6 +234,67 @@ function genderBucket(student) {
     return student.gender === '남' ? 'male' : (student.gender === '여' ? 'female' : 'other');
 }
 
+export function getCaptainLimit(mode) {
+    return mode === 'mixed2' ? 2 : (mode === 'mixed3' ? 3 : 4);
+}
+
+export function canDesignateCaptain(students, student, mode) {
+    if (!student?.attendance) return { allowed: false, reason: 'absent' };
+    const captainKey = `captain_${mode}`;
+    if (student[captainKey]) return { allowed: true, reason: 'already-captain' };
+
+    if (mode === 'gender') {
+        if (!['남', '여'].includes(student.gender)) return { allowed: false, reason: 'gender-required' };
+        const sameGenderCount = students.filter(item => item.attendance && item.gender === student.gender && item[captainKey]).length;
+        return { allowed: sameGenderCount < 2, reason: sameGenderCount < 2 ? 'available' : 'gender-limit' };
+    }
+
+    const count = students.filter(item => item.attendance && item[captainKey]).length;
+    return { allowed: count < getCaptainLimit(mode), reason: count < getCaptainLimit(mode) ? 'available' : 'total-limit' };
+}
+
+export function enforceCaptainLimits(students, mode) {
+    const captainKey = `captain_${mode}`;
+    let totalCount = 0;
+    const genderCounts = { 남: 0, 여: 0 };
+
+    [...students].sort((a, b) => a.no - b.no).forEach(student => {
+        if (!student.attendance) {
+            student[captainKey] = false;
+            return;
+        }
+        if (!student[captainKey]) return;
+
+        if (mode === 'gender') {
+            if (!['남', '여'].includes(student.gender) || genderCounts[student.gender] >= 2) {
+                student[captainKey] = false;
+                return;
+            }
+            genderCounts[student.gender]++;
+            return;
+        }
+
+        totalCount++;
+        if (totalCount > getCaptainLimit(mode)) student[captainKey] = false;
+    });
+}
+
+export function sortStudentsForGroupDisplay(students, captainKey) {
+    return [...students].sort((a, b) => {
+        const captainDifference = Number(Boolean(b[captainKey])) - Number(Boolean(a[captainKey]));
+        if (captainDifference) return captainDifference;
+
+        const aHasRecord = Number(a.recordMs) > 0;
+        const bHasRecord = Number(b.recordMs) > 0;
+        if (aHasRecord !== bHasRecord) return aHasRecord ? -1 : 1;
+        if (aHasRecord && Number(a.recordMs) !== Number(b.recordMs)) return Number(a.recordMs) - Number(b.recordMs);
+
+        const ballDifference = (Number.parseInt(b.ballSense, 10) || 0) - (Number.parseInt(a.ballSense, 10) || 0);
+        if (ballDifference) return ballDifference;
+        return Number(a.no) - Number(b.no);
+    });
+}
+
 function shuffled(items, random) {
     const result = [...items];
     for (let index = result.length - 1; index > 0; index--) {
@@ -274,7 +335,7 @@ function planScore(teams) {
     return powers.reduce((sum, power) => sum + ((power - average) ** 2), 0);
 }
 
-function optimizePowerBySwaps(teams, getPower) {
+function optimizePowerBySwaps(teams, getPower, fixedStudents = new Set()) {
     for (let pass = 0; pass < 100; pass++) {
         let bestSwap = null;
         let bestImprovement = 0;
@@ -287,6 +348,7 @@ function optimizePowerBySwaps(teams, getPower) {
                     for (let rightMemberIndex = 0; rightMemberIndex < right.members.length; rightMemberIndex++) {
                         const leftStudent = left.members[leftMemberIndex];
                         const rightStudent = right.members[rightMemberIndex];
+                        if (fixedStudents.has(leftStudent) || fixedStudents.has(rightStudent)) continue;
                         if (genderBucket(leftStudent) !== genderBucket(rightStudent)) continue;
                         const leftPower = getPower(leftStudent);
                         const rightPower = getPower(rightStudent);
@@ -312,7 +374,7 @@ function optimizePowerBySwaps(teams, getPower) {
     }
 }
 
-export function buildBalancedTeamPlan(students, teamCount, getPower, random = Math.random, attempts = 80) {
+export function buildBalancedTeamPlan(students, teamCount, getPower, random = Math.random, attempts = 80, options = {}) {
     if (!Array.isArray(students) || !Number.isInteger(teamCount) || teamCount < 1 || students.length < teamCount) return [];
     let bestPlan = null;
     let bestScore = Infinity;
@@ -325,7 +387,23 @@ export function buildBalancedTeamPlan(students, teamCount, getPower, random = Ma
             genders: { male: 0, female: 0, other: 0 }, genderTargets: genderTargets[index]
         }));
 
-        const ordered = shuffled(students, random).sort((a, b) => getPower(b) - getPower(a));
+        const captains = [...new Set((options.captains || []).filter(student => students.includes(student)))];
+        const fixedStudents = new Set(captains);
+        const orderedCaptains = shuffled(captains, random).sort((a, b) => getPower(b) - getPower(a));
+        for (const captain of orderedCaptains) {
+            const bucket = genderBucket(captain);
+            let candidates = teams.filter(team => team.members.length < team.targetSize && team.members.length === 0 && team.genders[bucket] < team.genderTargets[bucket]);
+            if (candidates.length === 0) candidates = teams.filter(team => team.members.length < team.targetSize && team.members.length === 0);
+            if (candidates.length === 0) candidates = teams.filter(team => team.members.length < team.targetSize);
+            const minimumPower = Math.min(...candidates.map(team => team.totalPower));
+            candidates = candidates.filter(team => team.totalPower === minimumPower);
+            const team = candidates[Math.floor(random() * candidates.length)];
+            team.members.push(captain);
+            team.totalPower += getPower(captain);
+            team.genders[bucket]++;
+        }
+
+        const ordered = shuffled(students.filter(student => !fixedStudents.has(student)), random).sort((a, b) => getPower(b) - getPower(a));
         for (const student of ordered) {
             const bucket = genderBucket(student);
             let candidates = teams.filter(team => team.members.length < team.targetSize && team.genders[bucket] < team.genderTargets[bucket]);
@@ -340,7 +418,7 @@ export function buildBalancedTeamPlan(students, teamCount, getPower, random = Ma
             team.genders[bucket]++;
         }
 
-        optimizePowerBySwaps(teams, getPower);
+        optimizePowerBySwaps(teams, getPower, fixedStudents);
 
         const score = planScore(teams);
         if (score < bestScore) { bestScore = score; bestPlan = teams; }

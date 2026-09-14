@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyRosterOverrides, buildBalancedTeamPlan, normalizeClassIdentity, parseRosterTable, parseStructuredJson } from '../class-utils.mjs';
+import {
+    applyRosterOverrides,
+    buildBalancedTeamPlan,
+    canDesignateCaptain,
+    enforceCaptainLimits,
+    getCaptainLimit,
+    normalizeClassIdentity,
+    parseRosterTable,
+    parseStructuredJson,
+    sortStudentsForGroupDisplay
+} from '../class-utils.mjs';
 
 function seededRandom(seed = 123456) {
     return () => {
@@ -190,5 +200,66 @@ test('buildBalancedTeamPlan preserves balance across common class sizes', () => 
             assert.ok(Math.max(...females) - Math.min(...females) <= 1);
         }
     }
+});
+
+test('group display places captains first, then sorts by agility and ball sense', () => {
+    const students = [
+        { no: 1, recordMs: 11800, ballSense: '1', captain_mixed3: false },
+        { no: 2, recordMs: 14500, ballSense: '0', captain_mixed3: true },
+        { no: 3, recordMs: 11800, ballSense: '2', captain_mixed3: false },
+        { no: 4, recordMs: 0, ballSense: '2', captain_mixed3: false }
+    ];
+
+    assert.deepEqual(
+        sortStudentsForGroupDisplay(students, 'captain_mixed3').map(student => student.no),
+        [2, 3, 1, 4]
+    );
+});
+
+test('captain limits follow each grouping mode and include unassigned students', () => {
+    assert.equal(getCaptainLimit('mixed2'), 2);
+    assert.equal(getCaptainLimit('mixed3'), 3);
+    assert.equal(getCaptainLimit('mixed4'), 4);
+
+    const students = Array.from({ length: 4 }, (_, index) => ({
+        no: index + 1, attendance: true, gender: index % 2 ? '여' : '남',
+        group_mixed2: null, captain_mixed2: index < 2
+    }));
+    assert.equal(canDesignateCaptain(students, students[2], 'mixed2').allowed, false);
+    enforceCaptainLimits(students, 'mixed2');
+    assert.equal(students[0].captain_mixed2, true);
+    assert.equal(students[1].captain_mixed2, true);
+});
+
+test('same-gender grouping allows at most two male and two female captains', () => {
+    const students = [
+        { no: 1, attendance: true, gender: '남', captain_gender: true },
+        { no: 2, attendance: true, gender: '남', captain_gender: true },
+        { no: 3, attendance: true, gender: '남', captain_gender: false },
+        { no: 4, attendance: true, gender: '여', captain_gender: true },
+        { no: 5, attendance: true, gender: '여', captain_gender: false }
+    ];
+    assert.equal(canDesignateCaptain(students, students[2], 'gender').allowed, false);
+    assert.equal(canDesignateCaptain(students, students[4], 'gender').allowed, true);
+
+    students[2].captain_gender = true;
+    enforceCaptainLimits(students, 'gender');
+    assert.equal(students[2].captain_gender, false);
+});
+
+test('automatic grouping seeds one captain into each team', () => {
+    const students = Array.from({ length: 18 }, (_, index) => ({
+        no: index + 1,
+        gender: index % 2 ? '여' : '남',
+        power: 220 - index * 5,
+        captain_mixed3: index < 3
+    }));
+    const captains = students.filter(student => student.captain_mixed3);
+    const teams = buildBalancedTeamPlan(
+        students, 3, student => student.power, seededRandom(42), 40, { captains }
+    );
+
+    assert.deepEqual(teams.map(team => team.members.filter(student => student.captain_mixed3).length), [1, 1, 1]);
+    assert.ok(captains.every(captain => captain.captain_mixed3));
 });
 
