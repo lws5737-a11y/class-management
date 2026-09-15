@@ -207,21 +207,34 @@
                         </select>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
                         <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-200 flex flex-col items-center">
                             <label class="block text-xs font-black text-blue-800 mb-2">👦 남학생팀 (개수)</label>
-                            <input type="number" id="jumprope-male-input" class="w-full max-w-[120px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-blue-300 focus:border-blue-500 focus:outline-none bg-white shadow-inner text-blue-900" placeholder="0">
+                            <div class="grid grid-cols-2 gap-1.5 w-full">
+                                <label class="text-[10px] font-bold text-blue-600 text-center">1차<input type="number" id="jumprope-male-1-input" min="0" oninput="window.updateJumpRopeEntryPreview()" class="mt-1 w-full text-center font-black text-lg sm:text-2xl p-1.5 rounded-lg border-2 border-blue-300 focus:border-blue-500 focus:outline-none bg-white shadow-inner text-blue-900" placeholder="0"></label>
+                                <label class="text-[10px] font-bold text-blue-600 text-center">2차<input type="number" id="jumprope-male-2-input" min="0" oninput="window.updateJumpRopeEntryPreview()" class="mt-1 w-full text-center font-black text-lg sm:text-2xl p-1.5 rounded-lg border-2 border-blue-300 focus:border-blue-500 focus:outline-none bg-white shadow-inner text-blue-900" placeholder="0"></label>
+                            </div>
+                            <div class="mt-2 text-xs font-bold text-blue-700">최종 <span id="jumprope-male-final" class="text-base font-black">-</span>개</div>
                         </div>
                         <div class="bg-pink-50/50 p-3 rounded-xl border border-pink-200 flex flex-col items-center">
                             <label class="block text-xs font-black text-pink-800 mb-2">👧 여학생팀 (개수)</label>
-                            <input type="number" id="jumprope-female-input" class="w-full max-w-[120px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-pink-300 focus:border-pink-500 focus:outline-none bg-white shadow-inner text-pink-900" placeholder="0">
+                            <div class="grid grid-cols-2 gap-1.5 w-full">
+                                <label class="text-[10px] font-bold text-pink-600 text-center">1차<input type="number" id="jumprope-female-1-input" min="0" oninput="window.updateJumpRopeEntryPreview()" class="mt-1 w-full text-center font-black text-lg sm:text-2xl p-1.5 rounded-lg border-2 border-pink-300 focus:border-pink-500 focus:outline-none bg-white shadow-inner text-pink-900" placeholder="0"></label>
+                                <label class="text-[10px] font-bold text-pink-600 text-center">2차<input type="number" id="jumprope-female-2-input" min="0" oninput="window.updateJumpRopeEntryPreview()" class="mt-1 w-full text-center font-black text-lg sm:text-2xl p-1.5 rounded-lg border-2 border-pink-300 focus:border-pink-500 focus:outline-none bg-white shadow-inner text-pink-900" placeholder="0"></label>
+                            </div>
+                            <div class="mt-2 text-xs font-bold text-pink-700">최종 <span id="jumprope-female-final" class="text-base font-black">-</span>개</div>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col items-center justify-center">
+                            <label for="jumprope-target-input" class="block text-xs font-black text-amber-800 mb-2">🎯 목표 (팀별 개수)</label>
+                            <input type="number" id="jumprope-target-input" min="1" oninput="window.updateJumpRopeEntryPreview()" class="w-full max-w-[140px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-amber-300 focus:border-amber-500 focus:outline-none bg-white shadow-inner text-amber-900" placeholder="목표">
+                            <p class="mt-2 text-[10px] text-center font-bold text-amber-700">목표 달성 팀마다 칭찬 도장 1개</p>
                         </div>
                     </div>
                     
                     <button onclick="window.saveJumpRopeRecord()" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2">
                         💾 현재 학급 기록 저장 및 업데이트
                     </button>
-                    <button onclick="window.reviewJumpRopeResults()" class="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2">
+                    <button id="jumprope-results-btn" onclick="window.reviewJumpRopeResults()" disabled class="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 sm:py-4 rounded-xl shadow-md transition transform active:scale-[0.98] text-sm sm:text-base flex justify-center items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100">
                         🏆 8자 줄넘기 결과 확인
                     </button>
                     
@@ -243,12 +256,12 @@
                         🏆 동학년 실시간 순위 <span id="jumprope-grade-badge" class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] sm:text-xs border border-amber-200 shadow-sm hidden"></span>
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <h4 class="text-xs font-black text-blue-600 mb-2 border-b-2 border-blue-200 pb-1.5 flex items-center justify-between">👦 남학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
+                        <div id="jumprope-male-ranking-card" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <h4 class="text-xs font-black text-blue-600 mb-2 border-b-2 border-blue-200 pb-1.5 flex items-center justify-between"><span id="jumprope-male-ranking-title">👦 남학생 랭킹</span> <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
                             <ul id="jumprope-male-ranking" class="space-y-1.5 text-xs sm:text-sm"></ul>
                         </div>
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                            <h4 class="text-xs font-black text-pink-600 mb-2 border-b-2 border-pink-200 pb-1.5 flex items-center justify-between">👧 여학생 랭킹 <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
+                        <div id="jumprope-female-ranking-card" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <h4 class="text-xs font-black text-pink-600 mb-2 border-b-2 border-pink-200 pb-1.5 flex items-center justify-between"><span id="jumprope-female-ranking-title">👧 여학생 랭킹</span> <span class="text-[10px] text-slate-400 font-normal">도장 보상</span></h4>
                             <ul id="jumprope-female-ranking" class="space-y-1.5 text-xs sm:text-sm"></ul>
                         </div>
                     </div>
@@ -414,6 +427,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260914-1"></script>
+    <script type="module" src="app.js?v=20260915-1"></script>
 </body>
 </html>

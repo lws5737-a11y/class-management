@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260914-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260915-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -1566,6 +1566,57 @@ function initJumpRopeWeeks() {
 }
 document.addEventListener('DOMContentLoaded', initJumpRopeWeeks);
 
+function normalizeJumpRopeRecord(record) {
+    record = record || {};
+    const positiveOrNull = value => Number(value) > 0 ? Number(value) : null;
+    if (!Array.isArray(record.maleAttempts)) record.maleAttempts = [positiveOrNull(record.male), null];
+    if (!Array.isArray(record.femaleAttempts)) record.femaleAttempts = [positiveOrNull(record.female), null];
+    record.maleAttempts = [positiveOrNull(record.maleAttempts[0]), positiveOrNull(record.maleAttempts[1])];
+    record.femaleAttempts = [positiveOrNull(record.femaleAttempts[0]), positiveOrNull(record.femaleAttempts[1])];
+    const maleScores = record.maleAttempts.filter(value => value !== null);
+    const femaleScores = record.femaleAttempts.filter(value => value !== null);
+    record.male = maleScores.length ? Math.max(...maleScores) : null;
+    record.female = femaleScores.length ? Math.max(...femaleScores) : null;
+    record.target = positiveOrNull(record.target);
+    if (!record.targetRewarded || typeof record.targetRewarded !== 'object') record.targetRewarded = { male: false, female: false };
+    record.targetRewarded.male = Boolean(record.targetRewarded.male);
+    record.targetRewarded.female = Boolean(record.targetRewarded.female);
+    return record;
+}
+
+function ensureJumpRopeRecord(week, className) {
+    if (!jumpRopeData[week]) jumpRopeData[week] = {};
+    if (!jumpRopeData[week][className]) jumpRopeData[week][className] = {};
+    return normalizeJumpRopeRecord(jumpRopeData[week][className]);
+}
+
+function isJumpRopeRecordComplete(record) {
+    const normalized = normalizeJumpRopeRecord(record || {});
+    return [...normalized.maleAttempts, ...normalized.femaleAttempts].every(value => Number(value) > 0);
+}
+
+function readPositiveNumber(id) {
+    const value = Number.parseInt(document.getElementById(id)?.value, 10);
+    return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+window.updateJumpRopeEntryPreview = function() {
+    const maleAttempts = [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')];
+    const femaleAttempts = [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')];
+    const maleScores = maleAttempts.filter(value => value !== null);
+    const femaleScores = femaleAttempts.filter(value => value !== null);
+    const maleFinal = document.getElementById('jumprope-male-final');
+    const femaleFinal = document.getElementById('jumprope-female-final');
+    if (maleFinal) maleFinal.textContent = maleScores.length ? Math.max(...maleScores) : '-';
+    if (femaleFinal) femaleFinal.textContent = femaleScores.length ? Math.max(...femaleScores) : '-';
+    const resultButton = document.getElementById('jumprope-results-btn');
+    const complete = [...maleAttempts, ...femaleAttempts].every(value => value !== null);
+    if (resultButton) {
+        resultButton.disabled = !complete;
+        resultButton.title = complete ? '동학년 결과를 확인하고 도장을 적립합니다.' : '남학생·여학생 1차와 2차 기록을 모두 입력해주세요.';
+    }
+};
+
 window.renderJumpRopeTab = function() {
     if (!currentClass) return;
     const week = document.getElementById('jumprope-week-select').value;
@@ -1578,11 +1629,13 @@ window.renderJumpRopeTab = function() {
         else { badge.classList.add('hidden'); }
     }
 
-    if (!jumpRopeData[week]) jumpRopeData[week] = {};
-    if (!jumpRopeData[week][currentClass]) jumpRopeData[week][currentClass] = { male: null, female: null };
-
-    document.getElementById('jumprope-male-input').value = jumpRopeData[week][currentClass].male !== null ? jumpRopeData[week][currentClass].male : '';
-    document.getElementById('jumprope-female-input').value = jumpRopeData[week][currentClass].female !== null ? jumpRopeData[week][currentClass].female : '';
+    const currentRecord = ensureJumpRopeRecord(week, currentClass);
+    document.getElementById('jumprope-male-1-input').value = currentRecord.maleAttempts[0] ?? '';
+    document.getElementById('jumprope-male-2-input').value = currentRecord.maleAttempts[1] ?? '';
+    document.getElementById('jumprope-female-1-input').value = currentRecord.femaleAttempts[0] ?? '';
+    document.getElementById('jumprope-female-2-input').value = currentRecord.femaleAttempts[1] ?? '';
+    document.getElementById('jumprope-target-input').value = currentRecord.target ?? '';
+    window.updateJumpRopeEntryPreview();
 
     const maleRanking = [];
     const femaleRanking = [];
@@ -1591,13 +1644,14 @@ window.renderJumpRopeTab = function() {
         Object.keys(jumpRopeData[week]).forEach(cls => {
             let m = cls.match(/^(\d+)/);
             if (m && m[1] === currentGradeStr) {
-                let d = jumpRopeData[week][cls];
+                let d = normalizeJumpRopeRecord(jumpRopeData[week][cls]);
+                if (!isJumpRopeRecordComplete(d)) return;
                 if (d.male !== null && d.male > 0) maleRanking.push({ cls, score: d.male });
                 if (d.female !== null && d.female > 0) femaleRanking.push({ cls, score: d.female });
             }
         });
     } else {
-        let d = jumpRopeData[week][currentClass];
+        let d = currentRecord;
         if (d.male !== null && d.male > 0) maleRanking.push({ cls: currentClass, score: d.male });
         if (d.female !== null && d.female > 0) femaleRanking.push({ cls: currentClass, score: d.female });
     }
@@ -1615,10 +1669,8 @@ window.renderJumpRopeTab = function() {
             let highlight = item.cls === currentClass ? 'bg-yellow-100 font-black text-yellow-800 rounded' : 'text-slate-700';
             
             // 랭킹 보상 도장 아이콘
-            let reward = '';
-            if(idx === 0) reward = '<span class="text-xs ml-1 tracking-tighter" title="도장 2개">💮💮</span>';
-            else if(idx === 1) reward = '<span class="text-xs ml-1 tracking-tighter" title="도장 1개">💮</span>';
-            else if(idx === 2) reward = '<span class="text-[10px] ml-1 text-slate-400">도장 0개</span>';
+            const rewardCount = currentGradeStr === '6' ? Math.max(0, 3 - idx) : (idx === 0 ? 2 : (idx === 1 ? 1 : 0));
+            let reward = idx < 3 ? `<span class="text-[10px] ml-1 text-slate-500" title="도장 ${rewardCount}개">💮 ${rewardCount}</span>` : '';
 
             html += `
                 <li class="flex justify-between items-center px-2 py-1 ${highlight}">
@@ -1629,22 +1681,48 @@ window.renderJumpRopeTab = function() {
         ul.innerHTML = html;
     };
 
-    renderList(maleRanking, 'jumprope-male-ranking');
-    renderList(femaleRanking, 'jumprope-female-ranking');
+    const maleCard = document.getElementById('jumprope-male-ranking-card');
+    const femaleCard = document.getElementById('jumprope-female-ranking-card');
+    const maleTitle = document.getElementById('jumprope-male-ranking-title');
+    if (currentGradeStr === '4') {
+        const combinedRanking = maleRanking.map(male => {
+            const female = femaleRanking.find(item => item.cls === male.cls);
+            return female ? { cls: male.cls, score: male.score + female.score } : null;
+        }).filter(Boolean).sort((a, b) => b.score - a.score || a.cls.localeCompare(b.cls, 'ko', { numeric: true }));
+        if (maleTitle) maleTitle.textContent = '🏫 남녀 최고 기록 합산 랭킹';
+        if (maleCard) maleCard.classList.add('sm:col-span-2');
+        if (femaleCard) femaleCard.classList.add('hidden');
+        const originalGrade = currentGradeStr;
+        currentGradeStr = '6';
+        renderList(combinedRanking, 'jumprope-male-ranking');
+        currentGradeStr = originalGrade;
+    } else {
+        if (maleTitle) maleTitle.textContent = '👦 남학생 랭킹';
+        if (maleCard) maleCard.classList.remove('sm:col-span-2');
+        if (femaleCard) femaleCard.classList.remove('hidden');
+        renderList(maleRanking, 'jumprope-male-ranking');
+        renderList(femaleRanking, 'jumprope-female-ranking');
+    }
 
 };
 
 function getJumpRopeRankings(week, grade) {
-    const rankings = { male: [], female: [] };
+    const rankings = { male: [], female: [], combined: [] };
     Object.entries(jumpRopeData[week] || {}).forEach(([className, record]) => {
         const match = className.match(/^(\d+)/);
         if (!match || match[1] !== String(grade)) return;
-        if (Number(record?.male) > 0) rankings.male.push({ cls: className, score: Number(record.male) });
-        if (Number(record?.female) > 0) rankings.female.push({ cls: className, score: Number(record.female) });
+        const normalized = normalizeJumpRopeRecord(record);
+        if (!isJumpRopeRecordComplete(normalized)) return;
+        if (Number(normalized.male) > 0) rankings.male.push({ cls: className, score: Number(normalized.male) });
+        if (Number(normalized.female) > 0) rankings.female.push({ cls: className, score: Number(normalized.female) });
+        if (Number(normalized.male) > 0 && Number(normalized.female) > 0) {
+            rankings.combined.push({ cls: className, score: Number(normalized.male) + Number(normalized.female) });
+        }
     });
     const sorter = (left, right) => right.score - left.score || left.cls.localeCompare(right.cls, 'ko', { numeric: true });
     rankings.male.sort(sorter);
     rankings.female.sort(sorter);
+    rankings.combined.sort(sorter);
     return rankings;
 }
 
@@ -1653,6 +1731,21 @@ window.reviewJumpRopeResults = function() {
     const grade = currentClass.match(/^(\d+)/)?.[1];
     if (!grade) return window.showModal('결과 확인', '학급명에서 학년을 확인할 수 없습니다. 예: 6-2');
     const week = document.getElementById('jumprope-week-select').value;
+    const currentRecord = ensureJumpRopeRecord(week, currentClass);
+    const enteredAttempts = {
+        male: [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')],
+        female: [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')]
+    };
+    if ([...enteredAttempts.male, ...enteredAttempts.female].every(value => value !== null)) {
+        currentRecord.maleAttempts = enteredAttempts.male;
+        currentRecord.femaleAttempts = enteredAttempts.female;
+        currentRecord.target = readPositiveNumber('jumprope-target-input');
+        normalizeJumpRopeRecord(currentRecord);
+    }
+    if (!isJumpRopeRecordComplete(currentRecord)) {
+        window.showModal('결과 확인', '남학생팀과 여학생팀의 1차·2차 기록을 모두 입력하고 저장해주세요.');
+        return;
+    }
     const alreadyAwarded = jumpRopeAwards[week]?.[grade];
     if (alreadyAwarded) {
         window.showModal('이미 적립 완료', `<b>${escapeHTML(week)} ${grade}학년</b> 결과는 이미 도장판에 반영되었습니다.<br><span class="text-xs text-slate-500">중복 적립을 막기 위해 다시 적용하지 않습니다.</span>`);
@@ -1666,7 +1759,9 @@ window.reviewJumpRopeResults = function() {
     }
 
     const rewardByClass = {};
-    const rewardForRank = rank => rank === 1 ? 2 : (rank === 2 ? 1 : 0);
+    const rewardForRank = rank => grade === '6' || grade === '4'
+        ? (rank === 1 ? 3 : (rank === 2 ? 2 : (rank === 3 ? 1 : 0)))
+        : (rank === 1 ? 2 : (rank === 2 ? 1 : 0));
     const renderResult = (label, items, color) => {
         const topThree = items.slice(0, 3);
         if (topThree.length === 0) return `<div class="text-xs text-slate-400">${label}: 기록 없음</div>`;
@@ -1676,7 +1771,9 @@ window.reviewJumpRopeResults = function() {
             return `<div class="flex justify-between gap-3 text-xs py-0.5"><span>${index + 1}위 ${escapeHTML(item.cls)} · ${item.score}개</span><b>도장 ${reward}개</b></div>`;
         }).join('')}</div>`;
     };
-    const resultHtml = `${renderResult('👦 남학생', rankings.male, 'bg-blue-50 border-blue-200')}${renderResult('👧 여학생', rankings.female, 'bg-pink-50 border-pink-200')}`;
+    const resultHtml = grade === '4'
+        ? renderResult('🏫 남녀 최고 기록 합산', rankings.combined, 'bg-amber-50 border-amber-200')
+        : `${renderResult('👦 남학생팀', rankings.male, 'bg-blue-50 border-blue-200')}${renderResult('👧 여학생팀', rankings.female, 'bg-pink-50 border-pink-200')}`;
     const rewardSummary = Object.entries(rewardByClass).filter(([, count]) => count > 0)
         .map(([className, count]) => `<span class="inline-block bg-amber-100 text-amber-800 rounded-full px-2 py-1 mr-1 mt-1 font-black">${escapeHTML(className)} +${count}</span>`).join('');
 
@@ -1693,7 +1790,9 @@ window.reviewJumpRopeResults = function() {
             awardedAt: new Date().toISOString(),
             rewards: rewardByClass,
             male: rankings.male.slice(0, 3),
-            female: rankings.female.slice(0, 3)
+            female: rankings.female.slice(0, 3),
+            combined: rankings.combined.slice(0, 3),
+            rule: grade === '4' ? 'combined-3-2-1' : (grade === '6' ? 'team-3-2-1' : 'team-2-1-0')
         };
         const cloudSaved = await saveData({ immediate: true });
         window.renderStampBoard();
@@ -1707,100 +1806,119 @@ window.reviewJumpRopeResults = function() {
 
 window.openJumpRopeAnalysisModal = function() {
     if (!currentClass) return window.showModal('알림', '학급을 선택해주세요.');
-    let maleData = []; let femaleData = []; let labels = [];
-    let maxScore = 0; let minScore = Infinity; let hasData = false;
-
-    // 그래프 출력을 위해 1월 1주차부터 순서대로 탐색
-    for(let m=1; m<=12; m++) {
-        for(let w=1; w<=5; w++) {
-            let wk = `${m}월 ${w}주차`;
-            if (jumpRopeData[wk] && jumpRopeData[wk][currentClass]) {
-                let d = jumpRopeData[wk][currentClass];
-                if (d.male !== null || d.female !== null) {
-                    labels.push(wk);
-                    let mScore = Number(d.male) > 0 ? Number(d.male) : null;
-                    let fScore = Number(d.female) > 0 ? Number(d.female) : null;
-                    maleData.push(mScore); femaleData.push(fScore);
-                    if(mScore !== null || fScore !== null) hasData = true;
-                    if(mScore !== null && mScore > maxScore) maxScore = mScore;
-                    if(fScore !== null && fScore > maxScore) maxScore = fScore;
-                    if(mScore !== null && mScore < minScore) minScore = mScore;
-                    if(fScore !== null && fScore < minScore) minScore = fScore;
-                }
-            }
-        }
-    }
-
-    if (!hasData) return window.showModal('기록 분석', '아직 입력된 줄넘기 기록이 없습니다.');
-    if (minScore === Infinity) minScore = 0;
-
-    const chartWidth = Math.max(560, labels.length * 82);
-    const chartHeight = 250;
-    const plot = { left: 48, right: 20, top: 24, bottom: 48 };
-    const plotWidth = chartWidth - plot.left - plot.right;
-    const plotHeight = chartHeight - plot.top - plot.bottom;
-    const yMax = Math.max(10, Math.ceil(maxScore * 1.1 / 10) * 10);
-    const xAt = index => plot.left + (labels.length <= 1 ? plotWidth / 2 : index * plotWidth / (labels.length - 1));
-    const yAt = value => plot.top + plotHeight - (value / yMax * plotHeight);
-    const makePath = values => {
-        let path = ''; let drawing = false;
-        values.forEach((value, index) => {
-            if (value === null) { drawing = false; return; }
-            path += `${drawing ? ' L' : 'M'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`;
-            drawing = true;
+    const grade = currentClass.match(/^(\d+)/)?.[1];
+    if (!grade) return window.showModal('기록 분석', '학급명에서 학년을 확인할 수 없습니다.');
+    const allWeeks = Array.from({ length: 12 }, (_, monthIndex) =>
+        Array.from({ length: 5 }, (_, weekIndex) => `${monthIndex + 1}월 ${weekIndex + 1}주차`)
+    ).flat();
+    const sameGradeClasses = new Set(Object.keys(classData).filter(className => className.match(/^(\d+)/)?.[1] === grade));
+    Object.values(jumpRopeData).forEach(weekRecords => {
+        Object.keys(weekRecords || {}).forEach(className => {
+            if (className.match(/^(\d+)/)?.[1] === grade) sameGradeClasses.add(className);
         });
-        return path;
+    });
+
+    const series = [...sameGradeClasses].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true })).map(className => {
+        const points = allWeeks.map(week => {
+            const raw = jumpRopeData[week]?.[className];
+            if (!raw) return null;
+            const record = normalizeJumpRopeRecord(raw);
+            return record.male || record.female ? { week, male: record.male, female: record.female } : null;
+        }).filter(Boolean);
+        return { className, points };
+    }).filter(item => item.points.length > 0);
+
+    if (series.length === 0) return window.showModal('기록 분석', `${grade}학년에 저장된 줄넘기 기록이 없습니다.`);
+    const allScores = series.flatMap(item => item.points.flatMap(point => [point.male, point.female]).filter(value => value !== null));
+    const maxScore = Math.max(...allScores);
+    const minScore = Math.min(...allScores);
+    const yMax = Math.max(10, Math.ceil(maxScore * 1.1 / 10) * 10);
+
+    const buildChart = ({ className, points }) => {
+        const labels = points.map(point => point.week);
+        const maleData = points.map(point => point.male);
+        const femaleData = points.map(point => point.female);
+        const chartWidth = Math.max(520, labels.length * 82);
+        const chartHeight = 230;
+        const plot = { left: 46, right: 18, top: 20, bottom: 46 };
+        const plotWidth = chartWidth - plot.left - plot.right;
+        const plotHeight = chartHeight - plot.top - plot.bottom;
+        const xAt = index => plot.left + (labels.length <= 1 ? plotWidth / 2 : index * plotWidth / (labels.length - 1));
+        const yAt = value => plot.top + plotHeight - (value / yMax * plotHeight);
+        const makePath = values => {
+            let path = ''; let drawing = false;
+            values.forEach((value, index) => {
+                if (value === null) { drawing = false; return; }
+                path += `${drawing ? ' L' : 'M'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`;
+                drawing = true;
+            });
+            return path;
+        };
+        const pointsHTML = (values, color, teamLabel) => values.map((value, index) => value === null ? '' :
+            `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4" fill="white" stroke="${color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${teamLabel} ${value}개</title></circle>`
+        ).join('');
+        const grid = Array.from({ length: 6 }, (_, index) => {
+            const value = Math.round(yMax * (5 - index) / 5);
+            const y = plot.top + plotHeight * index / 5;
+            return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0"/><text x="${plot.left - 7}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
+        }).join('');
+        const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 16}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
+        const currentBadge = className === currentClass ? '<span class="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] text-indigo-700">현재 학급</span>' : '';
+        return `<section class="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+            <h3 class="mb-2 font-black text-slate-800">🏫 ${escapeHTML(className)}${currentBadge}</h3>
+            <div class="overflow-x-auto rounded-lg bg-slate-50">
+                <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width:${chartWidth}px;max-width:none;height:230px" role="img" aria-label="${escapeHTML(className)} 남학생과 여학생 기록 추세">
+                    ${grid}
+                    <path d="${makePath(maleData)}" fill="none" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="${makePath(femaleData)}" fill="none" stroke="#ec4899" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    ${pointsHTML(maleData, '#3b82f6', '남학생')}${pointsHTML(femaleData, '#ec4899', '여학생')}${xLabels}
+                </svg>
+            </div>
+        </section>`;
     };
-    const renderPoints = (values, color, label) => values.map((value, index) => value === null ? '' :
-        `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4.5" fill="white" stroke="${color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${label} ${value}개</title></circle>`
-    ).join('');
-    const horizontalGrid = Array.from({ length: 6 }, (_, index) => {
-        const value = Math.round(yMax * (5 - index) / 5);
-        const y = plot.top + plotHeight * index / 5;
-        return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/><text x="${plot.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
-    }).join('');
-    const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 18}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
 
-    let html = `<div class="flex flex-col gap-4 w-full">
-        <div class="flex justify-between bg-slate-100 p-3 rounded-lg text-sm shadow-inner border border-slate-200">
-            <div class="font-bold text-slate-700">🏆 최고 기록: <span class="text-blue-600">${maxScore}개</span></div>
-            <div class="font-bold text-slate-700">📉 최저 기록: <span class="text-red-500">${minScore}개</span></div>
-        </div>
-        <div class="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-inner">
-            <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width:${chartWidth}px;max-width:none;height:250px" role="img" aria-label="남학생과 여학생 8자 줄넘기 기록 변화 선 그래프">
-                ${horizontalGrid}
-                <path d="${makePath(maleData)}" fill="none" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="${makePath(femaleData)}" fill="none" stroke="#ec4899" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                ${renderPoints(maleData, '#3b82f6', '남학생')}
-                ${renderPoints(femaleData, '#ec4899', '여학생')}
-                ${xLabels}
-            </svg>
-        </div>
-        <div class="flex justify-center gap-4 text-xs mt-2 font-bold text-slate-600">
-            <span class="flex items-center gap-1.5"><span class="w-5 h-1 bg-blue-500 rounded-full"></span> 남학생</span>
-            <span class="flex items-center gap-1.5"><span class="w-5 h-1 bg-pink-500 rounded-full"></span> 여학생</span>
-        </div>
+    const html = `<div class="flex w-full flex-col gap-3">
+        <div class="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-200 bg-slate-100 p-3 text-xs font-bold text-slate-700">
+            <span>${grade}학년 ${series.length}개 학급</span><span>최고 ${maxScore}개 · 최저 ${minScore}개</span>
+            <span class="w-full text-center"><i class="mr-1 inline-block h-1 w-5 rounded bg-blue-500"></i>남학생 <i class="ml-3 mr-1 inline-block h-1 w-5 rounded bg-pink-500"></i>여학생</span>
+        </div>${series.map(buildChart).join('')}
     </div>`;
-
-    window.showModal(`📊 ${currentClass} 줄넘기 기록 현황`, html);
+    window.showModal(`📈 ${grade}학년 줄넘기 기록 분석`, html, false, null, '확인', true);
 };
 
-window.saveJumpRopeRecord = function() {
+window.saveJumpRopeRecord = async function() {
     if (!currentClass) return;
     const week = document.getElementById('jumprope-week-select').value;
-    const mVal = parseInt(document.getElementById('jumprope-male-input').value);
-    const fVal = parseInt(document.getElementById('jumprope-female-input').value);
+    const record = ensureJumpRopeRecord(week, currentClass);
+    record.maleAttempts = [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')];
+    record.femaleAttempts = [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')];
+    record.target = readPositiveNumber('jumprope-target-input');
+    normalizeJumpRopeRecord(record);
 
-    if (!jumpRopeData[week]) jumpRopeData[week] = {};
-    if (!jumpRopeData[week][currentClass]) jumpRopeData[week][currentClass] = { male: null, female: null };
-
-    jumpRopeData[week][currentClass].male = isNaN(mVal) ? null : mVal;
-    jumpRopeData[week][currentClass].female = isNaN(fVal) ? null : fVal;
-
-    saveData();
+    let earnedStamps = 0;
+    if (record.target) {
+        if (record.male >= record.target && !record.targetRewarded.male) {
+            record.targetRewarded.male = true;
+            earnedStamps++;
+        }
+        if (record.female >= record.target && !record.targetRewarded.female) {
+            record.targetRewarded.female = true;
+            earnedStamps++;
+        }
+    }
+    const stampResult = earnedStamps > 0 ? addStampsToClass(currentClass, earnedStamps) : { completions: 0, remaining: 0 };
+    const cloudSaved = await saveData({ immediate: true });
     window.renderJumpRopeTab();
     window.playCoinSound();
-    window.showModal("저장 완료", `<b>${week}</b> 기록이 성공적으로 저장되었습니다.`);
+    if (stampResult.completions > 0) {
+        showMissionComplete([currentClass], stampResult.completions);
+    } else {
+        const targetMessage = earnedStamps > 0
+            ? `<br><span class="font-black text-amber-600">목표 달성 칭찬 도장 ${earnedStamps}개가 자동 적립되었습니다.</span>`
+            : '';
+        const offlineMessage = cloudSaved ? '' : '<br><span class="text-xs font-bold text-amber-600">기기에 저장됨 · 온라인 연결 시 자동 전송</span>';
+        window.showModal("저장 완료", `<b>${week}</b> 기록을 저장했습니다.<br>남학생 최종 <b>${record.male ?? '-'}개</b> · 여학생 최종 <b>${record.female ?? '-'}개</b>${targetMessage}${offlineMessage}`);
+    }
 };
 
 window.editJumpRopeTimerTarget = function() {
@@ -2219,10 +2337,21 @@ function migrateData() {
     }
 }
 
-window.showModal = function(title, message, isConfirm = false, confirmCallback = null, confirmText = "확인") {
+window.showModal = function(title, message, isConfirm = false, confirmCallback = null, confirmText = "확인", wide = false) {
     document.getElementById('modal-title').innerText = title; document.getElementById('modal-message').innerHTML = message;
     const customModal = document.getElementById('custom-modal'); const confirmBtn = document.getElementById('modal-confirm-btn');
     const cancelBtn = document.getElementById('modal-cancel-btn'); const alertOkBtn = document.getElementById('modal-alert-ok-btn');
+    const panel = customModal.firstElementChild;
+    const messageElement = document.getElementById('modal-message');
+    if (panel) {
+        panel.classList.toggle('max-w-sm', !wide);
+        panel.classList.toggle('max-w-4xl', wide);
+        panel.classList.toggle('max-h-[92vh]', wide);
+    }
+    if (messageElement) {
+        messageElement.classList.toggle('overflow-y-auto', wide);
+        messageElement.classList.toggle('max-h-[72vh]', wide);
+    }
     confirmBtn.innerText = confirmText; confirmBtn.onclick = null; cancelBtn.onclick = null; alertOkBtn.onclick = null;
 
     if (isConfirm) {
