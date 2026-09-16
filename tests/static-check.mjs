@@ -62,8 +62,10 @@ assert.ok(app.includes('let jumpRopeTimerMs = 60000') && app.includes('let jumpR
 assert.ok(app.includes('<path d="${makePath(maleData)}"') && app.includes('<path d="${makePath(femaleData)}"'), '줄넘기 기록 분석이 선 그래프로 표시되지 않습니다.');
 assert.ok(['male-1', 'male-2', 'female-1', 'female-2'].every(name => html.includes(`id="jumprope-${name}-input"`)), '남녀 1차·2차 줄넘기 입력칸이 모두 없습니다.');
 assert.ok(html.includes('id="jumprope-target-input"') && app.includes('targetRewarded') && app.includes('earnedStamps++'), '줄넘기 목표 달성 자동 도장 처리가 없습니다.');
+assert.ok(html.includes('window.saveJumpRopeTarget()') && app.includes('window.saveJumpRopeTarget = function()'), '줄넘기 목표 입력 자동 저장이 연결되지 않았습니다.');
+assert.ok(app.includes('const teamSeries = series.flatMap') && app.includes('const lines = teamSeries.map'), '학년 전체 줄넘기팀이 하나의 분석 그래프에 표시되지 않았습니다.');
 assert.ok(html.includes('id="jumprope-results-btn"') && html.includes('id="jumprope-results-btn" onclick="window.reviewJumpRopeResults()" disabled'), '1·2차 기록 완료 전 결과 확인 버튼이 비활성화되지 않습니다.');
-assert.ok(app.includes('sameGradeClasses') && app.includes('series.map(buildChart)'), '동학년 전체 학급 기록 분석 차트가 없습니다.');
+assert.ok(app.includes('sameGradeClasses') && app.includes('teamSeries.length'), '동학년 전체 학급 기록 분석 차트가 없습니다.');
 assert.ok(app.includes("'combined-3-2-1'") && app.includes("'team-3-2-1'"), '4학년 합산 및 6학년 팀별 3·2·1 도장 규칙이 없습니다.');
 assert.ok(html.includes('id="class-selection-list" class="grid grid-cols-2'), '스마트폰 학급 선택 목록이 2열로 구성되지 않았습니다.');
 assert.ok(app.includes('handleDropOnStudent') && app.includes('handleDragOverStudent') && app.includes('handleStudentDropLogic'), '모바일/PC 학생 이동·교체용 드롭 처리가 없습니다.');

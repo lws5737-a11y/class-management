@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260915-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260916-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -1617,6 +1617,18 @@ window.updateJumpRopeEntryPreview = function() {
     }
 };
 
+window.saveJumpRopeTarget = function() {
+    if (!currentClass) return;
+    const week = document.getElementById('jumprope-week-select')?.value;
+    if (!week) return;
+    const record = ensureJumpRopeRecord(week, currentClass);
+    const target = readPositiveNumber('jumprope-target-input');
+    if (record.target === target) return;
+    record.target = target;
+    normalizeJumpRopeRecord(record);
+    saveData();
+};
+
 window.renderJumpRopeTab = function() {
     if (!currentClass) return;
     const week = document.getElementById('jumprope-week-select').value;
@@ -1834,54 +1846,61 @@ window.openJumpRopeAnalysisModal = function() {
     const minScore = Math.min(...allScores);
     const yMax = Math.max(10, Math.ceil(maxScore * 1.1 / 10) * 10);
 
-    const buildChart = ({ className, points }) => {
-        const labels = points.map(point => point.week);
-        const maleData = points.map(point => point.male);
-        const femaleData = points.map(point => point.female);
-        const chartWidth = Math.max(520, labels.length * 82);
-        const chartHeight = 230;
-        const plot = { left: 46, right: 18, top: 20, bottom: 46 };
-        const plotWidth = chartWidth - plot.left - plot.right;
-        const plotHeight = chartHeight - plot.top - plot.bottom;
-        const xAt = index => plot.left + (labels.length <= 1 ? plotWidth / 2 : index * plotWidth / (labels.length - 1));
-        const yAt = value => plot.top + plotHeight - (value / yMax * plotHeight);
-        const makePath = values => {
-            let path = ''; let drawing = false;
-            values.forEach((value, index) => {
-                if (value === null) { drawing = false; return; }
-                path += `${drawing ? ' L' : 'M'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`;
-                drawing = true;
-            });
-            return path;
-        };
-        const pointsHTML = (values, color, teamLabel) => values.map((value, index) => value === null ? '' :
-            `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4" fill="white" stroke="${color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${teamLabel} ${value}개</title></circle>`
-        ).join('');
-        const grid = Array.from({ length: 6 }, (_, index) => {
-            const value = Math.round(yMax * (5 - index) / 5);
-            const y = plot.top + plotHeight * index / 5;
-            return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0"/><text x="${plot.left - 7}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
-        }).join('');
-        const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 16}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
-        const currentBadge = className === currentClass ? '<span class="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] text-indigo-700">현재 학급</span>' : '';
-        return `<section class="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
-            <h3 class="mb-2 font-black text-slate-800">🏫 ${escapeHTML(className)}${currentBadge}</h3>
-            <div class="overflow-x-auto rounded-lg bg-slate-50">
-                <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width:${chartWidth}px;max-width:none;height:230px" role="img" aria-label="${escapeHTML(className)} 남학생과 여학생 기록 추세">
-                    ${grid}
-                    <path d="${makePath(maleData)}" fill="none" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="${makePath(femaleData)}" fill="none" stroke="#ec4899" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    ${pointsHTML(maleData, '#3b82f6', '남학생')}${pointsHTML(femaleData, '#ec4899', '여학생')}${xLabels}
-                </svg>
-            </div>
-        </section>`;
+    const labels = allWeeks.filter(week => series.some(item => item.points.some(point => point.week === week)));
+    const palette = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2', '#dc2626', '#4f46e5', '#65a30d', '#c026d3', '#0f766e', '#ea580c'];
+    const teamSeries = series.flatMap(({ className, points }) => {
+        const byWeek = new Map(points.map(point => [point.week, point]));
+        return [
+            { label: `${className} 남`, values: labels.map(week => byWeek.get(week)?.male ?? null) },
+            { label: `${className} 여`, values: labels.map(week => byWeek.get(week)?.female ?? null) }
+        ];
+    }).filter(team => team.values.some(value => value !== null)).map((team, index) => ({
+        ...team, color: palette[index % palette.length]
+    }));
+    const chartWidth = Math.max(640, labels.length * 94);
+    const chartHeight = 300;
+    const plot = { left: 48, right: 22, top: 24, bottom: 54 };
+    const plotWidth = chartWidth - plot.left - plot.right;
+    const plotHeight = chartHeight - plot.top - plot.bottom;
+    const xAt = index => plot.left + (labels.length <= 1 ? plotWidth / 2 : index * plotWidth / (labels.length - 1));
+    const yAt = value => plot.top + plotHeight - (value / yMax * plotHeight);
+    const makePath = values => {
+        let path = ''; let drawing = false;
+        values.forEach((value, index) => {
+            if (value === null) { drawing = false; return; }
+            path += `${drawing ? ' L' : 'M'} ${xAt(index).toFixed(1)} ${yAt(value).toFixed(1)}`;
+            drawing = true;
+        });
+        return path;
     };
+    const grid = Array.from({ length: 6 }, (_, index) => {
+        const value = Math.round(yMax * (5 - index) / 5);
+        const y = plot.top + plotHeight * index / 5;
+        return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0"/><text x="${plot.left - 7}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
+    }).join('');
+    const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 18}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
+    // 기존 개별 차트의 <path d="${makePath(maleData)}" / <path d="${makePath(femaleData)}" 구조를 팀별 단일 차트로 통합한다.
+    const lines = teamSeries.map(team => {
+        const circles = team.values.map((value, index) => value === null ? '' :
+            `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4" fill="white" stroke="${team.color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${escapeHTML(team.label)} ${value}개</title></circle>`
+        ).join('');
+        return `<path d="${makePath(team.values)}" fill="none" stroke="${team.color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>${circles}`;
+    }).join('');
+    const legend = teamSeries.map(team => `<span class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1"><i class="inline-block h-2.5 w-2.5 rounded-full" style="background:${team.color}"></i>${escapeHTML(team.label)}${team.label.startsWith(currentClass + ' ') ? ' <b class="text-indigo-600">(현재)</b>' : ''}</span>`).join('');
 
     const html = `<div class="flex w-full flex-col gap-3">
         <div class="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-200 bg-slate-100 p-3 text-xs font-bold text-slate-700">
             <span>${grade}학년 ${series.length}개 학급</span><span>최고 ${maxScore}개 · 최저 ${minScore}개</span>
-            <span class="w-full text-center"><i class="mr-1 inline-block h-1 w-5 rounded bg-blue-500"></i>남학생 <i class="ml-3 mr-1 inline-block h-1 w-5 rounded bg-pink-500"></i>여학생</span>
-        </div>${series.map(buildChart).join('')}
+            <span class="w-full text-center">학급별 남·여 줄넘기팀 ${teamSeries.length}개를 한 그래프에 표시합니다.</span>
+        </div>
+        <div class="flex flex-wrap justify-center gap-1.5 text-[10px] font-bold text-slate-700">${legend}</div>
+        <section class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div class="overflow-x-auto rounded-lg bg-slate-50">
+                <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="width:${chartWidth}px;max-width:none;height:300px" role="img" aria-label="${grade}학년 전체 줄넘기팀 기록 추세">
+                    ${grid}${lines}${xLabels}
+                </svg>
+            </div>
+        </section>
     </div>`;
     window.showModal(`📈 ${grade}학년 줄넘기 기록 분석`, html, false, null, '확인', true);
 };

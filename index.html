@@ -226,8 +226,8 @@
                         </div>
                         <div class="col-span-2 sm:col-span-1 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col items-center justify-center">
                             <label for="jumprope-target-input" class="block text-xs font-black text-amber-800 mb-2">🎯 목표 (팀별 개수)</label>
-                            <input type="number" id="jumprope-target-input" min="1" oninput="window.updateJumpRopeEntryPreview()" class="w-full max-w-[140px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-amber-300 focus:border-amber-500 focus:outline-none bg-white shadow-inner text-amber-900" placeholder="목표">
-                            <p class="mt-2 text-[10px] text-center font-bold text-amber-700">목표 달성 팀마다 칭찬 도장 1개</p>
+                            <input type="number" id="jumprope-target-input" min="1" oninput="window.updateJumpRopeEntryPreview(); window.saveJumpRopeTarget()" class="w-full max-w-[140px] text-center font-black text-2xl sm:text-3xl p-2 rounded-xl border-2 border-amber-300 focus:border-amber-500 focus:outline-none bg-white shadow-inner text-amber-900" placeholder="목표">
+                            <p class="mt-2 text-[10px] text-center font-bold text-amber-700">입력 즉시 자동 저장 · 목표 달성 팀마다 칭찬 도장 1개</p>
                         </div>
                     </div>
                     
@@ -427,6 +427,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260915-1"></script>
+    <script type="module" src="app.js?v=20260916-1"></script>
 </body>
 </html>
