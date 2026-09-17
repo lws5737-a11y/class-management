@@ -59,7 +59,7 @@ assert.ok(html.includes('id="sync-status-label"'), '사용자에게 저장 상�
 assert.ok(app.includes('mergeAppPayloads') && app.includes('archiveConflictRecord'), '여러 기기의 오프라인 변경 충돌을 보관·병합하지 않습니다.');
 assert.ok(!html.includes('jumprope-mode-icon') && !app.includes('jumprope-mode-btn'), '8자 줄넘기 스톱워치/타이머 전환 버튼이 남아 있습니다.');
 assert.ok(app.includes('let jumpRopeTimerMs = 60000') && app.includes('let jumpRopeTargetMs = 60000') && !app.includes('jumpRopeTimerMode'), '8자 줄넘기 기본 1분 타이머가 적용되지 않았습니다.');
-assert.ok(app.includes('<path d="${makePath(maleData)}"') && app.includes('<path d="${makePath(femaleData)}"'), '줄넘기 기록 분석이 선 그래프로 표시되지 않습니다.');
+assert.ok(app.includes('const lines = teamSeries.map') && app.includes('return `<path d="${makePath(team.values)}"'), '줄넘기 기록 분석이 선 그래프로 표시되지 않습니다.');
 assert.ok(['male-1', 'male-2', 'female-1', 'female-2'].every(name => html.includes(`id="jumprope-${name}-input"`)), '남녀 1차·2차 줄넘기 입력칸이 모두 없습니다.');
 assert.ok(html.includes('id="jumprope-target-input"') && app.includes('targetRewarded') && app.includes('earnedStamps++'), '줄넘기 목표 달성 자동 도장 처리가 없습니다.');
 assert.ok(html.includes('window.saveJumpRopeTarget()') && app.includes('window.saveJumpRopeTarget = function()'), '줄넘기 목표 입력 자동 저장이 연결되지 않았습니다.');
@@ -118,6 +118,26 @@ const completedAttempts = normalizeJumpRopeRecord({ maleAttempts: [120, 135], fe
 assert.equal(completedAttempts.male, 135, '남학생 1·2차 중 높은 기록이 최종 기록이 아닙니다.');
 assert.equal(completedAttempts.female, 128, '여학생 1·2차 중 높은 기록이 최종 기록이 아닙니다.');
 assert.equal(isJumpRopeRecordComplete(completedAttempts), true, '남녀 1·2차 입력 완료 상태를 인식하지 못합니다.');
+const zeroAttempt = normalizeJumpRopeRecord({ maleAttempts: [0, 135], femaleAttempts: [0, 0] });
+assert.deepEqual(zeroAttempt.maleAttempts, [0, 135], '0회 기록이 빈칸으로 변경됩니다.');
+assert.equal(zeroAttempt.female, 0, '0회 기록이 최종 기록으로 보존되지 않습니다.');
+assert.equal(isJumpRopeRecordComplete(zeroAttempt), true, '0회로 입력한 회차를 완료된 입력으로 인식하지 못합니다.');
+const readAttempt = new Function('document', `${extractFunctionSource(app, 'readPositiveNumber')}\nreturn readPositiveNumber;`)({
+  getElementById: id => ({ value: { zero: '0', empty: '', invalid: '-1' }[id] })
+});
+assert.equal(readAttempt('zero', true), 0, '0회 입력을 저장할 수 없습니다.');
+assert.equal(readAttempt('empty', true), null, '빈칸을 0회로 인식합니다.');
+assert.equal(readAttempt('invalid', true), null, '음수 기록을 허용합니다.');
+const getJumpRopeRankings = new Function('jumpRopeData', `${extractFunctionSource(app, 'normalizeJumpRopeRecord')}\n${extractFunctionSource(app, 'getJumpRopeRankings')}\nreturn getJumpRopeRankings;`)({
+  '9월 3주차': {
+    '6-1': { maleAttempts: [120, null], femaleAttempts: [0, null] },
+    '6-2': { maleAttempts: [100, 110], femaleAttempts: [90, 0] },
+    '5-1': { maleAttempts: [200, 200], femaleAttempts: [180, 180] }
+  }
+});
+const partialRankings = getJumpRopeRankings('9월 3주차', '6');
+assert.deepEqual(partialRankings.male.map(item => item.cls), ['6-1', '6-2'], '1차만 있는 학급이 실시간 순위에 빠집니다.');
+assert.equal(partialRankings.female.find(item => item.cls === '6-1')?.score, 0, '0회 기록이 순위에서 누락됩니다.');
 
 const normalizePenaltyCardState = new Function(
   `const PENALTY_CARD_SYSTEM_VERSION = 3;\n${extractFunctionSource(app, 'normalizePenaltyCardState')}\nreturn normalizePenaltyCardState;`

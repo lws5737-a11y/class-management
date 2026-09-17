@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260916-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260917-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -1568,11 +1568,12 @@ document.addEventListener('DOMContentLoaded', initJumpRopeWeeks);
 
 function normalizeJumpRopeRecord(record) {
     record = record || {};
+    const attemptOrNull = value => value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
     const positiveOrNull = value => Number(value) > 0 ? Number(value) : null;
-    if (!Array.isArray(record.maleAttempts)) record.maleAttempts = [positiveOrNull(record.male), null];
-    if (!Array.isArray(record.femaleAttempts)) record.femaleAttempts = [positiveOrNull(record.female), null];
-    record.maleAttempts = [positiveOrNull(record.maleAttempts[0]), positiveOrNull(record.maleAttempts[1])];
-    record.femaleAttempts = [positiveOrNull(record.femaleAttempts[0]), positiveOrNull(record.femaleAttempts[1])];
+    if (!Array.isArray(record.maleAttempts)) record.maleAttempts = [attemptOrNull(record.male), null];
+    if (!Array.isArray(record.femaleAttempts)) record.femaleAttempts = [attemptOrNull(record.female), null];
+    record.maleAttempts = [attemptOrNull(record.maleAttempts[0]), attemptOrNull(record.maleAttempts[1])];
+    record.femaleAttempts = [attemptOrNull(record.femaleAttempts[0]), attemptOrNull(record.femaleAttempts[1])];
     const maleScores = record.maleAttempts.filter(value => value !== null);
     const femaleScores = record.femaleAttempts.filter(value => value !== null);
     record.male = maleScores.length ? Math.max(...maleScores) : null;
@@ -1592,17 +1593,19 @@ function ensureJumpRopeRecord(week, className) {
 
 function isJumpRopeRecordComplete(record) {
     const normalized = normalizeJumpRopeRecord(record || {});
-    return [...normalized.maleAttempts, ...normalized.femaleAttempts].every(value => Number(value) > 0);
+    return [...normalized.maleAttempts, ...normalized.femaleAttempts].every(value => value !== null);
 }
 
-function readPositiveNumber(id) {
-    const value = Number.parseInt(document.getElementById(id)?.value, 10);
-    return Number.isFinite(value) && value > 0 ? value : null;
+function readPositiveNumber(id, allowZero = false) {
+    const raw = document.getElementById(id)?.value?.trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isInteger(value) && (allowZero ? value >= 0 : value > 0) ? value : null;
 }
 
 window.updateJumpRopeEntryPreview = function() {
-    const maleAttempts = [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')];
-    const femaleAttempts = [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')];
+    const maleAttempts = [readPositiveNumber('jumprope-male-1-input', true), readPositiveNumber('jumprope-male-2-input', true)];
+    const femaleAttempts = [readPositiveNumber('jumprope-female-1-input', true), readPositiveNumber('jumprope-female-2-input', true)];
     const maleScores = maleAttempts.filter(value => value !== null);
     const femaleScores = femaleAttempts.filter(value => value !== null);
     const maleFinal = document.getElementById('jumprope-male-final');
@@ -1613,7 +1616,7 @@ window.updateJumpRopeEntryPreview = function() {
     const complete = [...maleAttempts, ...femaleAttempts].every(value => value !== null);
     if (resultButton) {
         resultButton.disabled = !complete;
-        resultButton.title = complete ? '동학년 결과를 확인하고 도장을 적립합니다.' : '남학생·여학생 1차와 2차 기록을 모두 입력해주세요.';
+        resultButton.title = complete ? '동학년 결과를 확인하고 도장을 적립합니다.' : '남학생·여학생 1차와 2차 기록을 모두 입력하고, 미실시 회차는 0을 입력해주세요.';
     }
 };
 
@@ -1657,15 +1660,14 @@ window.renderJumpRopeTab = function() {
             let m = cls.match(/^(\d+)/);
             if (m && m[1] === currentGradeStr) {
                 let d = normalizeJumpRopeRecord(jumpRopeData[week][cls]);
-                if (!isJumpRopeRecordComplete(d)) return;
-                if (d.male !== null && d.male > 0) maleRanking.push({ cls, score: d.male });
-                if (d.female !== null && d.female > 0) femaleRanking.push({ cls, score: d.female });
+                if (d.male !== null) maleRanking.push({ cls, score: d.male });
+                if (d.female !== null) femaleRanking.push({ cls, score: d.female });
             }
         });
     } else {
         let d = currentRecord;
-        if (d.male !== null && d.male > 0) maleRanking.push({ cls: currentClass, score: d.male });
-        if (d.female !== null && d.female > 0) femaleRanking.push({ cls: currentClass, score: d.female });
+        if (d.male !== null) maleRanking.push({ cls: currentClass, score: d.male });
+        if (d.female !== null) femaleRanking.push({ cls: currentClass, score: d.female });
     }
 
     maleRanking.sort((a, b) => b.score - a.score);
@@ -1724,10 +1726,9 @@ function getJumpRopeRankings(week, grade) {
         const match = className.match(/^(\d+)/);
         if (!match || match[1] !== String(grade)) return;
         const normalized = normalizeJumpRopeRecord(record);
-        if (!isJumpRopeRecordComplete(normalized)) return;
-        if (Number(normalized.male) > 0) rankings.male.push({ cls: className, score: Number(normalized.male) });
-        if (Number(normalized.female) > 0) rankings.female.push({ cls: className, score: Number(normalized.female) });
-        if (Number(normalized.male) > 0 && Number(normalized.female) > 0) {
+        if (normalized.male !== null) rankings.male.push({ cls: className, score: normalized.male });
+        if (normalized.female !== null) rankings.female.push({ cls: className, score: normalized.female });
+        if (normalized.male !== null && normalized.female !== null) {
             rankings.combined.push({ cls: className, score: Number(normalized.male) + Number(normalized.female) });
         }
     });
@@ -1745,8 +1746,8 @@ window.reviewJumpRopeResults = function() {
     const week = document.getElementById('jumprope-week-select').value;
     const currentRecord = ensureJumpRopeRecord(week, currentClass);
     const enteredAttempts = {
-        male: [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')],
-        female: [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')]
+        male: [readPositiveNumber('jumprope-male-1-input', true), readPositiveNumber('jumprope-male-2-input', true)],
+        female: [readPositiveNumber('jumprope-female-1-input', true), readPositiveNumber('jumprope-female-2-input', true)]
     };
     if ([...enteredAttempts.male, ...enteredAttempts.female].every(value => value !== null)) {
         currentRecord.maleAttempts = enteredAttempts.male;
@@ -1755,7 +1756,7 @@ window.reviewJumpRopeResults = function() {
         normalizeJumpRopeRecord(currentRecord);
     }
     if (!isJumpRopeRecordComplete(currentRecord)) {
-        window.showModal('결과 확인', '남학생팀과 여학생팀의 1차·2차 기록을 모두 입력하고 저장해주세요.');
+        window.showModal('결과 확인', '남학생팀과 여학생팀의 1차·2차 기록을 모두 입력하고, 미실시 회차는 0으로 저장해주세요.');
         return;
     }
     const alreadyAwarded = jumpRopeAwards[week]?.[grade];
@@ -1835,7 +1836,7 @@ window.openJumpRopeAnalysisModal = function() {
             const raw = jumpRopeData[week]?.[className];
             if (!raw) return null;
             const record = normalizeJumpRopeRecord(raw);
-            return record.male || record.female ? { week, male: record.male, female: record.female } : null;
+            return record.male !== null || record.female !== null ? { week, male: record.male, female: record.female } : null;
         }).filter(Boolean);
         return { className, points };
     }).filter(item => item.points.length > 0);
@@ -1879,7 +1880,6 @@ window.openJumpRopeAnalysisModal = function() {
         return `<line x1="${plot.left}" y1="${y}" x2="${chartWidth - plot.right}" y2="${y}" stroke="#e2e8f0"/><text x="${plot.left - 7}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${value}</text>`;
     }).join('');
     const xLabels = labels.map((label, index) => `<text x="${xAt(index)}" y="${chartHeight - 18}" text-anchor="middle" font-size="10" font-weight="700" fill="#64748b">${escapeHTML(label.replace('주차', ''))}</text>`).join('');
-    // 기존 개별 차트의 <path d="${makePath(maleData)}" / <path d="${makePath(femaleData)}" 구조를 팀별 단일 차트로 통합한다.
     const lines = teamSeries.map(team => {
         const circles = team.values.map((value, index) => value === null ? '' :
             `<circle cx="${xAt(index).toFixed(1)}" cy="${yAt(value).toFixed(1)}" r="4" fill="white" stroke="${team.color}" stroke-width="3"><title>${escapeHTML(labels[index])} ${escapeHTML(team.label)} ${value}개</title></circle>`
@@ -1909,8 +1909,8 @@ window.saveJumpRopeRecord = async function() {
     if (!currentClass) return;
     const week = document.getElementById('jumprope-week-select').value;
     const record = ensureJumpRopeRecord(week, currentClass);
-    record.maleAttempts = [readPositiveNumber('jumprope-male-1-input'), readPositiveNumber('jumprope-male-2-input')];
-    record.femaleAttempts = [readPositiveNumber('jumprope-female-1-input'), readPositiveNumber('jumprope-female-2-input')];
+    record.maleAttempts = [readPositiveNumber('jumprope-male-1-input', true), readPositiveNumber('jumprope-male-2-input', true)];
+    record.femaleAttempts = [readPositiveNumber('jumprope-female-1-input', true), readPositiveNumber('jumprope-female-2-input', true)];
     record.target = readPositiveNumber('jumprope-target-input');
     normalizeJumpRopeRecord(record);
 
@@ -3507,16 +3507,17 @@ window.drawFromEachGroup = function() {
 function renderPenaltyIndicator(student) {
     const level = normalizePenaltyCardState(student);
     const labels = ['경고 없음', '입경고', '옐로카드', '레드카드'];
-    const verbalStyle = level >= 1 ? 'bg-amber-500 border-amber-700 text-white shadow-sm' : 'bg-slate-200 border-slate-300 text-slate-400';
-    const yellowStyle = level >= 2 ? 'bg-yellow-400 border-yellow-600 shadow-sm' : 'bg-slate-200 border-slate-300';
-    const redStyle = level >= 3 ? 'bg-red-500 border-red-700 shadow-sm' : 'bg-slate-200 border-slate-300';
+    const cardStyle = [
+        'bg-slate-100 border-slate-300 text-slate-400',
+        'bg-amber-500 border-amber-700 text-white shadow-sm',
+        'bg-yellow-400 border-yellow-600 text-yellow-950 shadow-sm',
+        'bg-red-500 border-red-700 text-white shadow-sm'
+    ][level];
     return `
-        <button type="button" class="flex gap-0.5 ml-1.5 items-center rounded p-0.5 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        <button type="button" class="shrink-0 w-5 h-6 sm:w-6 sm:h-7 rounded-[3px] border-2 ${cardStyle} flex items-center justify-center text-[11px] sm:text-xs font-black leading-none hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onclick="event.stopPropagation(); window.cyclePenaltyCard(${student.no})"
                 title="입경고 → 옐로카드 → 레드카드 → 해제" aria-label="현재 ${labels[level]}. 다음 경고 단계로 변경">
-            <span class="w-3.5 h-3.5 sm:w-4 sm:h-4 border ${verbalStyle} rounded-full text-[9px] sm:text-[10px] font-black leading-none flex items-center justify-center transition-colors duration-200">!</span>
-            <span class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${yellowStyle} rounded-[2px] transition-colors duration-200"></span>
-            <span class="w-2.5 h-3.5 sm:w-3 sm:h-4 border ${redStyle} rounded-[2px] transition-colors duration-200"></span>
+            ${level}
         </button>`;
 }
 
@@ -3657,18 +3658,18 @@ window.renderGroups = function() {
                          ontouchmove="window.handleTouchMove(event)"
                          ontouchend="window.handleTouchEnd(event)"
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                         class="student-card relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[76px] sm:min-h-[80px]">
+                         class="student-card relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                         
                         ${attendanceBtnHtml}
                         ${captainBtnHtml}
                         ${memberDrawnBadge}
                         
-                        <div class="flex items-center justify-center pt-5 z-10 w-full px-1 min-w-0">
-                            <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words block w-full text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                        <div class="flex items-center justify-center gap-1 pt-4 sm:pt-5 z-10 w-full px-0.5 min-w-0">
+                            <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                            ${penaltyCardsHtml}
                         </div>
-                        <div class="flex justify-center w-full mt-0.5">${penaltyCardsHtml}</div>
 
-                        <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
+                        <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                             <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                                 볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                             </span>
@@ -3768,18 +3769,18 @@ window.renderGroups = function() {
                      ontouchmove="window.handleTouchMove(event)"
                      ontouchend="window.handleTouchEnd(event)"
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
-                     class="student-card w-[120px] sm:w-[150px] relative border sm:border-2 ${badgeColor} p-1.5 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[76px] sm:min-h-[80px]">
+                     class="student-card w-[120px] sm:w-[150px] relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                     
                     ${attendanceBtnHtml}
                     ${captainBtnHtml}
                     ${memberDrawnBadge}
                     
-                    <div class="flex items-center justify-center pt-5 z-10 w-full px-1 min-w-0">
-                        <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words block w-full text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                    <div class="flex items-center justify-center gap-1 pt-4 sm:pt-5 z-10 w-full px-0.5 min-w-0">
+                        <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
+                        ${penaltyCardsHtml}
                     </div>
-                    <div class="flex justify-center w-full mt-0.5">${penaltyCardsHtml}</div>
 
-                    <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-1 border border-white/50 mt-1 shadow-inner flex-wrap">
+                    <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                         <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                             볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                         </span>
