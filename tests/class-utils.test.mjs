@@ -4,6 +4,7 @@ import {
     applyRosterOverrides,
     buildBalancedTeamPlan,
     canDesignateCaptain,
+    drawAcrossCycles,
     enforceCaptainLimits,
     getCaptainLimit,
     normalizeClassIdentity,
@@ -227,6 +228,21 @@ test('automatic grouping display follows the selected ball-sense or agility prio
 
     assert.deepEqual(sortStudentsForGroupingPriority(students, 'ball').map(student => student.no), [3, 4, 1, 2]);
     assert.deepEqual(sortStudentsForGroupingPriority(students, 'agility').map(student => student.no), [2, 1, 3, 4]);
+});
+
+test('random draw fills a request across the cycle boundary without repeating the last remaining student', () => {
+    const students = ['1번', '2번', '3번', '4번'].map((name, index) => ({ name, drawn: index < 3, wins: 0 }));
+    const result = drawAcrossCycles(students, 3, {
+        isDrawn: student => student.drawn,
+        resetDrawn: items => items.forEach(student => { student.drawn = false; }),
+        markDrawn: student => { student.drawn = true; student.wins++; },
+        selectBatch: (available, count) => available.slice(0, count)
+    });
+
+    assert.deepEqual(result.picked.map(student => student.name), ['4번', '1번', '2번']);
+    assert.equal(result.resetCount, 1);
+    assert.equal(new Set(result.picked).size, 3);
+    assert.deepEqual(students.map(student => student.wins), [1, 1, 0, 1]);
 });
 
 test('captain limits follow each grouping mode and include unassigned students', () => {

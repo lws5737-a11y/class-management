@@ -73,7 +73,11 @@ assert.ok(utils.includes('canDesignateCaptain') && utils.includes('enforceCaptai
 assert.ok(app.includes('sortStudentsForGroupDisplay') && app.includes('{ captains }'), '체육부장 우선 정렬 또는 모둠별 자동 분산이 연결되지 않았습니다.');
 assert.ok(app.includes('assignPriorityGroupDisplayOrders') && app.includes('sortStudentsForGroupingPriority'), '편성 기준에 따른 모둠 내 표시 순서가 적용되지 않았습니다.');
 assert.ok(app.includes('getNextGroupDisplayOrder') && app.includes('draggedStudent[orderKey] = targetOrder') && app.includes('targetStudent[orderKey] = sourceOrder'), '수동 이동은 최하단, 교환은 상대 위치를 유지하지 않습니다.');
-assert.ok(app.includes('randomDrawState') && app.includes('eligibleStudents.length === 0') && app.includes('resetGroups.push(i)'), '학급·모둠별 중복 없는 랜덤 뽑기 순환이 적용되지 않았습니다.');
+assert.ok(app.includes('randomDrawState') && app.includes('drawResult.resetCount') && app.includes('resetGroups.push(i)'), '학급·모둠별 중복 없는 랜덤 뽑기 순환이 적용되지 않았습니다.');
+assert.ok(app.includes('참석 ${presentTotal}명'), '모둠별 참석 인원 표시가 없습니다.');
+assert.ok(app.includes('drawAcrossCycles(presentStudents, requestedCount') && app.includes('drawAcrossCycles(groupPresentStudents, perGroupCount'), '남은 인원 우선 선발 후 자동 순환 채우기가 연결되지 않았습니다.');
+assert.ok(app.includes('초기화 이후 2회 이상 당첨') && app.includes('classWins') && app.includes('groupWins'), '2회 이상 당첨 학생 표시 또는 누적 횟수 저장이 없습니다.');
+assert.ok(app.includes('sortDrawResultByGroup(students)'), '뽑기 결과가 모둠순으로 정렬되지 않습니다.');
 assert.ok(html.includes("generateCurrentGroup('ball')") && html.includes("generateCurrentGroup('agility')"), '볼센스/순발력 우선 편성 버튼이 분리되지 않았습니다.');
 assert.ok(html.includes('grid-cols-3') && html.includes('볼센스 편성') && html.includes('순발력 편성'), '모바일 편성 버튼 3개가 한 줄에 배치되지 않았습니다.');
 assert.ok(html.includes('<details id="random-draw-details"') && !html.includes('<details id="random-draw-details" open'), '랜덤 뽑기가 기본 접힘 상태가 아닙니다.');
