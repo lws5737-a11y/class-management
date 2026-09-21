@@ -9,7 +9,8 @@ import {
     normalizeClassIdentity,
     parseRosterTable,
     parseStructuredJson,
-    sortStudentsForGroupDisplay
+    sortStudentsForGroupDisplay,
+    sortStudentsForGroupingPriority
 } from '../class-utils.mjs';
 
 function seededRandom(seed = 123456) {
@@ -214,6 +215,18 @@ test('group display places captains first, then sorts by agility and ball sense'
         sortStudentsForGroupDisplay(students, 'captain_mixed3').map(student => student.no),
         [2, 3, 1, 4]
     );
+});
+
+test('automatic grouping display follows the selected ball-sense or agility priority', () => {
+    const students = [
+        { no: 1, recordMs: 13200, ballSense: '1' },
+        { no: 2, recordMs: 11900, ballSense: '0' },
+        { no: 3, recordMs: 14500, ballSense: '2' },
+        { no: 4, recordMs: 0, ballSense: '2' }
+    ];
+
+    assert.deepEqual(sortStudentsForGroupingPriority(students, 'ball').map(student => student.no), [3, 4, 1, 2]);
+    assert.deepEqual(sortStudentsForGroupingPriority(students, 'agility').map(student => student.no), [2, 1, 3, 4]);
 });
 
 test('captain limits follow each grouping mode and include unassigned students', () => {

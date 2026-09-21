@@ -295,6 +295,34 @@ export function sortStudentsForGroupDisplay(students, captainKey) {
     });
 }
 
+export function sortStudentsForGroupingPriority(students, priority = 'ball') {
+    const ballSenseOf = student => Number.parseInt(student.ballSense, 10) || 0;
+    const hasAgilityRecord = student => Number(student.recordMs) > 0;
+
+    return [...students].sort((a, b) => {
+        if (priority === 'agility') {
+            const aHasRecord = hasAgilityRecord(a);
+            const bHasRecord = hasAgilityRecord(b);
+            if (aHasRecord !== bHasRecord) return aHasRecord ? -1 : 1;
+            if (aHasRecord && Number(a.recordMs) !== Number(b.recordMs)) {
+                return Number(a.recordMs) - Number(b.recordMs);
+            }
+            const ballDifference = ballSenseOf(b) - ballSenseOf(a);
+            if (ballDifference) return ballDifference;
+        } else {
+            const ballDifference = ballSenseOf(b) - ballSenseOf(a);
+            if (ballDifference) return ballDifference;
+            const aHasRecord = hasAgilityRecord(a);
+            const bHasRecord = hasAgilityRecord(b);
+            if (aHasRecord !== bHasRecord) return aHasRecord ? -1 : 1;
+            if (aHasRecord && Number(a.recordMs) !== Number(b.recordMs)) {
+                return Number(a.recordMs) - Number(b.recordMs);
+            }
+        }
+        return Number(a.no) - Number(b.no);
+    });
+}
+
 function shuffled(items, random) {
     const result = [...items];
     for (let index = result.length - 1; index > 0; index--) {

@@ -71,6 +71,9 @@ assert.ok(html.includes('id="class-selection-list" class="grid grid-cols-2'), '�
 assert.ok(app.includes('handleDropOnStudent') && app.includes('handleDragOverStudent') && app.includes('handleStudentDropLogic'), '모바일/PC 학생 이동·교체용 드롭 처리가 없습니다.');
 assert.ok(utils.includes('canDesignateCaptain') && utils.includes('enforceCaptainLimits') && utils.includes("mode === 'gender'"), '편성별 체육부장 인원 제한이 적용되지 않았습니다.');
 assert.ok(app.includes('sortStudentsForGroupDisplay') && app.includes('{ captains }'), '체육부장 우선 정렬 또는 모둠별 자동 분산이 연결되지 않았습니다.');
+assert.ok(app.includes('assignPriorityGroupDisplayOrders') && app.includes('sortStudentsForGroupingPriority'), '편성 기준에 따른 모둠 내 표시 순서가 적용되지 않았습니다.');
+assert.ok(app.includes('getNextGroupDisplayOrder') && app.includes('draggedStudent[orderKey] = targetOrder') && app.includes('targetStudent[orderKey] = sourceOrder'), '수동 이동은 최하단, 교환은 상대 위치를 유지하지 않습니다.');
+assert.ok(app.includes('randomDrawState') && app.includes('eligibleStudents.length === 0') && app.includes('resetGroups.push(i)'), '학급·모둠별 중복 없는 랜덤 뽑기 순환이 적용되지 않았습니다.');
 assert.ok(html.includes("generateCurrentGroup('ball')") && html.includes("generateCurrentGroup('agility')"), '볼센스/순발력 우선 편성 버튼이 분리되지 않았습니다.');
 assert.ok(html.includes('grid-cols-3') && html.includes('볼센스 편성') && html.includes('순발력 편성'), '모바일 편성 버튼 3개가 한 줄에 배치되지 않았습니다.');
 assert.ok(html.includes('<details id="random-draw-details"') && !html.includes('<details id="random-draw-details" open'), '랜덤 뽑기가 기본 접힘 상태가 아닙니다.');
@@ -176,6 +179,16 @@ assert.deepEqual(
   { sourceClass: null, no: 2, name: '김나은', gender: '여', ballSense: undefined, recordMs: undefined, group: undefined },
   '기존 번호·이름·성별 형식을 잘못 해석합니다.'
 );
+
+const randomDrawHelpers = new Function(
+  `${extractFunctionSource(app, 'ensureRandomDrawState')}\n${extractFunctionSource(app, 'wasDrawnFromGroup')}\n${extractFunctionSource(app, 'setDrawnFromGroup')}\nreturn { ensureRandomDrawState, wasDrawnFromGroup, setDrawnFromGroup };`
+)();
+const drawStudent = {};
+randomDrawHelpers.ensureRandomDrawState(drawStudent).class = true;
+randomDrawHelpers.setDrawnFromGroup(drawStudent, 'mixed3', 2, true);
+assert.equal(randomDrawHelpers.ensureRandomDrawState(drawStudent).class, true, '학급 전체 뽑기 이력이 저장되지 않습니다.');
+assert.equal(randomDrawHelpers.wasDrawnFromGroup(drawStudent, 'mixed3', 2), true, '모둠별 뽑기 이력이 모둠 단위로 저장되지 않습니다.');
+assert.equal(randomDrawHelpers.wasDrawnFromGroup(drawStudent, 'mixed3', 1), false, '다른 모둠의 뽑기 이력이 섞입니다.');
 
 const handlerNames = [...html.matchAll(/on(?:click|change|submit)="[^"]*window\.([A-Za-z_$][\w$]*)/g)].map(match => match[1]);
 for (const handlerName of new Set(handlerNames)) {
