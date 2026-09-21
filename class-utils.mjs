@@ -323,6 +323,42 @@ export function sortStudentsForGroupingPriority(students, priority = 'ball') {
     });
 }
 
+export function drawAcrossCycles(items, requestedCount, callbacks = {}) {
+    const isDrawn = callbacks.isDrawn || (() => false);
+    const resetDrawn = callbacks.resetDrawn || (() => {});
+    const markDrawn = callbacks.markDrawn || (() => {});
+    const selectBatch = callbacks.selectBatch || ((available, count) => available.slice(0, count));
+    const targetCount = Math.min(Math.max(0, Number.parseInt(requestedCount, 10) || 0), items.length);
+    const picked = [];
+    const pickedItems = new Set();
+    let resetCount = 0;
+
+    while (picked.length < targetCount) {
+        let available = items.filter(item => !pickedItems.has(item) && !isDrawn(item));
+        if (available.length === 0) {
+            resetDrawn(items);
+            resetCount++;
+            available = items.filter(item => !pickedItems.has(item) && !isDrawn(item));
+        }
+        if (available.length === 0) break;
+
+        const batchSize = Math.min(targetCount - picked.length, available.length);
+        const availableSet = new Set(available);
+        const selected = selectBatch(available, batchSize)
+            .filter((item, index, selectedItems) => availableSet.has(item) && selectedItems.indexOf(item) === index)
+            .slice(0, batchSize);
+        if (selected.length === 0) break;
+
+        selected.forEach(item => {
+            picked.push(item);
+            pickedItems.add(item);
+            markDrawn(item);
+        });
+    }
+
+    return { picked, resetCount };
+}
+
 function shuffled(items, random) {
     const result = [...items];
     for (let index = result.length - 1; index > 0; index--) {

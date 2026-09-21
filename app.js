@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260921-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260922-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -3455,7 +3455,15 @@ window.generateGenderGroups = function(priority = 'ball') {
     window.renderGroups();
 }
 
-window.showDrawResultModal = function(title, students) {
+function sortDrawResultByGroup(students) {
+    return [...students].sort((a, b) => {
+        const aGroup = Number(a[`group_${currentGroupMode}`]) || Number.MAX_SAFE_INTEGER;
+        const bGroup = Number(b[`group_${currentGroupMode}`]) || Number.MAX_SAFE_INTEGER;
+        return aGroup - bGroup || Number(a.no) - Number(b.no);
+    });
+}
+
+window.showDrawResultModal = function(title, students, repeatWinners = []) {
     document.getElementById('draw-modal-title').innerHTML = `🎉 ${title} 🎉`;
     const content = document.getElementById('draw-result-content');
     
@@ -3463,8 +3471,7 @@ window.showDrawResultModal = function(title, students) {
         content.innerHTML = '<div class="text-slate-400 font-bold p-4 text-center w-full">당첨자가 없습니다.</div>';
     } else {
         let html = '';
-        students.sort((a, b) => a.no - b.no); 
-        students.forEach(s => {
+        sortDrawResultByGroup(students).forEach(s => {
             let groupInfo = s[`group_${currentGroupMode}`] ? `${s[`group_${currentGroupMode}`]}모둠` : '미편성';
             html += `
                 <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-3 sm:p-4 shadow-md flex flex-col items-center justify-center w-[100px] sm:w-[130px] transform hover:scale-105 transition-transform animate-pop-in" style="animation-delay: ${Math.random() * 0.2}s">
@@ -3474,6 +3481,20 @@ window.showDrawResultModal = function(title, students) {
                 </div>
             `;
         });
+        if (repeatWinners.length > 0) {
+            const repeatedNames = [...repeatWinners]
+                .sort((a, b) => {
+                    const groupDifference = (Number(a.student[`group_${currentGroupMode}`]) || Number.MAX_SAFE_INTEGER)
+                        - (Number(b.student[`group_${currentGroupMode}`]) || Number.MAX_SAFE_INTEGER);
+                    return groupDifference || Number(a.student.no) - Number(b.student.no);
+                })
+                .map(({ student, count }) => {
+                    const group = student[`group_${currentGroupMode}`];
+                    const groupLabel = group ? `${group}모둠 · ` : '';
+                    return `<span class="inline-flex items-center rounded-full bg-amber-100 border border-amber-300 px-2.5 py-1 text-xs font-black text-amber-800">${groupLabel}${escapeHTML(student.name)} ${count}회</span>`;
+                }).join(' ');
+            html += `<div class="w-full mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-left"><div class="mb-2 text-sm font-black text-amber-800">🔁 초기화 이후 2회 이상 당첨</div><div class="flex flex-wrap gap-1.5">${repeatedNames}</div></div>`;
+        }
         content.innerHTML = html;
     }
 
@@ -3490,11 +3511,15 @@ window.closeDrawResultModal = function() {
 
 function ensureRandomDrawState(student) {
     if (!student.randomDrawState || typeof student.randomDrawState !== 'object' || Array.isArray(student.randomDrawState)) {
-        student.randomDrawState = { class: false, groups: {} };
+        student.randomDrawState = { class: false, classWins: 0, groups: {}, groupWins: {} };
     }
     student.randomDrawState.class = Boolean(student.randomDrawState.class);
+    student.randomDrawState.classWins = Math.max(0, Number.parseInt(student.randomDrawState.classWins, 10) || 0);
     if (!student.randomDrawState.groups || typeof student.randomDrawState.groups !== 'object' || Array.isArray(student.randomDrawState.groups)) {
         student.randomDrawState.groups = {};
+    }
+    if (!student.randomDrawState.groupWins || typeof student.randomDrawState.groupWins !== 'object' || Array.isArray(student.randomDrawState.groupWins)) {
+        student.randomDrawState.groupWins = {};
     }
     return student.randomDrawState;
 }
@@ -3509,10 +3534,39 @@ function setDrawnFromGroup(student, mode, groupId, drawn) {
     state.groups[mode][groupId] = Boolean(drawn);
 }
 
+function getGroupDrawWinCount(student, mode, groupId) {
+    return Math.max(0, Number.parseInt(ensureRandomDrawState(student).groupWins?.[mode]?.[groupId], 10) || 0);
+}
+
+function incrementGroupDrawWinCount(student, mode, groupId) {
+    const state = ensureRandomDrawState(student);
+    if (!state.groupWins[mode] || typeof state.groupWins[mode] !== 'object') state.groupWins[mode] = {};
+    state.groupWins[mode][groupId] = getGroupDrawWinCount(student, mode, groupId) + 1;
+}
+
+function selectGenderBalancedDrawBatch(candidates, count) {
+    const boys = candidates.filter(student => student.gender === '남');
+    const girls = candidates.filter(student => student.gender === '여');
+    if (boys.length === 0) return shuffleCopy(girls).slice(0, count);
+    if (girls.length === 0) return shuffleCopy(boys).slice(0, count);
+
+    let targetBoys = Math.round(count * boys.length / candidates.length);
+    let targetGirls = count - targetBoys;
+    if (targetBoys > boys.length) {
+        targetBoys = boys.length;
+        targetGirls = count - targetBoys;
+    } else if (targetGirls > girls.length) {
+        targetGirls = girls.length;
+        targetBoys = count - targetGirls;
+    }
+    return [...shuffleCopy(boys).slice(0, targetBoys), ...shuffleCopy(girls).slice(0, targetGirls)];
+}
+
 function resetRandomDrawHistoryForMode(students, mode) {
     students.forEach(student => {
         const state = ensureRandomDrawState(student);
         state.groups[mode] = {};
+        state.groupWins[mode] = {};
         student.groupMemberDrawn = false;
     });
 }
@@ -3522,8 +3576,12 @@ function resetRandomDrawHistoryForGroups(students, mode, groupIds) {
     students.forEach(student => {
         const state = ensureRandomDrawState(student);
         if (!state.groups[mode] || typeof state.groups[mode] !== 'object') state.groups[mode] = {};
+        if (!state.groupWins[mode] || typeof state.groupWins[mode] !== 'object') state.groupWins[mode] = {};
         affectedGroups.forEach(groupId => {
-            if (groupId !== null) state.groups[mode][groupId] = false;
+            if (groupId !== null) {
+                state.groups[mode][groupId] = false;
+                state.groupWins[mode][groupId] = 0;
+            }
         });
         if (affectedGroups.has(groupIdentity(student, mode))) student.groupMemberDrawn = false;
     });
@@ -3533,7 +3591,7 @@ window.resetGroupDraws = function(silent = false) {
     if (!currentClass || !classData[currentClass]) return;
     classData[currentClass].forEach(student => {
         student.groupMemberDrawn = false;
-        student.randomDrawState = { class: false, groups: {} };
+        student.randomDrawState = { class: false, classWins: 0, groups: {}, groupWins: {} };
     });
     saveData();
     window.renderGroups();
@@ -3548,57 +3606,35 @@ window.drawFromClass = function() {
     const presentStudents = students.filter(s => s.attendance);
     if (presentStudents.length === 0) { alert("출석 처리된 학생이 없습니다."); return; }
 
-    let eligibleStudents = presentStudents.filter(student => !ensureRandomDrawState(student).class);
-    let cycleReset = false;
-    if (eligibleStudents.length === 0) {
-        students.forEach(student => { ensureRandomDrawState(student).class = false; });
-        eligibleStudents = [...presentStudents];
-        cycleReset = true;
-    }
-
     const requestedCount = parseInt(document.getElementById('draw-class-count').value) || 4;
-    const finalCount = Math.min(requestedCount, eligibleStudents.length);
-
     students.forEach(s => { s.groupMemberDrawn = false; });
-
-    const boys = eligibleStudents.filter(s => s.gender === '남');
-    const girls = eligibleStudents.filter(s => s.gender === '여');
-
-    let targetBoys = 0; let targetGirls = 0;
-
-    if (boys.length === 0) { targetGirls = finalCount; } 
-    else if (girls.length === 0) { targetBoys = finalCount; } 
-    else {
-        targetBoys = Math.round(finalCount * boys.length / eligibleStudents.length);
-        targetGirls = finalCount - targetBoys;
-
-        if (targetBoys > boys.length) { targetBoys = boys.length; targetGirls = finalCount - targetBoys; } 
-        else if (targetGirls > girls.length) { targetGirls = girls.length; targetBoys = finalCount - targetGirls; }
-    }
-
-    const pickedBoys = shuffleCopy(boys).slice(0, targetBoys);
-    const pickedGirls = shuffleCopy(girls).slice(0, targetGirls);
-    const totalPicked = [...pickedBoys, ...pickedGirls];
-
-    totalPicked.forEach(p => {
-        const targetStudent = students.find(s => s.no === p.no);
-        if (targetStudent) {
-            targetStudent.groupMemberDrawn = true;
-            ensureRandomDrawState(targetStudent).class = true;
-        }
+    const drawResult = drawAcrossCycles(presentStudents, requestedCount, {
+        isDrawn: student => ensureRandomDrawState(student).class,
+        resetDrawn: () => students.forEach(student => { ensureRandomDrawState(student).class = false; }),
+        markDrawn: student => {
+            const state = ensureRandomDrawState(student);
+            state.class = true;
+            state.classWins++;
+            student.groupMemberDrawn = true;
+        },
+        selectBatch: (available, count) => selectGenderBalancedDrawBatch(available, count)
     });
+    const totalPicked = drawResult.picked;
+    const repeatWinners = presentStudents
+        .filter(student => ensureRandomDrawState(student).classWins >= 2)
+        .map(student => ({ student, count: ensureRandomDrawState(student).classWins }));
 
     saveData();
     window.renderGroups();
     window.playCasinoJackpot();
     window.fireConfetti();
     
-    window.showDrawResultModal("학급 랜덤 선발 결과", totalPicked);
+    window.showDrawResultModal("학급 랜덤 선발 결과", totalPicked, repeatWinners);
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
         const names = totalPicked.map(p => escapeHTML(p.name)).join(', ');
-        const resetNotice = cycleReset ? '<span class="text-fuchsia-600 font-black">전원 당첨 완료로 새 순환을 시작했습니다.</span><br>' : '';
+        const resetNotice = drawResult.resetCount > 0 ? '<span class="text-fuchsia-600 font-black">남은 학생을 먼저 뽑은 뒤 자동 초기화하여 새 순환에서 부족한 인원을 채웠습니다.</span><br>' : '';
         const completionNotice = presentStudents.every(student => ensureRandomDrawState(student).class)
             ? '<br><span class="text-emerald-600 font-black">전원이 한 번씩 당첨되었습니다. 다음 뽑기에서 자동 초기화됩니다.</span>'
             : '';
@@ -3622,19 +3658,18 @@ window.drawFromEachGroup = function() {
         const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
         const groupPresentStudents = groupStudents.filter(s => s.attendance);
         if (groupPresentStudents.length > 0) {
-            let eligibleStudents = groupPresentStudents.filter(student => !wasDrawnFromGroup(student, currentGroupMode, i));
-            if (eligibleStudents.length === 0) {
-                groupStudents.forEach(student => setDrawnFromGroup(student, currentGroupMode, i, false));
-                eligibleStudents = [...groupPresentStudents];
-                resetGroups.push(i);
-            }
-            const shuffled = shuffleCopy(eligibleStudents);
-            const chosen = shuffled.slice(0, Math.min(perGroupCount, eligibleStudents.length));
-            chosen.forEach(p => {
-                p.groupMemberDrawn = true;
-                setDrawnFromGroup(p, currentGroupMode, i, true);
-                totalPicked.push(p);
+            const groupDrawResult = drawAcrossCycles(groupPresentStudents, perGroupCount, {
+                isDrawn: student => wasDrawnFromGroup(student, currentGroupMode, i),
+                resetDrawn: () => groupStudents.forEach(student => setDrawnFromGroup(student, currentGroupMode, i, false)),
+                markDrawn: student => {
+                    student.groupMemberDrawn = true;
+                    setDrawnFromGroup(student, currentGroupMode, i, true);
+                    incrementGroupDrawWinCount(student, currentGroupMode, i);
+                },
+                selectBatch: (available, count) => shuffleCopy(available).slice(0, count)
             });
+            totalPicked.push(...groupDrawResult.picked);
+            if (groupDrawResult.resetCount > 0) resetGroups.push(i);
             if (groupPresentStudents.every(student => wasDrawnFromGroup(student, currentGroupMode, i))) completedGroups.push(i);
         }
     }
@@ -3646,11 +3681,18 @@ window.drawFromEachGroup = function() {
     window.playCasinoJackpot();
     window.fireConfetti();
     
-    window.showDrawResultModal("모둠별 선발 결과", totalPicked);
+    const repeatWinners = students
+        .filter(student => student.attendance && Number(student[`group_${currentGroupMode}`]) > 0)
+        .map(student => ({
+            student,
+            count: getGroupDrawWinCount(student, currentGroupMode, student[`group_${currentGroupMode}`])
+        }))
+        .filter(item => item.count >= 2);
+    window.showDrawResultModal("모둠별 선발 결과", totalPicked, repeatWinners);
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
-        const resetNotice = resetGroups.length ? `<span class="text-fuchsia-600 font-black">${resetGroups.join(', ')}모둠은 전원 당첨 완료로 새 순환을 시작했습니다.</span><br>` : '';
+        const resetNotice = resetGroups.length ? `<span class="text-fuchsia-600 font-black">${resetGroups.join(', ')}모둠은 남은 학생을 먼저 뽑고 자동 초기화하여 부족한 인원을 채웠습니다.</span><br>` : '';
         const completionNotice = completedGroups.length ? `<br><span class="text-emerald-600 font-black">${completedGroups.join(', ')}모둠 전원이 한 번씩 당첨되었습니다. 다음 뽑기에서 해당 모둠만 자동 초기화됩니다.</span>` : '';
         summaryEl.innerHTML = `${resetNotice}🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPicked.length}명</span>이 당첨되었습니다.${completionNotice}`;
     }
@@ -3745,6 +3787,7 @@ window.renderGroups = function() {
                 
                 <h3 class="font-black text-base sm:text-xl ${color.text} flex items-center gap-2 whitespace-nowrap">
                     <span>${i}모둠</span>
+                    <span class="rounded-full border border-white/80 bg-white/80 px-1.5 py-0.5 text-[10px] sm:text-xs font-black text-slate-700" title="남 ${presentBoys}명 · 여 ${presentGirls}명">참석 ${presentTotal}명</span>
                     <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-90 sm:scale-100">
                         <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
                         <span class="w-6 sm:w-10 text-center font-black text-sm sm:text-lg ${color.text}">${gScore}</span>
@@ -3955,7 +3998,7 @@ window.renderGroups = function() {
 function createStudentRecord(no, name, gender) {
     return {
         no, name, gender, ballSense: '0', attendance: true, score: 0, recordMs: 0,
-        memo: '', drawn: false, groupMemberDrawn: false, randomDrawState: { class: false, groups: {} }, captain_mixed2: false, captain_mixed3: false,
+        memo: '', drawn: false, groupMemberDrawn: false, randomDrawState: { class: false, classWins: 0, groups: {}, groupWins: {} }, captain_mixed2: false, captain_mixed3: false,
         captain_mixed4: false, captain_gender: false, group_mixed2: null, group_mixed3: null,
         group_mixed4: null, group_gender: null, penaltyCard: 0, penaltyCardSystem: PENALTY_CARD_SYSTEM_VERSION, selected: false
     };
