@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay } from './class-utils.mjs?v=20260917-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260921-1';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -729,14 +729,19 @@ window.handleDropLogic = function(draggedNo, targetGroup) {
     if (draggedIndex === -1) return;
     
     const draggedStudent = students[draggedIndex];
+    normalizeGroupDisplayOrders(students, currentGroupMode);
     let changed = false;
 
     clearDropStyles();
 
     if (targetGroup !== null) {
         let newGroup = targetGroup === 0 ? null : targetGroup;
-        if (draggedStudent[`group_${currentGroupMode}`] !== newGroup) {
+        const oldGroup = draggedStudent[`group_${currentGroupMode}`] ?? null;
+        if (oldGroup !== newGroup) {
             draggedStudent[`group_${currentGroupMode}`] = newGroup;
+            draggedStudent[`groupOrder_${currentGroupMode}`] = getNextGroupDisplayOrder(students, currentGroupMode, newGroup, draggedStudent.no);
+            compactGroupDisplayOrders(students, currentGroupMode);
+            resetRandomDrawHistoryForGroups(students, currentGroupMode, [oldGroup, newGroup]);
             changed = true;
         }
     }
@@ -757,12 +762,19 @@ window.handleStudentDropLogic = function(draggedNo, targetNo) {
     if (!draggedStudent || !targetStudent) return;
 
     const groupKey = `group_${currentGroupMode}`;
+    const orderKey = `groupOrder_${currentGroupMode}`;
+    normalizeGroupDisplayOrders(students, currentGroupMode);
     const sourceGroup = draggedStudent[groupKey] ?? null;
     const targetGroup = targetStudent[groupKey] ?? null;
     if (sourceGroup === targetGroup) return;
 
+    const sourceOrder = draggedStudent[orderKey];
+    const targetOrder = targetStudent[orderKey];
     draggedStudent[groupKey] = targetGroup;
     targetStudent[groupKey] = sourceGroup;
+    draggedStudent[orderKey] = targetOrder;
+    targetStudent[orderKey] = sourceOrder;
+    resetRandomDrawHistoryForGroups(students, currentGroupMode, [sourceGroup, targetGroup]);
     clearDropStyles();
     normalizeGroupCaptains(currentGroupMode);
     saveData();
@@ -2347,6 +2359,7 @@ function migrateData() {
             if (s.memo === undefined) s.memo = "";
             delete s.dismissalInfo;
             if (s.groupMemberDrawn === undefined) s.groupMemberDrawn = false; 
+            ensureRandomDrawState(s);
             normalizePenaltyCardState(s);
             if (s.selected === undefined) s.selected = false;
 
@@ -3313,6 +3326,69 @@ function normalizeGroupCaptains(mode) {
     enforceCaptainLimits(classData[currentClass], mode);
 }
 
+function groupIdentity(student, mode) {
+    return student[`group_${mode}`] ?? null;
+}
+
+function hasGroupDisplayOrder(student, orderKey) {
+    return Number.isInteger(Number(student[orderKey])) && Number(student[orderKey]) > 0;
+}
+
+function getNextGroupDisplayOrder(students, mode, groupId, excludedStudentNo = null) {
+    const orderKey = `groupOrder_${mode}`;
+    return students.reduce((maxOrder, student) => {
+        if (Number(student.no) === Number(excludedStudentNo) || groupIdentity(student, mode) !== groupId) return maxOrder;
+        const order = Number(student[orderKey]);
+        return hasGroupDisplayOrder(student, orderKey) ? Math.max(maxOrder, order) : maxOrder;
+    }, 0) + 1;
+}
+
+function normalizeGroupDisplayOrders(students, mode) {
+    const captainKey = `captain_${mode}`;
+    const orderKey = `groupOrder_${mode}`;
+    const groupIds = [...new Set(students.map(student => groupIdentity(student, mode)))];
+    groupIds.forEach(groupId => {
+        const members = students.filter(student => groupIdentity(student, mode) === groupId);
+        const hasSavedOrder = members.some(student => hasGroupDisplayOrder(student, orderKey));
+        const ordered = hasSavedOrder
+            ? [...members].sort((a, b) => {
+                const aOrder = hasGroupDisplayOrder(a, orderKey) ? Number(a[orderKey]) : Number.MAX_SAFE_INTEGER;
+                const bOrder = hasGroupDisplayOrder(b, orderKey) ? Number(b[orderKey]) : Number.MAX_SAFE_INTEGER;
+                return aOrder - bOrder || Number(a.no) - Number(b.no);
+            })
+            : sortStudentsForGroupDisplay(members, captainKey);
+        ordered.forEach((student, index) => { student[orderKey] = index + 1; });
+    });
+}
+
+function compactGroupDisplayOrders(students, mode) {
+    normalizeGroupDisplayOrders(students, mode);
+}
+
+function assignPriorityGroupDisplayOrders(students, mode, priority) {
+    const orderKey = `groupOrder_${mode}`;
+    const groupIds = [...new Set(students.map(student => groupIdentity(student, mode)))];
+    groupIds.forEach(groupId => {
+        const members = students.filter(student => groupIdentity(student, mode) === groupId);
+        sortStudentsForGroupingPriority(members, priority).forEach((student, index) => {
+            student[orderKey] = index + 1;
+        });
+    });
+}
+
+function sortGroupStudentsForDisplay(students, mode) {
+    const orderKey = `groupOrder_${mode}`;
+    const captainKey = `captain_${mode}`;
+    if (!students.some(student => hasGroupDisplayOrder(student, orderKey))) {
+        return sortStudentsForGroupDisplay(students, captainKey);
+    }
+    return [...students].sort((a, b) => {
+        const aOrder = hasGroupDisplayOrder(a, orderKey) ? Number(a[orderKey]) : Number.MAX_SAFE_INTEGER;
+        const bOrder = hasGroupDisplayOrder(b, orderKey) ? Number(b[orderKey]) : Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder || Number(a.no) - Number(b.no);
+    });
+}
+
 window.generateMixedGroups = function(numGroups, priority = 'ball') {
     const students = classData[currentClass];
     if (!students) return;
@@ -3326,6 +3402,8 @@ window.generateMixedGroups = function(numGroups, priority = 'ball') {
     const captains = presentStudents.filter(student => student[captainKey]);
     const plan = buildBalancedTeamPlan(presentStudents, numGroups, student => getStudentPower(student, validRecords, priority), Math.random, 80, { captains });
     plan.forEach(team => team.members.forEach(student => { student[`group_${currentGroupMode}`] = team.id; }));
+    assignPriorityGroupDisplayOrders(students, currentGroupMode, priority);
+    resetRandomDrawHistoryForMode(students, currentGroupMode);
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
     groupScores[currentClass][currentGroupMode] = {};
@@ -3362,6 +3440,8 @@ window.generateGenderGroups = function(priority = 'ball') {
     const girlsPlan = buildBalancedTeamPlan(girls, 2, powerOf, Math.random, 80, { captains: girls.filter(student => student[captainKey]) });
     boysPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id; }));
     girlsPlan.forEach(team => team.members.forEach(student => { student.group_gender = team.id + 2; }));
+    assignPriorityGroupDisplayOrders(students, currentGroupMode, priority);
+    resetRandomDrawHistoryForMode(students, currentGroupMode);
 
     if (!groupScores[currentClass]) groupScores[currentClass] = {};
     groupScores[currentClass]['gender'] = {1:0, 2:0, 3:0, 4:0};
@@ -3408,9 +3488,53 @@ window.closeDrawResultModal = function() {
     modal.classList.remove('flex');
 };
 
+function ensureRandomDrawState(student) {
+    if (!student.randomDrawState || typeof student.randomDrawState !== 'object' || Array.isArray(student.randomDrawState)) {
+        student.randomDrawState = { class: false, groups: {} };
+    }
+    student.randomDrawState.class = Boolean(student.randomDrawState.class);
+    if (!student.randomDrawState.groups || typeof student.randomDrawState.groups !== 'object' || Array.isArray(student.randomDrawState.groups)) {
+        student.randomDrawState.groups = {};
+    }
+    return student.randomDrawState;
+}
+
+function wasDrawnFromGroup(student, mode, groupId) {
+    return Boolean(ensureRandomDrawState(student).groups?.[mode]?.[groupId]);
+}
+
+function setDrawnFromGroup(student, mode, groupId, drawn) {
+    const state = ensureRandomDrawState(student);
+    if (!state.groups[mode] || typeof state.groups[mode] !== 'object') state.groups[mode] = {};
+    state.groups[mode][groupId] = Boolean(drawn);
+}
+
+function resetRandomDrawHistoryForMode(students, mode) {
+    students.forEach(student => {
+        const state = ensureRandomDrawState(student);
+        state.groups[mode] = {};
+        student.groupMemberDrawn = false;
+    });
+}
+
+function resetRandomDrawHistoryForGroups(students, mode, groupIds) {
+    const affectedGroups = new Set(groupIds.map(groupId => groupId ?? null));
+    students.forEach(student => {
+        const state = ensureRandomDrawState(student);
+        if (!state.groups[mode] || typeof state.groups[mode] !== 'object') state.groups[mode] = {};
+        affectedGroups.forEach(groupId => {
+            if (groupId !== null) state.groups[mode][groupId] = false;
+        });
+        if (affectedGroups.has(groupIdentity(student, mode))) student.groupMemberDrawn = false;
+    });
+}
+
 window.resetGroupDraws = function(silent = false) {
     if (!currentClass || !classData[currentClass]) return;
-    classData[currentClass].forEach(s => s.groupMemberDrawn = false);
+    classData[currentClass].forEach(student => {
+        student.groupMemberDrawn = false;
+        student.randomDrawState = { class: false, groups: {} };
+    });
     saveData();
     window.renderGroups();
     const summaryEl = document.getElementById('draw-result-summary');
@@ -3424,20 +3548,28 @@ window.drawFromClass = function() {
     const presentStudents = students.filter(s => s.attendance);
     if (presentStudents.length === 0) { alert("출석 처리된 학생이 없습니다."); return; }
 
+    let eligibleStudents = presentStudents.filter(student => !ensureRandomDrawState(student).class);
+    let cycleReset = false;
+    if (eligibleStudents.length === 0) {
+        students.forEach(student => { ensureRandomDrawState(student).class = false; });
+        eligibleStudents = [...presentStudents];
+        cycleReset = true;
+    }
+
     const requestedCount = parseInt(document.getElementById('draw-class-count').value) || 4;
-    const finalCount = Math.min(requestedCount, presentStudents.length);
+    const finalCount = Math.min(requestedCount, eligibleStudents.length);
 
-    students.forEach(s => s.groupMemberDrawn = false);
+    students.forEach(s => { s.groupMemberDrawn = false; });
 
-    const boys = presentStudents.filter(s => s.gender === '남');
-    const girls = presentStudents.filter(s => s.gender === '여');
+    const boys = eligibleStudents.filter(s => s.gender === '남');
+    const girls = eligibleStudents.filter(s => s.gender === '여');
 
     let targetBoys = 0; let targetGirls = 0;
 
     if (boys.length === 0) { targetGirls = finalCount; } 
     else if (girls.length === 0) { targetBoys = finalCount; } 
     else {
-        targetBoys = Math.round(finalCount * boys.length / presentStudents.length);
+        targetBoys = Math.round(finalCount * boys.length / eligibleStudents.length);
         targetGirls = finalCount - targetBoys;
 
         if (targetBoys > boys.length) { targetBoys = boys.length; targetGirls = finalCount - targetBoys; } 
@@ -3450,7 +3582,10 @@ window.drawFromClass = function() {
 
     totalPicked.forEach(p => {
         const targetStudent = students.find(s => s.no === p.no);
-        if (targetStudent) targetStudent.groupMemberDrawn = true;
+        if (targetStudent) {
+            targetStudent.groupMemberDrawn = true;
+            ensureRandomDrawState(targetStudent).class = true;
+        }
     });
 
     saveData();
@@ -3463,7 +3598,11 @@ window.drawFromClass = function() {
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
         const names = totalPicked.map(p => escapeHTML(p.name)).join(', ');
-        summaryEl.innerHTML = `🎉 학급 비례 당첨(<span class="text-blue-600 font-black">${totalPicked.length}명</span>): <b class="text-slate-800">${names}</b>`;
+        const resetNotice = cycleReset ? '<span class="text-fuchsia-600 font-black">전원 당첨 완료로 새 순환을 시작했습니다.</span><br>' : '';
+        const completionNotice = presentStudents.every(student => ensureRandomDrawState(student).class)
+            ? '<br><span class="text-emerald-600 font-black">전원이 한 번씩 당첨되었습니다. 다음 뽑기에서 자동 초기화됩니다.</span>'
+            : '';
+        summaryEl.innerHTML = `${resetNotice}🎉 학급 비례 당첨(<span class="text-blue-600 font-black">${totalPicked.length}명</span>): <b class="text-slate-800">${names}</b>${completionNotice}`;
     }
 };
 
@@ -3471,21 +3610,32 @@ window.drawFromEachGroup = function() {
     if (!currentClass || !classData[currentClass]) return;
     const students = classData[currentClass];
 
-    students.forEach(s => s.groupMemberDrawn = false);
+    students.forEach(s => { s.groupMemberDrawn = false; });
 
     let maxGroups = currentGroupMode === 'mixed2' ? 2 : (currentGroupMode === 'mixed3' ? 3 : 4);
     const perGroupCount = parseInt(document.getElementById('draw-group-count').value) || 1;
     let totalPicked = [];
+    const resetGroups = [];
+    const completedGroups = [];
 
     for (let i = 1; i <= maxGroups; i++) {
-        const groupPresentStudents = students.filter(s => s[`group_${currentGroupMode}`] === i && s.attendance);
+        const groupStudents = students.filter(s => s[`group_${currentGroupMode}`] === i);
+        const groupPresentStudents = groupStudents.filter(s => s.attendance);
         if (groupPresentStudents.length > 0) {
-            const shuffled = shuffleCopy(groupPresentStudents);
-            const chosen = shuffled.slice(0, Math.min(perGroupCount, groupPresentStudents.length));
+            let eligibleStudents = groupPresentStudents.filter(student => !wasDrawnFromGroup(student, currentGroupMode, i));
+            if (eligibleStudents.length === 0) {
+                groupStudents.forEach(student => setDrawnFromGroup(student, currentGroupMode, i, false));
+                eligibleStudents = [...groupPresentStudents];
+                resetGroups.push(i);
+            }
+            const shuffled = shuffleCopy(eligibleStudents);
+            const chosen = shuffled.slice(0, Math.min(perGroupCount, eligibleStudents.length));
             chosen.forEach(p => {
                 p.groupMemberDrawn = true;
+                setDrawnFromGroup(p, currentGroupMode, i, true);
                 totalPicked.push(p);
             });
+            if (groupPresentStudents.every(student => wasDrawnFromGroup(student, currentGroupMode, i))) completedGroups.push(i);
         }
     }
 
@@ -3500,7 +3650,9 @@ window.drawFromEachGroup = function() {
 
     const summaryEl = document.getElementById('draw-result-summary');
     if (summaryEl) {
-        summaryEl.innerHTML = `🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPicked.length}명</span>이 당첨되었습니다.`;
+        const resetNotice = resetGroups.length ? `<span class="text-fuchsia-600 font-black">${resetGroups.join(', ')}모둠은 전원 당첨 완료로 새 순환을 시작했습니다.</span><br>` : '';
+        const completionNotice = completedGroups.length ? `<br><span class="text-emerald-600 font-black">${completedGroups.join(', ')}모둠 전원이 한 번씩 당첨되었습니다. 다음 뽑기에서 해당 모둠만 자동 초기화됩니다.</span>` : '';
+        summaryEl.innerHTML = `${resetNotice}🎉 각 모둠별 선발 완료! 총 <span class="font-black text-indigo-600">${totalPicked.length}명</span>이 당첨되었습니다.${completionNotice}`;
     }
 };
 
@@ -3553,7 +3705,7 @@ window.renderGroups = function() {
     }
 
     for (let i = 1; i <= maxGroups; i++) {
-        const groupStudents = sortStudentsForGroupDisplay(students.filter(s => s[`group_${currentGroupMode}`] === i), captainKey);
+        const groupStudents = sortGroupStudentsForDisplay(students.filter(s => s[`group_${currentGroupMode}`] === i), currentGroupMode);
         
         let presentBoys = groupStudents.filter(s => s.gender === '남' && s.attendance).length;
         let presentGirls = groupStudents.filter(s => s.gender === '여' && s.attendance).length;
@@ -3701,7 +3853,7 @@ window.renderGroups = function() {
         </div>`;
     }
 
-    const unassignedStudents = sortStudentsForGroupDisplay(students.filter(s => !s[`group_${currentGroupMode}`]), captainKey);
+    const unassignedStudents = sortGroupStudentsForDisplay(students.filter(s => !s[`group_${currentGroupMode}`]), currentGroupMode);
 
     html += `
     <div id="unassigned-area" class="col-span-full mt-2 bg-slate-100/80 border-[3px] border-dashed border-slate-900 rounded-xl p-2 sm:p-4 group-area transition-all duration-300"
@@ -3803,7 +3955,7 @@ window.renderGroups = function() {
 function createStudentRecord(no, name, gender) {
     return {
         no, name, gender, ballSense: '0', attendance: true, score: 0, recordMs: 0,
-        memo: '', drawn: false, groupMemberDrawn: false, captain_mixed2: false, captain_mixed3: false,
+        memo: '', drawn: false, groupMemberDrawn: false, randomDrawState: { class: false, groups: {} }, captain_mixed2: false, captain_mixed3: false,
         captain_mixed4: false, captain_gender: false, group_mixed2: null, group_mixed3: null,
         group_mixed4: null, group_gender: null, penaltyCard: 0, penaltyCardSystem: PENALTY_CARD_SYSTEM_VERSION, selected: false
     };
