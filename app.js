@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260928-2';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260928-3';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -38,9 +38,9 @@ document.body.addEventListener('touchstart', initAudio, { once: true });
 
 const PENALTY_CARD_SYSTEM_VERSION = 3;
 const PENALTY_CARD_DETAILS = {
-    verbal: { label: '입경고', image: 'images/penalty/verbal-warning-v3.png' },
-    yellow: { label: '옐로카드', image: 'images/penalty/yellow-card-v3.png' },
-    red: { label: '레드카드', image: 'images/penalty/red-card-v3.png' }
+    verbal: { label: '입경고', image: 'images/penalty/verbal-warning-v3.png?v=20260928-3' },
+    yellow: { label: '옐로카드', image: 'images/penalty/yellow-card-v3.png?v=20260928-3' },
+    red: { label: '레드카드', image: 'images/penalty/red-card-v3.png?v=20260928-3' }
 };
 
 function createPenaltyCardImage(type) {

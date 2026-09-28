@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
+import { inflateSync } from 'node:zlib';
 
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
@@ -88,7 +89,45 @@ assert.ok(app.includes("window.showPenaltyCard('verbal')") && app.includes('% 4'
 assert.ok(app.includes('createPenaltyCardImage') && app.includes('playPenaltySound'), '입경고 이미지 또는 효과음 처리가 없습니다.');
 assert.ok(app.includes("images/penalty/verbal-warning-v3.png") && app.includes("images/penalty/yellow-card-v3.png") && app.includes("images/penalty/red-card-v3.png"), '생성된 3단계 경고 이미지가 연결되지 않았습니다.');
 for (const imagePath of ['images/penalty/verbal-warning-v3.png', 'images/penalty/yellow-card-v3.png', 'images/penalty/red-card-v3.png']) {
-  await access(new URL(`../${imagePath}`, import.meta.url));
+  const imageUrl = new URL(`../${imagePath}`, import.meta.url);
+  await access(imageUrl);
+  const png = await readFile(imageUrl);
+  assert.ok(png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `${imagePath}: PNG 헤더가 손상되었습니다.`);
+  const idatChunks = [];
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = 0;
+  let interlace = 0;
+  let complete = false;
+  while (offset + 12 <= png.length) {
+    const length = png.readUInt32BE(offset);
+    const chunkEnd = offset + 12 + length;
+    assert.ok(chunkEnd <= png.length, `${imagePath}: PNG 청크가 중간에 잘렸습니다.`);
+    const type = png.toString('ascii', offset + 4, offset + 8);
+    if (type === 'IHDR') {
+      width = png.readUInt32BE(offset + 8);
+      height = png.readUInt32BE(offset + 12);
+      bitDepth = png[offset + 16];
+      colorType = png[offset + 17];
+      interlace = png[offset + 20];
+    } else if (type === 'IDAT') {
+      idatChunks.push(png.subarray(offset + 8, offset + 8 + length));
+    } else if (type === 'IEND') {
+      complete = true;
+    }
+    offset = chunkEnd;
+    if (complete) break;
+  }
+  assert.ok(complete && offset === png.length, `${imagePath}: PNG 끝부분이 손상되었습니다.`);
+  assert.ok(width > 0 && height > 0 && bitDepth === 8 && colorType === 6 && interlace === 0, `${imagePath}: 지원하지 않는 PNG 형식입니다.`);
+  const decoded = inflateSync(Buffer.concat(idatChunks));
+  const rowLength = width * 4 + 1;
+  assert.equal(decoded.length, rowLength * height, `${imagePath}: 이미지가 끝까지 디코딩되지 않습니다.`);
+  for (let row = 0; row < height; row++) {
+    assert.ok(decoded[row * rowLength] <= 4, `${imagePath}: ${row + 1}번째 줄의 PNG 필터가 손상되었습니다.`);
+  }
 }
 assert.ok(app.includes("header.indexOf('경고단계')") && app.includes("header.indexOf('벌점카드')"), '새 경고 백업과 기존 벌점카드 백업의 호환 처리가 없습니다.');
 
