@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
 const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
@@ -86,6 +86,10 @@ assert.ok(html.includes('reviewJumpRopeResults()') && app.includes('jumpRopeAwar
 assert.ok(app.includes('mission-complete-v2.jpg') && !app.includes("bigImg.src = 'images/stamps/complete01.jpg'"), '새 미션 완료 이미지가 연결되지 않았습니다.');
 assert.ok(app.includes("window.showPenaltyCard('verbal')") && app.includes('% 4'), '입경고를 포함한 3단계 경고 순환이 적용되지 않았습니다.');
 assert.ok(app.includes('createPenaltyCardImage') && app.includes('playPenaltySound'), '입경고 이미지 또는 효과음 처리가 없습니다.');
+assert.ok(app.includes("images/penalty/verbal-warning-v3.png") && app.includes("images/penalty/yellow-card-v3.png") && app.includes("images/penalty/red-card-v3.png"), '생성된 3단계 경고 이미지가 연결되지 않았습니다.');
+for (const imagePath of ['images/penalty/verbal-warning-v3.png', 'images/penalty/yellow-card-v3.png', 'images/penalty/red-card-v3.png']) {
+  await access(new URL(`../${imagePath}`, import.meta.url));
+}
 assert.ok(app.includes("header.indexOf('경고단계')") && app.includes("header.indexOf('벌점카드')"), '새 경고 백업과 기존 벌점카드 백업의 호환 처리가 없습니다.');
 
 function extractFunctionSource(source, functionName) {

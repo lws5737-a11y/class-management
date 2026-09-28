@@ -1,7 +1,7 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260922-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260928-2';
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -38,26 +38,14 @@ document.body.addEventListener('touchstart', initAudio, { once: true });
 
 const PENALTY_CARD_SYSTEM_VERSION = 3;
 const PENALTY_CARD_DETAILS = {
-    verbal: { label: '입경고', subtitle: '구두 경고', background: '#f59e0b', foreground: '#451a03', symbol: '!' },
-    yellow: { label: '옐로카드', subtitle: '주의', background: '#fde047', foreground: '#422006', symbol: '!' },
-    red: { label: '레드카드', subtitle: '최종 경고', background: '#ef4444', foreground: '#ffffff', symbol: '!' }
+    verbal: { label: '입경고', image: 'images/penalty/verbal-warning-v3.png' },
+    yellow: { label: '옐로카드', image: 'images/penalty/yellow-card-v3.png' },
+    red: { label: '레드카드', image: 'images/penalty/red-card-v3.png' }
 };
 
 function createPenaltyCardImage(type) {
     const detail = PENALTY_CARD_DETAILS[type] || PENALTY_CARD_DETAILS.verbal;
-    const isVerbal = type === 'verbal';
-    const shape = isVerbal
-        ? `<path d="M115 105h370a55 55 0 0 1 55 55v210a55 55 0 0 1-55 55H300l-88 78 22-78H115a55 55 0 0 1-55-55V160a55 55 0 0 1 55-55Z" fill="${detail.background}"/>`
-        : `<rect x="105" y="55" width="390" height="490" rx="34" fill="${detail.background}" transform="rotate(-5 300 300)"/>`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
-        <rect width="600" height="600" rx="56" fill="#0f172a" fill-opacity=".28"/>
-        ${shape}
-        <circle cx="300" cy="235" r="68" fill="${detail.foreground}" fill-opacity=".16"/>
-        <text x="300" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="112" font-weight="900" fill="${detail.foreground}">${detail.symbol}</text>
-        <text x="300" y="365" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="900" fill="${detail.foreground}">${detail.label}</text>
-        <text x="300" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="${detail.foreground}" fill-opacity=".82">${detail.subtitle}</text>
-    </svg>`;
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    return detail.image;
 }
 
 function playPenaltySound(type) {
