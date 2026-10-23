@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f7fb">
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -30,6 +31,7 @@
         .print-hide { display: flex; }
         @media print { .print-hide { display: none !important; } }
     </style>
+    <link rel="stylesheet" href="./mobile.css?v=20261023-1">
 </head>
 <body class="text-slate-800 overscroll-y-none select-none">
 
@@ -66,7 +68,10 @@
                     <p class="mt-1 text-xs font-medium text-slate-400 sm:mt-2 sm:text-sm">수업을 시작할 학급을 누르세요.</p>
                 </div>
                 <div id="class-selection-list" class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3" aria-live="polite"></div>
-                <div class="my-4 h-px bg-slate-100 sm:my-7"></div>
+                <button id="class-edit-toggle" class="ui-secondary" type="button" aria-pressed="false">학급 삭제 관리</button>
+                <details id="class-settings" class="ui-disclosure">
+                <summary>학급 추가 · 전체 백업</summary>
+                <div class="ui-disclosure-content">
                 <form id="class-add-form" class="flex flex-col gap-2 sm:flex-row" onsubmit="event.preventDefault(); window.addClassFromSelection()">
                     <label for="class-selection-new-input" class="sr-only">새 학급 이름</label>
                     <input id="class-selection-new-input" type="text" maxlength="30" autocomplete="off" placeholder="새 학급 이름 (예: 6-1)" class="min-h-12 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
@@ -80,6 +85,8 @@
                     </label>
                 </div>
                 <button id="delete-all-classes-btn" type="button" onclick="window.deleteAllClasses()" disabled class="mt-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40">모든 학급 삭제</button>
+                </div>
+                </details>
             </section>
         </main>
     </div>
@@ -93,7 +100,7 @@
                     <button onclick="window.showClassSelectionScreen()" id="current-class-display" class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-black text-[11px] sm:text-sm transition shadow-sm border border-slate-200 flex items-center gap-1.5 whitespace-nowrap" title="학급 선택 화면으로 돌아가기">
                         <span>⚙️ 설정 및 시작</span>
                     </button>
-                    <div id="tab-navigation" class="hidden flex items-center gap-1 sm:gap-2 shrink-0">
+                    <div id="tab-navigation" role="navigation" aria-label="수업 메뉴" class="hidden flex items-center gap-1 sm:gap-2 shrink-0">
                         <button id="tab-student" onclick="window.showTab('student')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">출석부</button>
                         <button id="tab-group" onclick="window.showTab('group')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">모둠</button>
                         <button id="tab-jumprope" onclick="window.showTab('jumprope')" class="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm whitespace-nowrap">8자줄넘기</button>
@@ -116,6 +123,13 @@
             
             <!-- 1. 출석부 탭 -->
             <div id="student-management" class="hidden space-y-4">
+                <div id="mobile-roster" class="mobile-only">
+                    <div class="ui-page-heading"><div><p class="ui-eyebrow">CLASSROOM</p><h2>오늘의 출석부</h2></div><span id="mobile-roster-count" class="ui-count"></span></div>
+                    <p class="ui-hint">출석 버튼으로 참석 확인 · 이름을 눌러 측정 대상 선택</p>
+                    <div class="ui-roster-tools"><label class="ui-search"><span class="sr-only">학생 이름 또는 번호 검색</span><input id="roster-search" type="search" placeholder="이름 · 번호 검색" autocomplete="off"></label><label><span class="sr-only">학생 정렬</span><select id="roster-sort"><option value="no">번호순</option><option value="name">이름순</option><option value="ballSense">볼센스순</option><option value="recordMs">순발력순</option></select></label></div>
+                    <div class="ui-roster-filters" role="group" aria-label="출석 필터"><button type="button" data-roster-filter="all" aria-pressed="true">전체</button><button type="button" data-roster-filter="absent" aria-pressed="false">불참</button><button type="button" data-roster-filter="selected" aria-pressed="false">측정 선택</button><button id="roster-clear-selection" type="button">선택 해제</button></div>
+                    <div id="mobile-student-list"></div>
+                </div>
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-center mb-2">
                         <div id="student-summary" class="flex flex-col sm:flex-row gap-2"></div>
@@ -141,6 +155,8 @@
 
             <!-- 2. 모둠 탭 -->
             <div id="group-section" class="hidden space-y-4">
+                <div class="ui-page-heading"><div><p class="ui-eyebrow">TEAM PLAY</p><h2>모둠 활동</h2></div></div>
+                <p class="ui-hint">이름을 눌러 측정 선택 · ‘이동·더보기’로 이동/교환<br>길게 누른 뒤 끌어 옮기기도 가능합니다.</p>
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 mb-3">
                         <button id="btn-mode-mixed2" onclick="window.setGroupMode('mixed2')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-bold text-xs bg-slate-100 hover:bg-slate-200 transition">혼성 2팀</button>
@@ -267,7 +283,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div id="jumprope-live-tools" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 타이머 & 스톱워치 -->
                     <div class="bg-slate-800 p-5 rounded-2xl shadow-lg text-center flex flex-col items-center justify-center border-2 border-slate-700 relative">
                         <h4 class="text-slate-300 font-black text-xs mb-1 flex items-center gap-1">⏳ 1분 타이머</h4>
@@ -427,6 +443,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20260928-3"></script>
+    <script type="module" src="app.js?v=20261023-1"></script>
 </body>
 </html>

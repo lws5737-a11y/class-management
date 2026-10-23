@@ -2,7 +2,8 @@
   "name": "class-management",
   "private": true,
   "scripts": {
-    "test": "node --test tests/class-utils.test.mjs && node tests/static-check.mjs"
+    "test": "node --test tests/class-utils.test.mjs tests/mobile-ui.test.mjs && node tests/static-check.mjs",
+    "test:ui": "node tests/mobile-browser.mjs"
   }
 }
 
