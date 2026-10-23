@@ -1,7 +1,9 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20260928-3';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261023-1';
+import { initClassroomUI } from './mobile-ui.mjs?v=20261023-1';
+let classroomUI = null;
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -596,6 +598,7 @@ const clearDropStyles = () => {
 };
 
 window.handleTouchStart = function(e, studentNo) {
+    if (e.target.closest('button, input, select, textarea')) return;
     const touch = e.touches[0];
     const target = e.currentTarget;
     window.touchStartX = touch.clientX;
@@ -708,6 +711,21 @@ window.handleTouchEnd = function(e) {
     
     setTimeout(() => { window.isTouchDragging = false; }, 10);
 };
+
+// A call, browser gesture or OS interruption must cancel a touch drag without moving anyone.
+document.addEventListener('touchcancel', () => {
+    clearTimeout(touchTimeout);
+    window.stopAutoScroll();
+    window.dragOverUnassigned = false;
+    window.hideFloatingUnassigned();
+    if (window.activeTouchElement) window.activeTouchElement.style.opacity = '1';
+    window.touchClone?.remove();
+    window.touchClone = null;
+    window.activeTouchElement = null;
+    window.draggedStudentNo = null;
+    window.isTouchDragging = false;
+    clearDropStyles();
+});
 
 window.handleDropLogic = function(draggedNo, targetGroup) {
     if (draggedNo === null || draggedNo === undefined) return;
@@ -865,6 +883,7 @@ window.showClassSelectionScreen = function() {
     if (selectionScreen) selectionScreen.classList.remove('hidden');
     if (manageModal) { manageModal.classList.add('hidden'); manageModal.classList.remove('flex'); }
     window.renderClassLanding();
+    window.scrollTo({ top: 0, behavior: 'instant' });
 };
 
 window.renderClassLanding = function() {
@@ -902,7 +921,7 @@ window.renderClassLanding = function() {
         title.textContent = '등록된 학급이 없습니다.';
         const hint = document.createElement('p');
         hint.className = 'mt-1 text-sm text-slate-400';
-        hint.textContent = '아래 입력창에서 첫 학급을 추가하세요.';
+        hint.textContent = '아래 ‘학급 추가 · 전체 백업’을 열어 첫 학급을 추가하세요.';
         empty.append(title, hint);
         container.appendChild(empty);
         return;
@@ -1053,7 +1072,6 @@ let pendingCloudPayload = null;
 let latestLocalRevision = 0;
 let latestSyncedRevision = 0;
 let latestRecoveryRecord = null;
-let syncStatusHideTimer = null;
 
 const RECOVERY_DB_NAME = 'smart-class-manager-recovery';
 const RECOVERY_STORE_NAME = 'snapshots';
@@ -1068,7 +1086,6 @@ function setSyncStatus(state, label) {
     const labelEl = document.getElementById('sync-status-label');
     if (!status || !icon || !labelEl) return;
 
-    clearTimeout(syncStatusHideTimer);
     status.classList.remove('hidden', 'border-blue-100', 'bg-blue-50', 'text-blue-600', 'border-amber-200', 'bg-amber-50', 'text-amber-700', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'border-red-200', 'bg-red-50', 'text-red-700');
     status.classList.add('flex');
     icon.classList.toggle('animate-spin', state === 'syncing');
@@ -1084,12 +1101,8 @@ function setSyncStatus(state, label) {
     icon.textContent = symbol;
     labelEl.textContent = label;
 
-    if (state === 'saved') {
-        syncStatusHideTimer = setTimeout(() => {
-            status.classList.add('hidden');
-            status.classList.remove('flex');
-        }, 1800);
-    }
+    // Keep confirmation visible: teachers must distinguish cloud sync from device-only storage.
+    status.dataset.state = state;
 }
 
 function createAppPayload(revision = latestLocalRevision) {
@@ -1650,6 +1663,7 @@ window.renderJumpRopeTab = function() {
     document.getElementById('jumprope-female-1-input').value = currentRecord.femaleAttempts[0] ?? '';
     document.getElementById('jumprope-female-2-input').value = currentRecord.femaleAttempts[1] ?? '';
     document.getElementById('jumprope-target-input').value = currentRecord.target ?? '';
+    classroomUI?.restoreJumpRopeDraft();
     window.updateJumpRopeEntryPreview();
 
     const maleRanking = [];
@@ -1913,6 +1927,7 @@ window.saveJumpRopeRecord = async function() {
     record.femaleAttempts = [readPositiveNumber('jumprope-female-1-input', true), readPositiveNumber('jumprope-female-2-input', true)];
     record.target = readPositiveNumber('jumprope-target-input');
     normalizeJumpRopeRecord(record);
+    classroomUI?.clearJumpRopeDraft();
 
     let earnedStamps = 0;
     if (record.target) {
@@ -2941,6 +2956,7 @@ window.showTab = function(tabName) {
         document.getElementById('tab-jumprope').className = "shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-sm transition text-white bg-amber-500 shadow-md border border-amber-500 transform scale-[1.02] sm:scale-105 z-10 whitespace-nowrap";
         window.renderJumpRopeTab();
     }
+    classroomUI?.updateNavigation();
 }
 
 window.deleteStudent = function(studentNo) {
@@ -3039,6 +3055,7 @@ function updateSortIcons() {
 }
 
 window.renderStudentList = function() {
+    classroomUI?.renderRoster();
     const tbody = document.getElementById('student-list-body'); if (!tbody) return;
     tbody.innerHTML = "";
     const allStudents = [...(classData[currentClass] || [])];
@@ -3696,7 +3713,7 @@ function renderPenaltyIndicator(student) {
         'bg-red-500 border-red-700 text-white shadow-sm'
     ][level];
     return `
-        <button type="button" class="shrink-0 w-5 h-6 sm:w-6 sm:h-7 rounded-[3px] border-2 ${cardStyle} flex items-center justify-center text-[11px] sm:text-xs font-black leading-none hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        <button type="button" data-penalty-level="${level}" class="shrink-0 w-5 h-6 sm:w-6 sm:h-7 rounded-[3px] border-2 ${cardStyle} flex items-center justify-center text-[11px] sm:text-xs font-black leading-none hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onclick="event.stopPropagation(); window.cyclePenaltyCard(${student.no})"
                 title="입경고 → 옐로카드 → 레드카드 → 해제" aria-label="현재 ${labels[level]}. 다음 경고 단계로 변경">
             ${level}
@@ -3980,6 +3997,7 @@ window.renderGroups = function() {
     </div>`;
     
     container.innerHTML = html;
+    classroomUI?.enhanceGroups();
 }
 
 // 엑셀 명단 파싱 및 등록 기능
@@ -4384,3 +4402,14 @@ function saveTargetElement(target) {
       }
   }
 }
+
+classroomUI = initClassroomUI({
+    getState: () => ({ currentClass, currentTab, currentGroupMode, students: classData[currentClass] || [] }),
+    clearSelection: () => {
+        (classData[currentClass] || []).forEach(student => { student.selected = false; });
+        saveData();
+        window.renderStudentList();
+        window.renderGroups();
+        window.updateFloatingStopwatchBtn();
+    }
+});

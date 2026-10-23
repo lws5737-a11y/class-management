@@ -7,10 +7,18 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const utils = await readFile(new URL('../class-utils.mjs', import.meta.url), 'utf8');
 const rules = await readFile(new URL('../firestore.rules', import.meta.url), 'utf8');
 const firebaseConfig = await readFile(new URL('../firebase-config.js', import.meta.url), 'utf8');
+const mobileUI = await readFile(new URL('../mobile-ui.mjs', import.meta.url), 'utf8');
+const mobileCSS = await readFile(new URL('../mobile.css', import.meta.url), 'utf8');
 
 const appVersion = html.match(/app\.js\?v=([\w.-]+)/)?.[1];
 const utilsVersion = app.match(/class-utils\.mjs\?v=([\w.-]+)/)?.[1];
 assert.ok(appVersion && utilsVersion && appVersion === utilsVersion, 'app.js와 class-utils.mjs의 캐시 갱신 버전이 일치하지 않습니다.');
+assert.equal(app.match(/mobile-ui\.mjs\?v=([\w.-]+)/)?.[1], appVersion, '모바일 UI 모듈 버전이 다릅니다.');
+assert.equal(html.match(/mobile\.css\?v=([\w.-]+)/)?.[1], appVersion, '모바일 스타일 버전이 다릅니다.');
+assert.ok(html.includes('id="mobile-roster"') && app.includes('classroomUI?.renderRoster()'), '모바일 출석부가 렌더링에 연결되지 않았습니다.');
+assert.ok(app.includes('classroomUI?.enhanceGroups()') && mobileUI.includes('window.handleStudentDropLogic(no, target.no)'), '모둠 터치 이동·교환이 연결되지 않았습니다.');
+assert.ok(mobileCSS.includes('env(safe-area-inset-bottom)') && mobileUI.includes("b.setAttribute('aria-current', 'page')"), '하단 메뉴의 안전 영역/현재 화면 표시가 없습니다.');
+assert.ok(app.includes('classroomUI?.restoreJumpRopeDraft()') && app.includes('classroomUI?.clearJumpRopeDraft()'), '줄넘기 임시 입력 보존/확정 처리가 없습니다.');
 
 const allowedEmail = 'lws5737@seoul-dongsan.es.kr';
 assert.ok(app.includes(`const ALLOWED_EMAIL = '${allowedEmail}'`), '클라이언트 허용 계정 검사가 없습니다.');
