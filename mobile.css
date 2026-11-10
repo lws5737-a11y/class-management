@@ -225,3 +225,19 @@ body:has(#app-container.hidden) #floating-group-btn-container { display: none !i
         height: 28px; min-width: 0; padding: 0; margin: 0 2px; font-size: 10px;
     }
 }
+
+/* Expanding a team keeps its neighbors compact and lets the page scroll. */
+#group-result .group-area h3 .group-expand-toggle {
+    flex: 0 0 auto; width: 30px; height: 30px; min-width: 30px; min-height: 30px;
+    padding: 0; border: 1px solid #b8cbe5; border-radius: 6px;
+    background: #ffffffcc; color: #304a70; font-size: 13px;
+}
+@media screen and (max-width: 767px) {
+    #group-result > .group-area:not(#unassigned-area) { align-self: start; }
+    #group-result > .group-area:not(#unassigned-area).is-expanded {
+        height: auto; min-height: 34svh; grid-template-rows: auto auto auto;
+    }
+    #group-result > .group-area:not(#unassigned-area).is-expanded > div:nth-child(2) {
+        overflow: visible; max-height: none;
+    }
+}

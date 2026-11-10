@@ -3720,6 +3720,24 @@ function renderPenaltyIndicator(student) {
         </button>`;
 }
 
+const expandedGroupPanels = new Set();
+function groupPanelKey(groupId) {
+    return JSON.stringify([currentClass, currentGroupMode, Number(groupId)]);
+}
+window.toggleGroupPanel = function(event, groupId) {
+    event.stopPropagation();
+    const panel = event.currentTarget.closest('.group-area');
+    if (!panel) return;
+    const key = groupPanelKey(groupId);
+    const expanded = !expandedGroupPanels.has(key);
+    if (expanded) expandedGroupPanels.add(key);
+    else expandedGroupPanels.delete(key);
+    panel.classList.toggle('is-expanded', expanded);
+    event.currentTarget.setAttribute('aria-expanded', String(expanded));
+    event.currentTarget.setAttribute('aria-label', groupId + '모둠 ' + (expanded ? '접기' : '전체 학생 펼치기'));
+    event.currentTarget.textContent = expanded ? '▲' : '▼';
+};
+
 window.renderGroups = function() {
     const container = document.getElementById('group-result'); if (!container) return;
     if (!currentClass || !classData[currentClass]) { container.innerHTML = ''; return; }
@@ -3781,7 +3799,7 @@ window.renderGroups = function() {
         const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
         
         html += `
-        <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area"
+        <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area ${expandedGroupPanels.has(groupPanelKey(i)) ? 'is-expanded' : ''}"
              data-group-id="${i}" 
              ondragover="window.handleDragOverGroup(event)" 
              ondragleave="window.handleDragLeaveGroup(event)"
@@ -3792,6 +3810,7 @@ window.renderGroups = function() {
                 
                 <h3 class="font-black text-base sm:text-xl ${color.text} flex items-center gap-2 whitespace-nowrap">
                     <span>${i}모둠</span>
+                    <button type="button" class="group-expand-toggle" onclick="window.toggleGroupPanel(event, ${i})" aria-controls="group-members-${i}" aria-expanded="${expandedGroupPanels.has(groupPanelKey(i))}" aria-label="${i}모둠 ${expandedGroupPanels.has(groupPanelKey(i)) ? '접기' : '전체 학생 펼치기'}">${expandedGroupPanels.has(groupPanelKey(i)) ? '▲' : '▼'}</button>
                     <span class="rounded-full border border-white/80 bg-white/80 px-1.5 py-0.5 text-[10px] sm:text-xs font-black text-slate-700" title="남 ${presentBoys}명 · 여 ${presentGirls}명">참석 ${presentTotal}명</span>
                     <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-90 sm:scale-100">
                         <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
@@ -3801,7 +3820,7 @@ window.renderGroups = function() {
                 </h3>
             </div>
             
-            <div class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1.5 sm:gap-2 items-stretch relative">
+            <div id="group-members-${i}" class="p-1 sm:p-3 flex-1 min-h-[80px] flex flex-col gap-1.5 sm:gap-2 items-stretch relative">
                 ${groupStudents.length === 0 ? `<div class="absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-[10px] sm:text-sm pointer-events-none text-center">이동</div>` : ''}
                 ${groupStudents.map(s => {
                     let bsEmoji = s.ballSense === '2' ? '⚽⚽' : (s.ballSense === '1' ? '⚽' : '-');
