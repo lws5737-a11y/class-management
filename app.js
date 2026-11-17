@@ -1,9 +1,13 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261023-1';
-import { initClassroomUI } from './mobile-ui.mjs?v=20261023-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261117-2';
+import { initClassroomUI } from './mobile-ui.mjs?v=20261117-2';
 let classroomUI = null;
+import { initVolleyball } from './volleyball.mjs?v=20261117-2';
+import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261117-2';
+let volleyballData = {};
+let volleyballUI = null;
 
 window.isDraggingCard = false; 
 window.selectedGroupStudent = null; 
@@ -987,6 +991,7 @@ window.addClassFromSelection = function() {
 };
 
 function removeClassData(className) {
+    delete volleyballData[className];
     delete classData[className];
     delete groupScores[className];
     delete groupRecords[className];
@@ -1115,6 +1120,7 @@ function createAppPayload(revision = latestLocalRevision) {
         penalties: groupPenalties,
         jumpRope: jumpRopeData,
         jumpRopeAwards,
+        volleyball: volleyballData,
         syncMeta: {
             revision,
             updatedAt: new Date().toISOString(),
@@ -1136,6 +1142,7 @@ function applyAppPayload(payload) {
     groupPenalties = payload.penalties || {};
     jumpRopeData = payload.jumpRope || {};
     jumpRopeAwards = payload.jumpRopeAwards || {};
+    volleyballData = payload.volleyball || {};
     if (payload.stampImage) {
         globalStampImage = payload.stampImage;
         localStorage.setItem('customStamp', globalStampImage);
@@ -1163,6 +1170,7 @@ function mergeAppPayloads(serverPayload, localPayload, revision) {
         penalties: mergeMap(serverPayload.penalties, localPayload.penalties),
         jumpRope: mergedJumpRope,
         jumpRopeAwards: mergedJumpRopeAwards,
+        volleyball: mergeMap(serverPayload.volleyball, localPayload.volleyball),
         syncMeta: { revision, updatedAt: new Date().toISOString(), deviceId: getRecoveryDeviceId(), mergedConflict: true }
     });
 }
@@ -1380,6 +1388,7 @@ onAuthStateChanged(auth, async (user) => {
         window.renderClassLanding();
     } else {
         userId = null;
+        volleyballData = {};
         hasLoadedRemoteData = false;
         clearTimeout(saveTimer);
         saveTimer = null;
@@ -1454,6 +1463,7 @@ function setupFirestoreListener() {
                 if (!saveRequested && !saveInFlight) setSyncStatus('saved', 'Firebase 저장 완료');
             }
         } else if (!latestRecoveryRecord?.dirty) {
+            volleyballData = {};
             classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; groupPenalties = {}; jumpRopeData = {}; jumpRopeAwards = {};
         }
         window.renderClassSelect();
@@ -1462,7 +1472,9 @@ function setupFirestoreListener() {
             if(typeof window.renderGroups === 'function') window.renderGroups();
             if(typeof window.renderStampBoard === 'function') window.renderStampBoard();
             if(currentTab === 'jumprope' && typeof window.renderJumpRopeTab === 'function') window.renderJumpRopeTab();
+            if(currentTab === 'volleyball') volleyballUI?.refresh();
         } else if (currentClass && !classData[currentClass]) {
+            document.getElementById('volleyball-section')?.classList.add('hidden');
             currentClass = "";
             const display = document.getElementById('current-class-display');
             if (display) display.innerHTML = "<span>⚙️ 설정 및 시작</span>";
@@ -2421,6 +2433,8 @@ window.deleteAllClasses = function() {
         Object.keys(classData).forEach(className => localStorage.removeItem(`pinnedGroupMode_${className}`));
         localStorage.removeItem('classOrder');
         localStorage.removeItem('classVisibility');
+        volleyballData = {};
+        document.getElementById('volleyball-section')?.classList.add('hidden');
         classData = {}; groupScores = {}; groupRecords = {}; classStamps = {}; activeTimers = {}; groupPenalties = {}; jumpRopeData = {}; jumpRopeAwards = {}; saveData({ immediate: true }); currentClass = ""; window.selectedGroupStudent = null;
         document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
         document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
@@ -2490,7 +2504,8 @@ function buildExcelBackup(classNames, scope, sourceClass = '') {
         ['항목', '값'],
         ['백업범위', scope],
         ['원본학급', sourceClass],
-        ['백업형식버전', 2],
+        ['백업형식버전', 3],
+        ...volleyballSettingsRows(volleyballData, sortedClasses),
         ...stampChunks.map((chunk, index) => [`스탬프이미지_${String(index + 1).padStart(4, '0')}`, chunk]),
         ...jumpRopeChunks.map((chunk, index) => [`줄넘기JSON_${String(index + 1).padStart(4, '0')}`, chunk]),
         ...jumpRopeAwardChunks.map((chunk, index) => [`줄넘기보상JSON_${String(index + 1).padStart(4, '0')}`, chunk])
@@ -2657,7 +2672,10 @@ function handleExcelUpload(event, importTarget) {
             : scopeIsClass
                 ? `백업 파일의 <b>${escapeHTML(restoredSettings.sourceClass || '해당 학급')}</b> 자료만 추가하거나 교체합니다. 다른 학급은 유지됩니다.`
                 : `파일 내용으로 모든 학급의 자료를 교체하시겠습니까?<br><span class="font-bold text-red-500">주의: 현재 저장된 전체 학급 데이터가 교체됩니다.</span>`;
-        window.showModal(confirmTitle, confirmMessage, true, async () => {
+        const volleyballNotice = restoredSettings.volleyball == null
+            ? '<br>이전 백업: 복원 후 남아 있는 학급의 기존 빅발리볼 기록은 유지합니다.'
+            : '<br>빅발리볼 능력·팀·대회·세트 스코어도 함께 복원합니다.';
+        window.showModal(confirmTitle, confirmMessage + volleyballNotice, true, async () => {
             const newData = {}; const newGroupScores = {}; const newGroupRecords = {}; const newGroupPenalties = {};
             const newClassStamps = {};
             const idxG2 = header.indexOf('혼성2모둠'); const idxG3 = header.indexOf('혼성3모둠'); const idxG4 = header.indexOf('혼성4모둠'); const idxGG = header.indexOf('동성모둠');
@@ -2744,6 +2762,13 @@ function handleExcelUpload(event, importTarget) {
 
             const importedClasses = Object.keys(newData);
             if (importedClasses.length > 0) {
+                const volleyballSource = importedClasses.find(name => normalizeClassIdentity(name) === normalizeClassIdentity(currentClass))
+                    || (importedClasses.length === 1 ? importedClasses[0] : '');
+                // Prepare and validate first, before replacing any existing student/class records.
+                const nextVolleyball = (importTarget !== 'class' || volleyballSource)
+                    ? restoreVolleyball(volleyballData, restoredSettings.volleyball, { classes: importedClasses,
+                        targetClass: importTarget === 'class' ? currentClass : '', sourceClass: volleyballSource, classScope: scopeIsClass })
+                    : volleyballData;
                 const rosterOverrideCount = applyRosterOverrides(newData, restoredSettings.rosterRecords, {
                     createMissingStudent: record => createStudentRecord(record.no, record.name, record.gender)
                 });
@@ -2797,6 +2822,7 @@ function handleExcelUpload(event, importTarget) {
                     if (restoredSettings.jumpRopeData) jumpRopeData = restoredSettings.jumpRopeData;
                     if (restoredSettings.jumpRopeAwards) jumpRopeAwards = restoredSettings.jumpRopeAwards;
                 }
+                volleyballData = nextVolleyball;
                 if (restoredSettings.stampImage) globalStampImage = restoredSettings.stampImage;
                 migrateData();
                 activeTimers = {}; window.selectedGroupStudent = null;
@@ -2804,10 +2830,11 @@ function handleExcelUpload(event, importTarget) {
                 if (currentClass && !classData[currentClass]) {
                     currentClass = ""; document.getElementById('current-class-display').innerHTML = "<span>⚙️ 설정 및 시작</span>";
                     document.getElementById('tab-navigation').classList.add('hidden'); document.getElementById('tab-navigation').classList.remove('flex');
+                    document.getElementById('volleyball-section')?.classList.add('hidden');
                     ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 }
 
-                if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); }
+                if (currentClass) { window.renderStudentList(); window.renderGroups(); window.renderStampBoard(); if(currentTab==='jumprope') window.renderJumpRopeTab(); if(currentTab==='volleyball') volleyballUI?.render(); }
                 const cloudSaved = await saveData({ immediate: true });
                 if (!cloudSaved && navigator.onLine) {
                     throw new Error('불러온 자료를 Firebase에 저장하지 못했습니다. 화면 위쪽 저장 상태를 확인한 뒤 다시 시도해주세요.');
@@ -2847,11 +2874,13 @@ function handleExcelUpload(event, importTarget) {
                 let stampImage = '';
                 let restoredJumpRopeData = null;
                 let restoredJumpRopeAwards = null;
+                let restoredVolleyball = null;
                 let backupScope = '';
                 let sourceClass = '';
                 if (settingsSheet) {
                     const settingsRows = window.XLSX.utils.sheet_to_json(settingsSheet, { header: 1, defval: '' });
                     const settingsDataRows = settingsRows.slice(1);
+                    restoredVolleyball = readVolleyballSettings(settingsDataRows);
                     const settingsMap = Object.fromEntries(settingsDataRows.map(row => [String(row[0]), row[1]]));
                     backupScope = String(settingsMap['백업범위'] || '');
                     sourceClass = normalizeClassName(String(settingsMap['원본학급'] || ''));
@@ -2873,7 +2902,7 @@ function handleExcelUpload(event, importTarget) {
                         .join('');
                     if (jumpRopeAwardsJSON) restoredJumpRopeAwards = parseStructuredJson(jumpRopeAwardsJSON, null, 'object');
                 }
-                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, jumpRopeAwards: restoredJumpRopeAwards, backupScope, sourceClass, rosterRecords });
+                processCSV(window.XLSX.utils.sheet_to_csv(backupSheet, { blankrows: false }), { stampImage, jumpRopeData: restoredJumpRopeData, jumpRopeAwards: restoredJumpRopeAwards, volleyball: restoredVolleyball, backupScope, sourceClass, rosterRecords });
             } catch (error) {
                 console.error('엑셀 백업 읽기 실패:', error);
                 window.showModal('불러오기 실패', escapeHTML(error.message || '엑셀 파일을 읽을 수 없습니다.'));
@@ -2925,6 +2954,7 @@ window.selectClass = function(className) {
 }
 
 window.showTab = function(tabName) {
+    document.getElementById('volleyball-section')?.classList.add('hidden');
     currentTab = tabName; window.selectedGroupStudent = null;
     ['student-management', 'group-section', 'stamp-section', 'jumprope-section'].forEach(id => document.getElementById(id).classList.add('hidden'));
 
@@ -2957,6 +2987,10 @@ window.showTab = function(tabName) {
         window.renderJumpRopeTab();
     }
     classroomUI?.updateNavigation();
+    if (tabName === 'volleyball') {
+        document.getElementById('volleyball-section').classList.remove('hidden');
+        volleyballUI?.render();
+    }
 }
 
 window.deleteStudent = function(studentNo) {
@@ -4431,4 +4465,9 @@ classroomUI = initClassroomUI({
         window.renderGroups();
         window.updateFloatingStopwatchBtn();
     }
+});
+
+volleyballUI = initVolleyball({
+    state: () => ({ className: currentClass, students: classData[currentClass] || [], data: volleyballData[currentClass] || { skills: {}, events: [] } }),
+    save: data => { if (currentClass) { volleyballData[currentClass] = data; saveData(); } }
 });
