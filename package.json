@@ -2,8 +2,9 @@
   "name": "class-management",
   "private": true,
   "scripts": {
-    "test": "node --test tests/class-utils.test.mjs tests/mobile-ui.test.mjs && node tests/static-check.mjs",
-    "test:ui": "node tests/mobile-browser.mjs"
+    "test": "node --test tests/class-utils.test.mjs tests/mobile-ui.test.mjs tests/volleyball.test.mjs && node tests/static-check.mjs",
+    "test:ui": "node tests/mobile-browser.mjs",
+    "test:volleyball-ui": "node tests/volleyball-browser.mjs"
   }
 }
 
