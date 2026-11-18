@@ -83,7 +83,7 @@ export function standings(event) {
     }
     return rows.sort((a,b)=>b.points-a.points || (b.won-b.lost)-(a.won-a.lost) || b.won-a.won || a.id-b.id);
 }
-export function bracket(teams, scores={}) {
+function seededBracket(teams, scores={}) {
     let size=2;while(size<teams.length)size*=2;
     // Standard seed placement spreads byes instead of creating empty matches.
     let seeds=[1,2];while(seeds.length<size){const next=seeds.length*2+1;seeds=seeds.flatMap(s=>[s,next-s]);}
@@ -104,6 +104,37 @@ export function bracket(teams, scores={}) {
     }
     return rounds;
 }
+export function bracket(teams, scores={}) {
+    const rounds = [];
+    let slots = teams.map(team => team.id);
+    while (slots.length > 1) {
+        const round = [];
+        for (let i = 0; i < slots.length; i += 2) {
+            const a = slots[i], b = slots[i + 1] ?? null;
+            const bye = i + 1 === slots.length;
+            const key = rounds.length + '-' + round.length;
+            const saved = scores[key];
+            const playable = a != null && b != null;
+            const score = playable && saved?.a === a && saved.b === b ? saved.value : '';
+            let winner = bye ? a : null;
+            if (score) {
+                const [left, right] = parseSets(score);
+                winner = left > right ? a : b;
+            }
+            round.push({key, a, b, bye, playable, score, winner});
+        }
+        rounds.push(round);
+        slots = round.map(match => match.winner);
+    }
+    return rounds;
+}
+
+function eventBracket(event) {
+    return event.bracketVersion === 2 || !Object.keys(event.scores || {}).length
+        ? bracket(event.teams, event.scores)
+        : seededBracket(event.teams, event.scores);
+}
+
 export function initVolleyball({state,save}) {
     const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
     const btn=(text,fn)=>{const b=node('button',text,'ui-secondary');b.type='button';b.onclick=fn;return b;};
@@ -146,7 +177,7 @@ export function initVolleyball({state,save}) {
         [...teamCount.options].forEach(option => { option.textContent = `${option.value}팀`; });
         teamCount.value = '4';
         setup.append(title,controls,node('p','선택한 팀 개수에 맞춰 참석 학생 전원을 편성합니다. 팀별 인원과 성별 인원 차이를 1명 이내로 맞추고, 언더핸드·오버핸드 능력을 각각 고려합니다. 미입력 능력은 0으로 계산합니다. 팀은 생성 당시 명단으로 보관됩니다.'));
-        setup.append(btn('균형 팀 편성 및 대진표 생성',()=>guard(()=>{const fresh=structuredClone(state().data);fresh.events ||= [];fresh.skills ||= {};const teams=makeTeams(state().students,fresh.skills,Number(teamCount.value),gender.value);const event={id:crypto.randomUUID(),name:title.value.trim()||'빅발리볼',createdAt:new Date().toISOString(),mode:mode.value,teams,matches:makeLeague(teams),scores:{}};fresh.events.push(event);activeEvent=event.id;commit(fresh);})));panel.append(setup);
+        setup.append(btn('균형 팀 편성 및 대진표 생성',()=>guard(()=>{const fresh=structuredClone(state().data);fresh.events ||= [];fresh.skills ||= {};const teams=makeTeams(state().students,fresh.skills,Number(teamCount.value),gender.value);const event={id:crypto.randomUUID(),name:title.value.trim()||'빅발리볼',createdAt:new Date().toISOString(),mode:mode.value,teams,bracketVersion:2,matches:makeLeague(teams),scores:{}};fresh.events.push(event);activeEvent=event.id;commit(fresh);})));panel.append(setup);
         if(!data.events.length)return;
         const chooser=select([], '대회 선택');data.events.slice().reverse().forEach(e=>{const o=node('option',`${e.name} · ${e.mode}`);o.value=e.id;chooser.append(o);});if(!data.events.some(e=>e.id===activeEvent))activeEvent=data.events.at(-1).id;chooser.value=activeEvent;chooser.onchange=()=>{activeEvent=chooser.value;render();};panel.append(chooser);
         const event=data.events.find(e=>e.id===activeEvent), content=node('div');content.append(node('h3',`${event.name} · ${event.mode}`));
@@ -179,12 +210,13 @@ export function initVolleyball({state,save}) {
                     if(!latest || latest.a!==m.a || latest.b!==m.b || latest.score!==m.score) throw new Error('다른 화면에서 결과가 변경되었습니다. 탭을 다시 열어 확인하세요.');
                     latest.score=value;
                 } else {
-                    const latest=bracket(e.teams,e.scores).flat().find(item=>item.key===m.key);
+                    const latest=eventBracket(e).flat().find(item=>item.key===m.key);
                     if(!latest?.playable || latest.a!==m.a || latest.b!==m.b || latest.score!==m.score)throw new Error('진출팀 또는 결과가 변경되었습니다. 탭을 다시 열어 확인하세요.');
                     const round=Number(m.key.split('-')[0]);
                     const later=Object.keys(e.scores).filter(k=>Number(k.split('-')[0])>round);
                     if(later.length && value!==m.score && !confirm('결과 변경 시 이후 라운드의 결과를 초기화합니다. 계속할까요?'))return;
                     if(value!==m.score)later.forEach(k=>delete e.scores[k]);
+                    if(!Object.keys(e.scores).length)e.bracketVersion=2;
                     if(value)e.scores[m.key]={a:m.a,b:m.b,value};else delete e.scores[m.key];
                 }
                 scoreDrafts.delete(key);commit(fresh);
@@ -204,7 +236,7 @@ export function initVolleyball({state,save}) {
                 block.append(courts);content.append(block);
             });
         }else{
-            const rounds=bracket(event.teams,event.scores),winner=rounds.at(-1)[0].winner;
+            const rounds=eventBracket(event),winner=rounds.at(-1)[0].winner;
             const chart=node('div',undefined,'vb-bracket-scroll');
             const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
             const width=960,height=rounds.length*150+100;
