@@ -1,11 +1,11 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261117-2';
-import { initClassroomUI } from './mobile-ui.mjs?v=20261117-2';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261118-1';
+import { initClassroomUI } from './mobile-ui.mjs?v=20261118-1';
 let classroomUI = null;
-import { initVolleyball } from './volleyball.mjs?v=20261117-2';
-import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261117-2';
+import { initVolleyball } from './volleyball.mjs?v=20261118-1';
+import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261118-1';
 let volleyballData = {};
 let volleyballUI = null;
 
@@ -3754,7 +3754,7 @@ function renderPenaltyIndicator(student) {
         </button>`;
 }
 
-const expandedGroupPanels = new Set();
+const collapsedGroupPanels = new Set();
 function groupPanelKey(groupId) {
     return JSON.stringify([currentClass, currentGroupMode, Number(groupId)]);
 }
@@ -3763,9 +3763,9 @@ window.toggleGroupPanel = function(event, groupId) {
     const panel = event.currentTarget.closest('.group-area');
     if (!panel) return;
     const key = groupPanelKey(groupId);
-    const expanded = !expandedGroupPanels.has(key);
-    if (expanded) expandedGroupPanels.add(key);
-    else expandedGroupPanels.delete(key);
+    const expanded = collapsedGroupPanels.has(key);
+    if (expanded) collapsedGroupPanels.delete(key);
+    else collapsedGroupPanels.add(key);
     panel.classList.toggle('is-expanded', expanded);
     event.currentTarget.setAttribute('aria-expanded', String(expanded));
     event.currentTarget.setAttribute('aria-label', groupId + '모둠 ' + (expanded ? '접기' : '전체 학생 펼치기'));
@@ -3833,7 +3833,7 @@ window.renderGroups = function() {
         const groupDrawnStyle = isGroupDrawn ? `ring-4 ${color.ring} transform scale-[1.02] shadow-lg` : '';
         
         html += `
-        <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area ${expandedGroupPanels.has(groupPanelKey(i)) ? 'is-expanded' : ''}"
+        <div class="${color.bg} border-[3px] border-slate-900 rounded-xl overflow-hidden flex flex-col transition-all duration-300 ${groupDrawnStyle} group-area ${!collapsedGroupPanels.has(groupPanelKey(i)) ? 'is-expanded' : ''}"
              data-group-id="${i}" 
              ondragover="window.handleDragOverGroup(event)" 
              ondragleave="window.handleDragLeaveGroup(event)"
@@ -3844,7 +3844,7 @@ window.renderGroups = function() {
                 
                 <h3 class="font-black text-base sm:text-xl ${color.text} flex items-center gap-2 whitespace-nowrap">
                     <span>${i}모둠</span>
-                    <button type="button" class="group-expand-toggle" onclick="window.toggleGroupPanel(event, ${i})" aria-controls="group-members-${i}" aria-expanded="${expandedGroupPanels.has(groupPanelKey(i))}" aria-label="${i}모둠 ${expandedGroupPanels.has(groupPanelKey(i)) ? '접기' : '전체 학생 펼치기'}">${expandedGroupPanels.has(groupPanelKey(i)) ? '▲' : '▼'}</button>
+                    <button type="button" class="group-expand-toggle" onclick="window.toggleGroupPanel(event, ${i})" aria-controls="group-members-${i}" aria-expanded="${!collapsedGroupPanels.has(groupPanelKey(i))}" aria-label="${i}모둠 ${!collapsedGroupPanels.has(groupPanelKey(i)) ? '접기' : '전체 학생 펼치기'}">${!collapsedGroupPanels.has(groupPanelKey(i)) ? '▲' : '▼'}</button>
                     <span class="rounded-full border border-white/80 bg-white/80 px-1.5 py-0.5 text-[10px] sm:text-xs font-black text-slate-700" title="남 ${presentBoys}명 · 여 ${presentGirls}명">참석 ${presentTotal}명</span>
                     <div class="flex items-center bg-white rounded shadow-sm overflow-hidden scale-90 sm:scale-100">
                         <button onclick="window.updateGroupScore(${i}, -1)" class="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">-</button>
@@ -3862,12 +3862,8 @@ window.renderGroups = function() {
                     let rankStr = "";
                     if (s.recordMs > 0 && s.attendance) {
                         let rank; let rankPrefix = "";
-                        if (currentGroupMode === 'gender') {
-                            rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
-                            rankPrefix = s.gender;
-                        } else {
-                            rank = validRecordsAll.indexOf(s.recordMs) + 1;
-                        }
+                        rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
+                        rankPrefix = s.gender;
                         rankStr = `<span class="text-blue-600 font-black text-[9px] sm:text-[10px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                     }
                     
@@ -3913,22 +3909,21 @@ window.renderGroups = function() {
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                          class="student-card relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                         
-                        ${attendanceBtnHtml}
-                        ${captainBtnHtml}
                         ${memberDrawnBadge}
                         
-                        <div class="flex items-center justify-center gap-1 pt-4 sm:pt-5 z-10 w-full px-0.5 min-w-0">
+                        <div class="group-student-heading flex items-center w-full min-w-0">
+                        ${attendanceBtnHtml}
                             <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                            ${penaltyCardsHtml}
+                            ${captainBtnHtml}${penaltyCardsHtml}
                         </div>
 
-                        <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
+                        <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                             <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
-                                볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
+                                <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                             </span>
-                            <span class="text-slate-300 text-[10px]">|</span>
+                            <span class="text-slate-300 text-[10px]">/</span>
                             <div class="flex items-center justify-center gap-0.5">
-                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">⚡${recText}</span>
+                                <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">${recText}</span>
                                 ${rankStr}
                             </div>
                         </div>
@@ -3978,12 +3973,8 @@ window.renderGroups = function() {
                 let rankStr = "";
                 if (s.recordMs > 0 && s.attendance) {
                     let rank; let rankPrefix = "";
-                    if (currentGroupMode === 'gender') {
-                        rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
+                    rank = (s.gender === '남' ? validRecordsMale : validRecordsFemale).indexOf(s.recordMs) + 1;
                         rankPrefix = s.gender;
-                    } else {
-                        rank = validRecordsAll.indexOf(s.recordMs) + 1;
-                    }
                     rankStr = `<span class="text-blue-600 font-black text-[9px] sm:text-[10px] leading-tight">(${rankPrefix}${rank}위)</span>`;
                 }
                 
@@ -4024,22 +4015,21 @@ window.renderGroups = function() {
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                      class="student-card w-[120px] sm:w-[150px] relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                     
-                    ${attendanceBtnHtml}
-                    ${captainBtnHtml}
                     ${memberDrawnBadge}
                     
-                    <div class="flex items-center justify-center gap-1 pt-4 sm:pt-5 z-10 w-full px-0.5 min-w-0">
+                    <div class="group-student-heading flex items-center w-full min-w-0">
+                        ${attendanceBtnHtml}
                         <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                        ${penaltyCardsHtml}
+                        ${captainBtnHtml}${penaltyCardsHtml}
                     </div>
 
-                    <div class="flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
+                    <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                         <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
-                            볼센스: <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
+                            <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                         </span>
-                        <span class="text-slate-300 text-[10px]">|</span>
+                        <span class="text-slate-300 text-[10px]">/</span>
                         <div class="flex items-center justify-center gap-0.5">
-                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">⚡${recText}</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono font-bold text-slate-700 tracking-tighter whitespace-nowrap">${recText}</span>
                             ${rankStr}
                         </div>
                     </div>

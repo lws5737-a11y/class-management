@@ -10,15 +10,45 @@ export function makeTeams(students, skills, size, gender) {
     const pool = students.filter(s => s.attendance && (gender === '혼성' || s.gender === gender));
     const count = Math.floor(pool.length / size);
     if (count < 2) throw new Error(`참석 학생이 최소 ${size * 2}명 필요합니다.`);
-    const teams = Array.from({ length: count }, (_, i) => ({ id: i + 1, name: `${i + 1}팀`, members: [], power: 0 }));
-    const strength = s => Number(skills[s.no]?.under || 0) + Number(skills[s.no]?.over || 0);
-    // Largest teams differ by at most one player. Distribute each gender by strength.
-    const buckets = gender === '혼성' ? ['남','여'].map(g => pool.filter(s => s.gender === g)) : [pool];
-    for (const bucket of buckets) for (const student of bucket.sort((a,b) => strength(b)-strength(a) || a.no-b.no)) {
-        const target = [...teams].sort((a,b) => a.members.length-b.members.length || a.power-b.power || a.id-b.id)[0];
-        target.members.push({ no: student.no, name: student.name, gender: student.gender }); target.power += strength(student);
+    const value = (s, key) => Math.max(0, Number(skills[s.no]?.[key]) || 0);
+    const scales = ['under','over'].map(key => Math.max(1, pool.reduce((sum,s) => sum + value(s,key),0) / count));
+    const ability = s => [value(s,'under') / scales[0], value(s,'over') / scales[1]];
+    const teams = Array.from({length:count}, (_,i) => ({id:i+1,name:`${i+1}팀`,members:[],totals:[0,0]}));
+    const score = t => t.totals.reduce((sum,x) => sum+x*x,0);
+    const buckets = [...new Set(pool.map(s=>s.gender))].map(g=>pool.filter(s=>s.gender===g));
+    for (const bucket of buckets) {
+        bucket.sort((a,b) => Math.max(...ability(b))-Math.max(...ability(a)) || a.no-b.no);
+        for (const student of bucket) {
+            const power = ability(student);
+            const sameGender = t => t.members.filter(s=>s.gender===student.gender).length;
+            const candidates = [...teams].sort((a,b) => sameGender(a)-sameGender(b)
+                || a.members.length-b.members.length
+                || power.reduce((sum,x,k)=>sum+2*x*(a.totals[k]-b.totals[k]),0) || a.id-b.id);
+            const team = candidates[0];
+            team.members.push(student);
+            power.forEach((x,k)=>team.totals[k]+=x);
+        }
     }
-    return teams;
+    // Same-gender swaps preserve team sizes and gender quotas while balancing each skill separately.
+    for(let pass=0;pass<100;pass++) {
+        let best=null, improvement=1e-9;
+        for(let i=0;i<count;i++) for(let j=i+1;j<count;j++) {
+            const a=teams[i],b=teams[j],before=score(a)+score(b);
+            for(let x=0;x<a.members.length;x++) for(let y=0;y<b.members.length;y++) {
+                if(a.members[x].gender!==b.members[y].gender)continue;
+                const p=ability(a.members[x]),q=ability(b.members[y]);
+                const after=p.reduce((sum,_,k)=>sum+(a.totals[k]-p[k]+q[k])**2+(b.totals[k]-q[k]+p[k])**2,0);
+                if(before-after>improvement){improvement=before-after;best={a,b,x,y,p,q};}
+            }
+        }
+        if(!best)break;
+        const {a,b,x,y,p,q}=best;
+        [a.members[x],b.members[y]]=[b.members[y],a.members[x]];
+        p.forEach((_,k)=>{a.totals[k]+=q[k]-p[k];b.totals[k]+=p[k]-q[k];});
+    }
+    return teams.map(t=>({id:t.id,name:t.name,
+        members:t.members.map(s=>({no:s.no,name:s.name,gender:s.gender})),
+        power:t.members.reduce((sum,s)=>sum+value(s,'under')+value(s,'over'),0)}));
 }
 export function makeLeague(teams) {
     const matches = [];

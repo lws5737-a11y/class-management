@@ -241,3 +241,21 @@ body:has(#app-container.hidden) #floating-group-btn-container { display: none !i
         overflow: visible; max-height: none;
     }
 }
+
+/* Compact two-row group cards, including unassigned students. */
+#group-result .group-area .student-card { padding: 4px !important; min-height: 0 !important; }
+#group-result .group-area .student-card .group-student-heading {
+    display: flex; flex-wrap: nowrap; padding: 0; gap: 3px; min-height: 28px;
+}
+#group-result .group-area .student-card .group-student-heading > button {
+    position: static; flex: 0 0 auto; width: 24px; height: 26px;
+    min-width: 24px; min-height: 26px; margin: 0; font-size: 11px;
+}
+#group-result .group-area .student-card .group-student-heading > span {
+    flex: 1; min-width: 0; font-size: 13px; line-height: 1.3;
+}
+#group-result .group-area .student-card .group-student-abilities {
+    display: flex; flex-wrap: nowrap; white-space: nowrap; gap: 2px;
+    padding: 0; margin: 2px 0 0; min-height: 20px;
+}
+#group-result .group-area .student-card .group-student-abilities span { font-size: 10px; }

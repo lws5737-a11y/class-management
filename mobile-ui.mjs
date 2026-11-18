@@ -166,20 +166,7 @@ export function initClassroomUI({ getState, clearSelection }) {
         if (activeKey) [...list.querySelectorAll('[data-focus-key]')].find(b => b.dataset.focusKey === activeKey)?.focus({ preventScroll: true });
         document.getElementById('roster-clear-selection').disabled = !students.some(s => s.selected);
     }
-    function enhanceGroups() {
-        document.querySelectorAll('#group-result .student-card[data-student-no]').forEach(card => {
-            if (card.querySelector('.ui-card-more')) return;
-            const no = Number(card.dataset.studentNo);
-            const name = getState().students.find(s => s.no === no)?.name || '';
-            const more = button('이동·더보기', () => {}, 'ui-card-more');
-            more.setAttribute('aria-label', `${name} 이동·기록·메모`);
-            more.addEventListener('click', event => { event.stopPropagation(); openStudent(no); });
-            more.addEventListener('touchstart', event => event.stopPropagation(), { passive: true });
-            more.addEventListener('pointerdown', event => event.stopPropagation());
-            more.draggable = false;
-            card.append(more);
-        });
-    }
+    function enhanceGroups() {}
     function updateNavigation() {
         const { currentTab, currentClass } = getState();
         document.body.dataset.tab = currentTab;
