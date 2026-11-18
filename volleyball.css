@@ -41,3 +41,29 @@
     #vb-print-area p { margin: 6px 0; line-height: 1.6; }
     #vb-print-area { overflow: visible; }
 }
+
+.vb-team-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:18px 0; }
+.vb-team-card { border:1px solid #dce4ee; border-top:5px solid var(--team-color); border-radius:14px; padding:14px; background:#fff; break-inside:avoid; }
+.vb-team-card h3 { color:var(--team-color); margin:0 0 6px; font-size:18px; font-weight:900; }
+.vb-member-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.vb-member-chips span { background:#f1f5f9; color:#172b4d; border-radius:8px; padding:6px 9px; font-size:14px; font-weight:700; }
+.vb-wave { padding:12px; border:1px solid #dce4ee; border-radius:14px; background:#f1f5f9; margin:12px 0; break-inside:avoid; }
+.vb-wave h4 { font-weight:800; margin:0 0 8px; color:#334155; }
+.vb-courts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.vb-courts > div { min-width:0; }
+.vb .vb-courts .vb-match span { min-width:0; flex-basis:100%; }
+.vb-bracket-scroll { overflow-x:auto; border:1px solid #dce4ee; border-radius:16px; background:#f8fafc; margin:18px 0; }
+.vb-bracket-scroll svg { display:block; width:100%; min-width:800px; height:auto; }
+@media screen and (max-width:480px) {
+    .vb-team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .vb-team-card { padding:10px; }
+    .vb-courts { gap:6px; }
+    .vb .vb-courts .vb-match { padding:8px; }
+    .vb .vb-courts button { width:100%; padding:8px 3px; font-size:12px; }
+}
+@media print {
+    #vb-print-area .vb-bracket-scroll { overflow:visible; break-inside:avoid; }
+    #vb-print-area .vb-bracket-scroll svg { min-width:0; width:100%; }
+    #vb-print-area .vb-team-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    #vb-print-area .vb-courts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
