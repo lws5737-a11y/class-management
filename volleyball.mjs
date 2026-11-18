@@ -5,11 +5,10 @@ export function parseSets(value) {
     if (a === b || Math.max(a, b) > 9) throw new Error('동점은 입력할 수 없으며 세트 수는 0~9입니다.');
     return [a, b];
 }
-export function makeTeams(students, skills, size, gender) {
-    if (![4,5,6,7].includes(size) || !['남','여','혼성'].includes(gender)) throw new Error('편성 인원과 성별을 확인하세요.');
+export function makeTeams(students, skills, count, gender) {
+    if (!Number.isInteger(count) || count < 2 || count > 8 || !['남','여','혼성'].includes(gender)) throw new Error('팀 개수(2~8팀)와 성별을 확인하세요.');
     const pool = students.filter(s => s.attendance && (gender === '혼성' || s.gender === gender));
-    const count = Math.floor(pool.length / size);
-    if (count < 2) throw new Error(`참석 학생이 최소 ${size * 2}명 필요합니다.`);
+    if (pool.length < count) throw new Error(`${count}팀을 만들려면 선택한 성별의 참석 학생이 최소 ${count}명 필요합니다.`);
     const value = (s, key) => Math.max(0, Number(skills[s.no]?.[key]) || 0);
     const scales = ['under','over'].map(key => Math.max(1, pool.reduce((sum,s) => sum + value(s,key),0) / count));
     const ability = s => [value(s,'under') / scales[0], value(s,'over') / scales[1]];
@@ -124,9 +123,11 @@ export function initVolleyball({state,save}) {
         const setup=node('div',undefined,'vb-card');setup.append(node('h3','새 대회 만들기'));
         const title=node('input');title.placeholder='대회 이름';title.value=`빅발리볼 ${new Date().toLocaleDateString('ko-KR')}`;title.setAttribute('aria-label','대회 이름');
         const select=(values,label)=>{const s=node('select');s.setAttribute('aria-label',label);values.forEach(v=>{const o=node('option',v);o.value=v;s.append(o);});return s;};
-        const size=select([4,5,6,7],'팀 기준 인원'),gender=select(['혼성','남','여'],'성별'),mode=select(['리그전','토너먼트전'],'경기 방식');const controls=node('div',undefined,'vb-tools');controls.append(size,gender,mode);
-        setup.append(title,controls,node('p','인원은 기준값이며 남는 학생은 팀별 인원 차이가 1명 이내가 되도록 배분합니다. 미입력 능력은 0으로 계산합니다. 팀은 생성 당시 명단으로 보관됩니다.'));
-        setup.append(btn('균형 팀 편성 및 대진표 생성',()=>guard(()=>{const fresh=structuredClone(state().data);fresh.events ||= [];fresh.skills ||= {};const teams=makeTeams(state().students,fresh.skills,Number(size.value),gender.value);const event={id:crypto.randomUUID(),name:title.value.trim()||'빅발리볼',createdAt:new Date().toISOString(),mode:mode.value,teams,matches:makeLeague(teams),scores:{}};fresh.events.push(event);activeEvent=event.id;commit(fresh);})));panel.append(setup);
+        const teamCount=select([2,3,4,5,6,7,8],'팀 개수'),gender=select(['혼성','남','여'],'성별'),mode=select(['리그전','토너먼트전'],'경기 방식');const controls=node('div',undefined,'vb-tools');controls.append(teamCount,gender,mode);
+        [...teamCount.options].forEach(option => { option.textContent = `${option.value}팀`; });
+        teamCount.value = '4';
+        setup.append(title,controls,node('p','선택한 팀 개수에 맞춰 참석 학생 전원을 편성합니다. 팀별 인원과 성별 인원 차이를 1명 이내로 맞추고, 언더핸드·오버핸드 능력을 각각 고려합니다. 미입력 능력은 0으로 계산합니다. 팀은 생성 당시 명단으로 보관됩니다.'));
+        setup.append(btn('균형 팀 편성 및 대진표 생성',()=>guard(()=>{const fresh=structuredClone(state().data);fresh.events ||= [];fresh.skills ||= {};const teams=makeTeams(state().students,fresh.skills,Number(teamCount.value),gender.value);const event={id:crypto.randomUUID(),name:title.value.trim()||'빅발리볼',createdAt:new Date().toISOString(),mode:mode.value,teams,matches:makeLeague(teams),scores:{}};fresh.events.push(event);activeEvent=event.id;commit(fresh);})));panel.append(setup);
         if(!data.events.length)return;
         const chooser=select([], '대회 선택');data.events.slice().reverse().forEach(e=>{const o=node('option',`${e.name} · ${e.mode}`);o.value=e.id;chooser.append(o);});if(!data.events.some(e=>e.id===activeEvent))activeEvent=data.events.at(-1).id;chooser.value=activeEvent;chooser.onchange=()=>{activeEvent=chooser.value;render();};panel.append(chooser);
         const event=data.events.find(e=>e.id===activeEvent), content=node('div');content.append(node('h3',`${event.name} · ${event.mode}`));
