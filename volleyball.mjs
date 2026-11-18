@@ -185,23 +185,27 @@ export function initVolleyball({state,save}) {
         const teamGrid=node('div',undefined,'vb-team-grid');
         for(const [i,team] of event.teams.entries()){
             const card=node('section',undefined,'vb-team-card');card.style.setProperty('--team-color',['#2563eb','#db2777','#059669','#d97706','#7c3aed','#0891b2','#dc2626','#475569'][i%8]);
-            card.append(node('h3',team.name),node('p',`${team.members.length}명 · 남 ${team.members.filter(s=>s.gender==='남').length} / 여 ${team.members.filter(s=>s.gender==='여').length}`));
+            const heading=node('h3',team.name);
+            const rename=btn('팀명 수정',()=>guard(()=>{
+                const entered=prompt('팀 이름을 입력하세요.',team.name);
+                if(entered===null)return;
+                const nextName=entered.trim();
+                if(!nextName)throw new Error('팀 이름을 입력하세요.');
+                if(nextName===team.name)return;
+                const fresh=structuredClone(state().data);
+                const target=fresh.events.find(item=>item.id===event.id)?.teams.find(item=>item.id===team.id);
+                if(!target || target.name!==team.name)throw new Error('팀 정보가 변경되었습니다. 화면을 새로고침하세요.');
+                target.name=nextName;
+                commit(fresh);
+            }));
+            card.append(heading,rename,node('p',`${team.members.length}명 · 남 ${team.members.filter(s=>s.gender==='남').length} / 여 ${team.members.filter(s=>s.gender==='여').length}`));
             const names=node('div',undefined,'vb-member-chips');
             team.members.forEach(s=>names.append(node('span',s.name)));
             card.append(names);teamGrid.append(card);
         }
         content.append(teamGrid);
         const name=id=>event.teams.find(t=>t.id===id)?.name||'진출 대기';
-        function match(m,index) {
-            const row=node('div',undefined,'vb-match');
-            const key = JSON.stringify([className,event.id,m.key ?? index]);
-            row.append(node('span',`${name(m.a)} : ${m.bye && !m.b ? '부전승' : name(m.b)}${m.winner ? ' → '+name(m.winner)+' 진출' : ''}`),node('strong',m.score|| (m.bye ? '자동 진출' : '미진행')));
-            if(m.playable===false||m.bye)return row;
-            const input=node('input'); input.type='text'; input.placeholder='3:1';
-            input.value=scoreDrafts.get(key) ?? m.score ?? '';
-            input.setAttribute('aria-label',`${name(m.a)} 대 ${name(m.b)} 세트 스코어`);
-            input.addEventListener('input',()=>{ if(input.value===(m.score||''))scoreDrafts.delete(key);else scoreDrafts.set(key,input.value); });
-            const storeScore = value => guard(()=>{
+            function saveMatchScore(m,index,key,value) { return guard(()=>{
                 if(value) { const [a,b]=parseSets(value);value=`${a}:${b}`; }
                 const fresh=structuredClone(state().data), e=fresh.events.find(e=>e.id===event.id);
                 if(!e)throw new Error('대회가 삭제되었습니다.');
@@ -220,7 +224,17 @@ export function initVolleyball({state,save}) {
                     if(value)e.scores[m.key]={a:m.a,b:m.b,value};else delete e.scores[m.key];
                 }
                 scoreDrafts.delete(key);commit(fresh);
-            });
+            }); }
+        function match(m,index) {
+            const row=node('div',undefined,'vb-match');
+            const key = JSON.stringify([className,event.id,m.key ?? index]);
+            row.append(node('span',`${name(m.a)} : ${m.bye && !m.b ? '부전승' : name(m.b)}${m.winner ? ' → '+name(m.winner)+' 진출' : ''}`),node('strong',m.score|| (m.bye ? '자동 진출' : '미진행')));
+            if(m.playable===false||m.bye)return row;
+            const input=node('input'); input.type='text'; input.placeholder='3:1';
+            input.value=scoreDrafts.get(key) ?? m.score ?? '';
+            input.setAttribute('aria-label',`${name(m.a)} 대 ${name(m.b)} 세트 스코어`);
+            input.addEventListener('input',()=>{ if(input.value===(m.score||''))scoreDrafts.delete(key);else scoreDrafts.set(key,input.value); });
+            const storeScore = value => saveMatchScore(m,index,key,value);
             row.append(input,btn('결과 저장',()=>storeScore(input.value.trim())));
             if(m.score)row.append(btn('결과 지우기',()=>{if(confirm('이 경기 결과를 지울까요?'))storeScore('');}));
             return row;
@@ -240,7 +254,7 @@ export function initVolleyball({state,save}) {
             const chart=node('div',undefined,'vb-bracket-scroll');
             const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
             const width=960,height=rounds.length*150+100;
-            svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('role','img');svg.setAttribute('aria-label','우승 트로피로 이어지는 토너먼트 대진표');
+            svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.setAttribute('role','group');svg.setAttribute('aria-label','우승 트로피로 이어지는 토너먼트 대진표');
             const draw=(tag,attrs,text)=>{const e=document.createElementNS(svg.namespaceURI,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));if(text!==undefined)e.textContent=text;svg.append(e);return e;};
             const pos=(r,j)=>({x:(j+.5)*width/rounds[r].length,y:height-75-r*150});
             rounds.forEach((round,r)=>round.forEach((m,j)=>{
@@ -254,9 +268,20 @@ export function initVolleyball({state,save}) {
                 draw('rect',{x:p.x-w/2,y:p.y-34,width:w,height:70,rx:12,fill:m.winner?'#fff7dc':'#fff',stroke:m.winner?'#e5a51c':'#b5c5d8','stroke-width':2});
                 const label=id=>id?name(id):(m.bye?'부전승':'진출 대기');
                 draw('text',{x:p.x,y:p.y-10,'text-anchor':'middle','font-size':15,'font-weight':700,fill:'#172b4d'},label(m.a)+' vs '+label(m.b));
-                draw('text',{x:p.x,y:p.y+14,'text-anchor':'middle','font-size':13,fill:'#53657e'},m.score|| (m.bye?'자동 진출':r===rounds.length-1?'결승':`${r+1}라운드`));
+                draw('text',{x:p.x,y:p.y+14,'text-anchor':'middle','font-size':13,fill:'#53657e'},m.score || (m.bye?'자동 진출':m.playable?'결과 입력':'진출 대기'));
+                if(m.playable){
+                    const hit=draw('rect',{x:p.x-w/2,y:p.y-34,width:w,height:70,rx:12,fill:'transparent',role:'button',tabindex:0,'aria-label':label(m.a)+' 대 '+label(m.b)+' 결과 입력'});
+                    hit.style.cursor='pointer';
+                    const edit=()=>{
+                        const key=JSON.stringify([className,event.id,m.key]);
+                        const value=prompt(label(m.a)+' 대 '+label(m.b)+' 세트 스코어 (예: 3:1)',scoreDrafts.get(key) ?? m.score ?? '');
+                        if(value!==null && value.trim())saveMatchScore(m,undefined,key,value.trim());
+                    };
+                    hit.addEventListener('click',edit);
+                    hit.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();edit();}});
+                }
             }));
-            chart.append(svg);content.append(chart,node('p','대진표는 옆으로 스크롤해 볼 수 있습니다. 라운드가 끝난 뒤 다음 라운드를 진행하세요. 부전승은 코트를 사용하지 않습니다.'));
+            chart.append(svg);content.append(chart,node('p','경기 칸을 누르면 세트 스코어를 입력하거나 수정할 수 있습니다. 라운드가 끝난 뒤 다음 라운드를 진행하세요. 부전승은 코트를 사용하지 않습니다.'));
             rounds.forEach((round,r)=>{
                 content.append(node('h3',r===rounds.length-1?'결승':`${r+1}라운드`));
                 const games=round.filter(m=>!m.bye);
