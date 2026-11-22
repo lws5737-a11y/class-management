@@ -1,11 +1,11 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261122-1';
-import { initClassroomUI } from './mobile-ui.mjs?v=20261122-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261122-2';
+import { initClassroomUI } from './mobile-ui.mjs?v=20261122-2';
 let classroomUI = null;
-import { initVolleyball } from './volleyball.mjs?v=20261122-1';
-import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261122-1';
+import { initVolleyball } from './volleyball.mjs?v=20261122-2';
+import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261122-2';
 let volleyballData = {};
 let volleyballUI = null;
 
@@ -3912,11 +3912,10 @@ window.renderGroups = function() {
                         
                         <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
-                            <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                            ${penaltyCardsHtml}
+                            <div class="group-name-card"><span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>${penaltyCardsHtml}</div>${captainBtnHtml}
                         </div>
 
-                        <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">${captainBtnHtml}
+                        <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                             <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                                 <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                             </span>
@@ -4018,11 +4017,10 @@ window.renderGroups = function() {
                     
                     <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
-                        <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                        ${penaltyCardsHtml}
+                        <div class="group-name-card"><span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>${penaltyCardsHtml}</div>${captainBtnHtml}
                     </div>
 
-                    <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">${captainBtnHtml}
+                    <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
                         <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                             <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                         </span>
