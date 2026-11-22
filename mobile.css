@@ -260,4 +260,7 @@ body:has(#app-container.hidden) #floating-group-btn-container { display: none !i
     padding: 0; margin: 2px 0 0; min-height: 20px;
 }
 #group-result .group-area .student-card .group-student-abilities span { font-size: 10px; }
-#group-result .group-student-abilities > button { position: static; flex-shrink: 0; width: 20px; height: 20px; min-width: 20px; min-height: 20px; }
+#group-result .group-name-card { display: flex; align-items: center; justify-content: center; gap: 3px; flex: 1; min-width: 0; }
+#group-result .group-name-card > span { min-width: 0; overflow-wrap: anywhere; font-size: 13px; line-height: 1.3; }
+#group-result .group-name-card > button[data-penalty-level] { position: static; flex: 0 0 18px; width: 18px; min-width: 18px; height: 26px; min-height: 26px; margin: 0; }
+#group-result .group-student-heading > button[onclick*="toggleCaptain"] { width: 20px; min-width: 20px; margin-left: auto; }
