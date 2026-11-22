@@ -1,11 +1,11 @@
 import { auth, db, provider, firestorePersistenceReady, firestorePersistenceState } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261118-1';
-import { initClassroomUI } from './mobile-ui.mjs?v=20261118-1';
+import { applyRosterOverrides, buildBalancedTeamPlan, canDesignateCaptain, drawAcrossCycles, enforceCaptainLimits, getCaptainLimit, normalizeClassIdentity, parseRosterTable, parseStructuredJson, sortStudentsForGroupDisplay, sortStudentsForGroupingPriority } from './class-utils.mjs?v=20261122-1';
+import { initClassroomUI } from './mobile-ui.mjs?v=20261122-1';
 let classroomUI = null;
-import { initVolleyball } from './volleyball.mjs?v=20261118-4';
-import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261118-1';
+import { initVolleyball } from './volleyball.mjs?v=20261122-1';
+import { volleyballSettingsRows, readVolleyballSettings, restoreVolleyball } from './volleyball-backup.mjs?v=20261122-1';
 let volleyballData = {};
 let volleyballUI = null;
 
@@ -667,7 +667,6 @@ window.handleTouchMove = function(e) {
         const studentCard = elemBelow.closest('.student-card[data-student-no]');
         if (studentCard && Number(studentCard.dataset.studentNo) !== Number(window.draggedStudentNo)) {
             studentCard.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
-            return;
         }
         const groupArea = elemBelow.closest('.group-area');
         if (groupArea) {
@@ -776,7 +775,6 @@ window.handleStudentDropLogic = function(draggedNo, targetNo) {
     normalizeGroupDisplayOrders(students, currentGroupMode);
     const sourceGroup = draggedStudent[groupKey] ?? null;
     const targetGroup = targetStudent[groupKey] ?? null;
-    if (sourceGroup === targetGroup) return;
 
     const sourceOrder = draggedStudent[orderKey];
     const targetOrder = targetStudent[orderKey];
@@ -784,7 +782,7 @@ window.handleStudentDropLogic = function(draggedNo, targetNo) {
     targetStudent[groupKey] = sourceGroup;
     draggedStudent[orderKey] = targetOrder;
     targetStudent[orderKey] = sourceOrder;
-    resetRandomDrawHistoryForGroups(students, currentGroupMode, [sourceGroup, targetGroup]);
+    if (sourceGroup !== targetGroup) resetRandomDrawHistoryForGroups(students, currentGroupMode, [sourceGroup, targetGroup]);
     clearDropStyles();
     normalizeGroupCaptains(currentGroupMode);
     saveData();
@@ -840,6 +838,7 @@ window.handleDragOverStudent = function(e) {
     e.dataTransfer.dropEffect = 'move';
     clearDropStyles();
     e.currentTarget.classList.add('drop-target-active', 'ring-4', 'ring-red-500', 'scale-110', 'z-30');
+    e.currentTarget.closest('.group-area')?.classList.add('drop-target-active');
 };
 
 window.handleDropOnStudent = function(e, targetStudentNo) {
@@ -2210,7 +2209,7 @@ window.cyclePenaltyCard = function(studentNo) {
     const student = classData[currentClass].find(s => s.no === studentNo);
     if (student) {
         normalizePenaltyCardState(student);
-        student.penaltyCard = (student.penaltyCard + 1) % 4;
+        student.penaltyCard = student.penaltyCard < 2 ? 2 : student.penaltyCard === 2 ? 3 : 0;
         if (student.penaltyCard === 1) window.showPenaltyCard('verbal');
         else if (student.penaltyCard === 2) window.showPenaltyCard('yellow');
         else if (student.penaltyCard === 3) window.showPenaltyCard('red');
@@ -3749,8 +3748,8 @@ function renderPenaltyIndicator(student) {
     return `
         <button type="button" data-penalty-level="${level}" class="shrink-0 w-5 h-6 sm:w-6 sm:h-7 rounded-[3px] border-2 ${cardStyle} flex items-center justify-center text-[11px] sm:text-xs font-black leading-none hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onclick="event.stopPropagation(); window.cyclePenaltyCard(${student.no})"
-                title="입경고 → 옐로카드 → 레드카드 → 해제" aria-label="현재 ${labels[level]}. 다음 경고 단계로 변경">
-            ${level}
+                title="옐로카드 → 레드카드 → 해제" aria-label="${escapeHTML(student.name)} 카드: 현재 ${labels[level]}. ${level < 2 ? '옐로카드 부여' : level === 2 ? '레드카드 부여' : '카드 해제'}">
+            <span aria-hidden="true">▯</span>
         </button>`;
 }
 
@@ -3914,10 +3913,10 @@ window.renderGroups = function() {
                         <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
                             <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                            ${captainBtnHtml}${penaltyCardsHtml}
+                            ${penaltyCardsHtml}
                         </div>
 
-                        <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
+                        <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">${captainBtnHtml}
                             <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                                 <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                             </span>
@@ -4020,10 +4019,10 @@ window.renderGroups = function() {
                     <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
                         <span class="font-black text-sm sm:text-base leading-tight whitespace-normal break-words min-w-0 text-center ${!s.attendance ? 'line-through opacity-60' : ''}">${escapeHTML(s.name)}</span>
-                        ${captainBtnHtml}${penaltyCardsHtml}
+                        ${penaltyCardsHtml}
                     </div>
 
-                    <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">
+                    <div class="group-student-abilities flex items-center justify-center gap-1.5 w-full bg-white/70 rounded px-1 py-0.5 sm:py-1 border border-white/50 mt-0.5 sm:mt-1 shadow-inner flex-wrap">${captainBtnHtml}
                         <span class="text-[9px] sm:text-[10px] font-bold text-slate-600 tracking-tighter whitespace-nowrap flex items-center">
                             <span class="ml-0.5 text-[10px] sm:text-xs">${bsEmoji}</span>
                         </span>

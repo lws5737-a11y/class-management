@@ -60,7 +60,7 @@ body.sheet-open { overflow: hidden; }
 .ui-toast { position: fixed; left: 50%; bottom: calc(var(--ui-nav-height) + 20px + env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; background: #172b4d; color: #fff; border-radius: 14px; width: max-content; max-width: 90vw; font-size: 13px; z-index: 600; opacity: 0; pointer-events: none; transition: opacity .15s; }
 .ui-toast.is-visible { opacity: 1; }
 .ui-card-more { min-height: 36px; width: 100%; margin-top: 6px; border-top: 1px solid #b6c7dc; font-size: 11px; font-weight: 700; color: #304a70; }
-#group-result [data-penalty-level="0"] { display: none; }
+#group-result [data-penalty-level="0"] { display: flex; }
 #group-result [data-penalty-level]:not([data-penalty-level="0"]) { min-width: 32px; min-height: 32px; }
 .ui-live-tools #jumprope-live-tools { margin: 0; padding: 0 12px 12px; }
 body:not([data-tab="student"]):not([data-tab="group"]) #floating-group-btn-container,
@@ -243,6 +243,7 @@ body:has(#app-container.hidden) #floating-group-btn-container { display: none !i
 }
 
 /* Compact two-row group cards, including unassigned students. */
+.group-area.drop-target-active { outline: 3px solid #3b82f6; outline-offset: 2px; background-color: #eff6ff !important; }
 #group-result .group-area .student-card { padding: 4px !important; min-height: 0 !important; }
 #group-result .group-area .student-card .group-student-heading {
     display: flex; flex-wrap: nowrap; padding: 0; gap: 3px; min-height: 28px;
@@ -259,3 +260,4 @@ body:has(#app-container.hidden) #floating-group-btn-container { display: none !i
     padding: 0; margin: 2px 0 0; min-height: 20px;
 }
 #group-result .group-area .student-card .group-student-abilities span { font-size: 10px; }
+#group-result .group-student-abilities > button { position: static; flex-shrink: 0; width: 20px; height: 20px; min-width: 20px; min-height: 20px; }

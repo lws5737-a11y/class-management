@@ -7,7 +7,7 @@
     <title>스마트 체육수업 (동산초)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./style.css?v=20261122-1">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=400;700;900&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
@@ -31,7 +31,7 @@
         .print-hide { display: flex; }
         @media print { .print-hide { display: none !important; } }
     </style>
-    <link rel="stylesheet" href="./mobile.css?v=20261118-1">
+    <link rel="stylesheet" href="./mobile.css?v=20261122-1">
 </head>
 <body class="text-slate-800 overscroll-y-none select-none">
 
@@ -156,7 +156,6 @@
             <!-- 2. 모둠 탭 -->
             <div id="group-section" class="hidden space-y-4">
                 <div class="ui-page-heading"><div><p class="ui-eyebrow">TEAM PLAY</p><h2>모둠 활동</h2></div></div>
-                <p class="ui-hint">이름을 눌러 측정 선택 · ‘이동·더보기’로 이동/교환<br>길게 누른 뒤 끌어 옮기기도 가능합니다.</p>
                 <div class="bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 mb-3">
                         <button id="btn-mode-mixed2" onclick="window.setGroupMode('mixed2')" class="flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-bold text-xs bg-slate-100 hover:bg-slate-200 transition">혼성 2팀</button>
@@ -443,6 +442,6 @@
 
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-[150] hidden"></canvas>
 
-    <script type="module" src="app.js?v=20261118-4"></script>
+    <script type="module" src="app.js?v=20261122-1"></script>
 </body>
 </html>
