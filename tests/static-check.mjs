@@ -58,7 +58,7 @@ assert.ok(app.includes("if (!['mixed2', 'mixed3', 'mixed4', 'gender'].includes(m
 assert.ok(html.includes('<span class="block">번호</span>') && html.includes('(출석)'), '출석부 번호 제목이 번호(출석)으로 표시되지 않습니다.');
 assert.ok(html.includes('oninput="window.saveMemoImmediately()"') && !html.includes('onclick="window.saveMemo()"'), '메모 자동 저장 UI가 적용되지 않았습니다.');
 assert.ok(app.includes('window.dragOverUnassigned') && app.includes("closest?.('#unassigned-area')"), '미편성 드롭 중 자동 스크롤 방지 처리가 없습니다.');
-assert.ok(html.includes('href="./style.css"'), '모둠 드롭 영역 보완 스타일이 연결되지 않았습니다.');
+assert.match(html, /href="\.\/style\.css(?:\?v=[\w.-]+)?"/, '모둠 드롭 영역 보완 스타일이 연결되지 않았습니다.');
 assert.ok(firebaseConfig.includes('enableMultiTabIndexedDbPersistence') && firebaseConfig.includes('firestorePersistenceReady'), 'Firestore 오프라인 지속 저장 상태를 확인할 수 없습니다.');
 assert.ok(app.includes("const RECOVERY_DB_NAME = 'smart-class-manager-recovery'") && app.includes('persistRecoveryRecord(record)'), '앱 전체 데이터의 IndexedDB 복구본이 없습니다.');
 assert.ok(app.includes('persistEmergencyRecoveryBeforeExit') && app.includes("window.addEventListener('pagehide'"), '종료 직전 긴급 복구 저장이 없습니다.');

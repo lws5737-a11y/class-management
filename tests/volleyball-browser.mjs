@@ -74,12 +74,12 @@ try{
     }
     if(width===390)await pdf('능력표 인쇄','abilities');
     await page.getByLabel('대회 이름',{exact:true}).fill('리그 검증');
-    await page.getByLabel('팀 기준 인원',{exact:true}).selectOption('7');
+    await page.getByLabel('팀 개수',{exact:true}).selectOption('4');
     await page.getByRole('button',{name:'균형 팀 편성 및 대진표 생성',exact:true}).click();
     await page.locator('.vb-match input').first().fill('3:1');
     await page.locator('.vb-match').first().getByRole('button',{name:'결과 저장',exact:true}).click();
     await page.evaluate(()=>window.__vbFlush());
-    assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].events[0].matches[0].score),'3:1');
+    assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].events[0].matches.find(m=>m.score).score),'3:1');
     await page.locator('.vb-match input').first().fill('3:2');
     await page.evaluate(()=>window.__vbSnapshot());
     assert.equal(await page.locator('.vb-match input').first().inputValue(),'3:2');
@@ -89,7 +89,7 @@ try{
     await page.getByLabel('대회 선택',{exact:true}).scrollIntoViewIfNeeded();
     await page.screenshot({path:resolve(output,`league-${width}.png`),animations:'disabled'});
     await page.getByLabel('대회 이름',{exact:true}).fill('토너먼트 검증');
-    await page.getByLabel('팀 기준 인원',{exact:true}).selectOption('5');
+    await page.getByLabel('팀 개수',{exact:true}).selectOption('5');
     await page.getByLabel('경기 방식',{exact:true}).selectOption('토너먼트전');
     await page.getByRole('button',{name:'균형 팀 편성 및 대진표 생성',exact:true}).click();
     // Five teams include byes; complete all playable matches, then reverse an early result.
@@ -99,12 +99,12 @@ try{
         await pending.first().locator('input').fill('3:1');
         await pending.first().getByRole('button',{name:'결과 저장',exact:true}).click();
     }
-    assert.ok(await page.getByRole('heading',{name:/우승:/}).count());
+    assert.ok(await page.locator('svg text').filter({hasText:/팀 우승$/}).count());
     if(width===390)await pdf('토너먼트전 대진·결과 인쇄','tournament');
     await page.locator('.vb-match input').first().fill('1:3');
     page.once('dialog',d=>d.accept());
     await page.locator('.vb-match:has(input)').first().getByRole('button',{name:'결과 저장',exact:true}).click();
-    assert.equal(await page.getByRole('heading',{name:/우승:/}).count(),0);
+    assert.equal(await page.locator('svg text').filter({hasText:/팀 우승$/}).count(),0);
     await page.evaluate(()=>window.__vbFlush());
     const saved=await page.evaluate(()=>window.__vbState().volleyball['4-1']);
     await page.reload();await choose('4-1');
@@ -165,7 +165,20 @@ try{
         assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].skills[1].under),17);
         await context.setOffline(false);
     }
-    assert.deepEqual(errors,[]);console.log(`PASS volleyball ${width}px: UI, skill save, league, bracket, snapshot, reload, layout${width===390?', XLSX class/all/cross-scope/legacy/corrupt, PDF x3, offline edit':''}`);
+    const skillsBeforeDelete=await page.evaluate(()=>window.__vbState().volleyball['4-1'].skills);
+    page.once('dialog',d=>d.dismiss());
+    await page.getByRole('button',{name:'선택한 대회 삭제',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].events.length),2);
+    for(let remaining=1;remaining>=0;remaining--){
+        page.once('dialog',d=>d.accept());
+        await page.getByRole('button',{name:'선택한 대회 삭제',exact:true}).click();
+        assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].events.length),remaining);
+    }
+    await page.evaluate(()=>window.__vbFlush());
+    await page.reload();await choose('4-1');
+    assert.deepEqual(await page.evaluate(()=>window.__vbState().volleyball['4-1'].skills),skillsBeforeDelete);
+    assert.equal(await page.evaluate(()=>window.__vbState().volleyball['4-1'].events.length),0);
+    assert.deepEqual(errors,[]);console.log(`PASS volleyball ${width}px: UI, skill save, league, bracket, snapshot, reload, layout, delete/cancel/persistence${width===390?', XLSX class/all/cross-scope/legacy/corrupt, PDF x3, offline edit':''}`);
     await context.close();
  }
 }finally{await browser.close();await new Promise(r=>server.close(r));}

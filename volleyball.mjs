@@ -181,6 +181,16 @@ export function initVolleyball({state,save}) {
         if(!data.events.length)return;
         const chooser=select([], '대회 선택');data.events.slice().reverse().forEach(e=>{const o=node('option',`${e.name} · ${e.mode}`);o.value=e.id;chooser.append(o);});if(!data.events.some(e=>e.id===activeEvent))activeEvent=data.events.at(-1).id;chooser.value=activeEvent;chooser.onchange=()=>{activeEvent=chooser.value;render();};panel.append(chooser);
         const event=data.events.find(e=>e.id===activeEvent), content=node('div');content.append(node('h3',`${event.name} · ${event.mode}`));
+        panel.append(btn('선택한 대회 삭제',()=>{
+            if(!confirm(`“${event.name}” 대회의 팀과 경기 결과를 삭제할까요? 개인 능력 기록은 유지됩니다.`))return;
+            const fresh=structuredClone(state().data);
+            fresh.events=(fresh.events||[]).filter(e=>e.id!==event.id);
+            for(const key of scoreDrafts.keys()){
+                const [draftClass,draftEvent]=JSON.parse(key);
+                if(draftClass===className && draftEvent===event.id)scoreDrafts.delete(key);
+            }
+            activeEvent='';commit(fresh);
+        }));
         
         const teamGrid=node('div',undefined,'vb-team-grid');
         for(const [i,team] of event.teams.entries()){
@@ -294,7 +304,6 @@ export function initVolleyball({state,save}) {
             });
         }
         panel.append(content,btn(`${event.mode} 대진·결과 인쇄`,()=>print(event.name,content)));
-        panel.append(btn('이 대회 삭제',()=>{if(confirm('선택한 대회의 팀과 경기 결과를 삭제할까요?')){const fresh=structuredClone(state().data);fresh.events=fresh.events.filter(e=>e.id!==event.id);commit(fresh);}}));
     }
     return {render,refresh};
 }
