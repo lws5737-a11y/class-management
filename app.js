@@ -602,6 +602,7 @@ const clearDropStyles = () => {
 };
 
 window.handleTouchStart = function(e, studentNo) {
+    if (studentPositionLocked(studentNo)) return;
     if (e.target.closest('button, input, select, textarea')) return;
     const touch = e.touches[0];
     const target = e.currentTarget;
@@ -731,6 +732,7 @@ document.addEventListener('touchcancel', () => {
 });
 
 window.handleDropLogic = function(draggedNo, targetGroup) {
+    if (studentPositionLocked(draggedNo)) return;
     if (draggedNo === null || draggedNo === undefined) return;
     
     const students = classData[currentClass];
@@ -764,6 +766,7 @@ window.handleDropLogic = function(draggedNo, targetGroup) {
 };
 
 window.handleStudentDropLogic = function(draggedNo, targetNo) {
+    if (studentPositionLocked(draggedNo) || studentPositionLocked(targetNo)) return;
     if (draggedNo === null || draggedNo === undefined || Number(draggedNo) === Number(targetNo)) return;
     const students = classData[currentClass] || [];
     const draggedStudent = students.find(student => Number(student.no) === Number(draggedNo));
@@ -791,6 +794,7 @@ window.handleStudentDropLogic = function(draggedNo, targetNo) {
 };
 
 window.handleDragStart = function(e, studentNo) {
+    if (studentPositionLocked(studentNo)) { e.preventDefault(); return; }
     window.isDraggingCard = true; window.draggedStudentNo = studentNo;
     window.selectedGroupStudent = null; 
     e.dataTransfer.effectAllowed = 'move';
@@ -848,9 +852,34 @@ window.handleDropOnStudent = function(e, targetStudentNo) {
     window.draggedStudentNo = null;
 };
 
+function studentPositionLocked(no) {
+    return Boolean(classData[currentClass]?.find(s => Number(s.no) === Number(no))?.[`locked_${currentGroupMode}`]);
+}
+
+let pendingCardTap = null;
 window.handleStudentCardClick = function(studentNo) {
-    if (window.isTouchDragging) { window.isTouchDragging = false; return; } 
-    window.toggleSelection(studentNo); 
+    if (window.isTouchDragging) { window.isTouchDragging = false; return; }
+    const student = classData[currentClass]?.find(s => Number(s.no) === Number(studentNo));
+    if (!student) return;
+    const key = JSON.stringify([currentClass,currentGroupMode,studentNo]);
+    if (pendingCardTap) {
+        clearTimeout(pendingCardTap.timer);
+        const previous = pendingCardTap;
+        pendingCardTap = null;
+        if (previous.key === key) {
+            const field = 'locked_' + currentGroupMode;
+            student[field] = !student[field];
+            saveData();
+            window.renderGroups();
+            return;
+        }
+        previous.select();
+    }
+    const group = currentGroupMode, cls = currentClass;
+    const select = () => {
+        if (currentClass === cls && currentGroupMode === group && currentTab === 'group') window.toggleSelection(studentNo);
+    };
+    pendingCardTap = {key, select, timer:setTimeout(() => { pendingCardTap = null; select(); }, 350)};
 };
 
 window.handleGroupAreaClick = function(groupId) {
@@ -3061,6 +3090,7 @@ window.cycleStudentAbility = function(studentNo, type) {
 }
 
 window.cycleStudentGroup = function(studentNo) {
+    if (studentPositionLocked(studentNo)) return;
     const student = classData[currentClass].find(s => s.no == studentNo);
     if (student && student.attendance) {
         const cycle = getGroupsCycle(); let currentVal = student[`group_${currentGroupMode}`];
@@ -3899,7 +3929,7 @@ window.renderGroups = function() {
                     const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                     return `
-                    <div draggable="true" data-student-no="${s.no}" data-group-id="${i}"
+                    <div draggable="${!s[`locked_${currentGroupMode}`]}" title="두 번 눌러 위치 고정 또는 해제" style="${s[`locked_${currentGroupMode}`] ? 'outline:3px solid #7c3aed;outline-offset:-3px;background-color:#ede9fe' : ''}" data-student-no="${s.no}" data-group-id="${i}"
                          ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
                          ondragover="window.handleDragOverStudent(event)" ondrop="window.handleDropOnStudent(event, ${s.no})"
                          ontouchstart="window.handleTouchStart(event, ${s.no})"
@@ -3908,7 +3938,7 @@ window.renderGroups = function() {
                          onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                          class="student-card relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                         
-                        ${memberDrawnBadge}
+                        ${memberDrawnBadge}${s[`locked_${currentGroupMode}`] ? '<span class="absolute bottom-0 right-0 z-20 pointer-events-none" aria-label="위치 고정">🔒</span>' : ''}
                         
                         <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
@@ -4004,7 +4034,7 @@ window.renderGroups = function() {
                 const penaltyCardsHtml = renderPenaltyIndicator(s);
 
                 return `
-                <div draggable="true" data-student-no="${s.no}" data-group-id="0"
+                <div draggable="${!s[`locked_${currentGroupMode}`]}" title="두 번 눌러 위치 고정 또는 해제" style="${s[`locked_${currentGroupMode}`] ? 'outline:3px solid #7c3aed;outline-offset:-3px;background-color:#ede9fe' : ''}" data-student-no="${s.no}" data-group-id="0"
                      ondragstart="window.handleDragStart(event, ${s.no})" ondragend="window.handleDragEnd(event)" 
                      ondragover="window.handleDragOverStudent(event)" ondrop="window.handleDropOnStudent(event, ${s.no})"
                      ontouchstart="window.handleTouchStart(event, ${s.no})"
@@ -4013,7 +4043,7 @@ window.renderGroups = function() {
                      onclick="event.stopPropagation(); window.handleStudentCardClick(${s.no})"
                      class="student-card w-[120px] sm:w-[150px] relative border sm:border-2 ${badgeColor} px-1.5 py-1 sm:px-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-200 select-none ${selectedStyle} flex flex-col items-center justify-center min-h-[64px] sm:min-h-[80px]">
                     
-                    ${memberDrawnBadge}
+                    ${memberDrawnBadge}${s[`locked_${currentGroupMode}`] ? '<span class="absolute bottom-0 right-0 z-20 pointer-events-none" aria-label="위치 고정">🔒</span>' : ''}
                     
                     <div class="group-student-heading flex items-center w-full min-w-0">
                         ${attendanceBtnHtml}
